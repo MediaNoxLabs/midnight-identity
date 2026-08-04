@@ -27,15 +27,14 @@
 //! which returns a plain-data [`DidLedgerSnapshot`] without depending
 //! on the codegen'd `Ledger` types.
 
+use midnight_did_method::hex_ext::HashOutputExt;
 use midnight_did_method::midnight_did::{ContractAddress, MidnightNetwork};
 
 use crate::backend::{Backend, BackendError, BuiltTx, FinalizedTxData};
 use crate::contract_call::{
-    DidContractCall, DidLedgerSnapshot, LedgerSchnorrJubjubVerificationMethod, LedgerService,
-    LedgerVerificationMethod, LedgerVerificationMethodRelation, MapMutation, SchnorrJubjubDigest,
-    SchnorrJubjubSignature, SetMutation,
+    DidContractCall, DidLedgerSnapshot, LedgerSchnorrJubjubVerificationMethod, LedgerService, LedgerVerificationMethod,
+    LedgerVerificationMethodRelation, MapMutation, SchnorrJubjubDigest, SchnorrJubjubSignature, SetMutation,
 };
-use midnight_did_method::hex_ext::HashOutputExt;
 
 /// Concrete typed contract wrapper over a [`Backend`].
 ///
@@ -108,7 +107,8 @@ impl<B: Backend> Contract<B> {
         method: LedgerVerificationMethod,
         mutation: MapMutation,
     ) -> Result<FinalizedTxData, BackendError> {
-        self.submit(DidContractCall::SetVerificationMethod { method, mutation }).await
+        self.submit(DidContractCall::SetVerificationMethod { method, mutation })
+            .await
     }
 
     /// `removeVerificationMethod(methodId)`.
@@ -196,7 +196,8 @@ impl<B: Backend> Contract<B> {
         alias_uri: String,
         mutation: SetMutation,
     ) -> Result<FinalizedTxData, BackendError> {
-        self.submit(DidContractCall::SetAlsoKnownAs { alias_uri, mutation }).await
+        self.submit(DidContractCall::SetAlsoKnownAs { alias_uri, mutation })
+            .await
     }
 
     /// `deactivate()`.

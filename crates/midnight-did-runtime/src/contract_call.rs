@@ -31,10 +31,9 @@
 
 use std::collections::BTreeMap;
 
+use midnight_did_domain::did_document::{CurveType, KeyType, VerificationMethodType};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use midnight_did_domain::did_document::{CurveType, KeyType, VerificationMethodType};
 
 use crate::backend::BackendError;
 
@@ -373,7 +372,11 @@ impl SchnorrJubjubSignature {
     /// Build a new [`SchnorrJubjubSignature`], validating the hex payload
     /// as exactly 96 bytes (the on-chain Schnorr-Jubjub signature size).
     pub fn new(bytes_hex: String) -> Result<Self, ValidationError> {
-        validate_hex_exact(&bytes_hex, SCHNORR_JUBJUB_SIGNATURE_BYTES, "SchnorrJubjubSignature.bytes_hex")?;
+        validate_hex_exact(
+            &bytes_hex,
+            SCHNORR_JUBJUB_SIGNATURE_BYTES,
+            "SchnorrJubjubSignature.bytes_hex",
+        )?;
         Ok(Self { bytes_hex })
     }
 
