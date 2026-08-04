@@ -12,9 +12,36 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ## [Unreleased] — v0.5.0
 
-Reserved for the wallet+proof-server+indexer bridge follow-up that
-will turn `LiveBackend::submit_tx` + `LiveBackend::read_snapshot`
-from `todo!()` stubs into production paths. See
+### Contract 0.5.0 migration (did.compact controller-authorization + recovery)
+
+Re-generated `midnight-did-runtime`'s `contract/generated.rs` from the
+**midnight-did 0.5.0** contract (`third_party/midnight-did` submodule
+pinned to `midnightntwrk/midnight-did` `main` @ `42a8e4a`, "update docs
+and package baseline to 0.5.0"). This is the controller-authorization +
+recovery redesign: JubjubPoint `controllerPublicKey` /
+`recoveryAuthorityPublicKey` ledger fields, `localControllerPublicKey` /
+`localRecoveryAuthorityPublicKey` witnesses, Schnorr-signature-authorized
+mutations, `MapMutation` / `SetMutation` mutation enums, a
+`recoverControllerKey` circuit, and seven `CurveType` variants (adds
+`BLS12381G1` / `BLS12381G2`).
+
+- `flake.nix` / `flake.lock`: `compact` input repointed to the
+  `yshyn-iohk/compact` `did-0.5.0-codegen` branch, whose `compactc`
+  gained the codegen support the 0.5.0 contract needs — a JubjubPoint
+  ledger-read decoder + typed initial-cell default, interleaved
+  bare-call-in-if-branch mutation bodies, ctx-arg hoisting for impure
+  calls, constructor-mode impure-circuit context threading, and
+  multi-assert if/else branches. The regenerated contract compiles
+  cleanly (`cargo build -p midnight-did-runtime`) and `just codegen`
+  is idempotent.
+- `third_party/midnight-did`: submodule pin corrected to `42a8e4a`
+  (upstream `main`); the previous pin (`6274cff`) was a divergent
+  local-mirror line ("Redesign DID verification method storage",
+  `Bytes<32>` controller keys) that is not on upstream `main`.
+
+The wallet+proof-server+indexer bridge follow-up (turning
+`LiveBackend::submit_tx` / `read_snapshot` from `todo!()` stubs into
+production paths) remains reserved for this release; see
 [doc/adr/0008-contract-abstraction-reform.md](doc/adr/0008-contract-abstraction-reform.md)
 ("Future work") for the four-step closure plan.
 
