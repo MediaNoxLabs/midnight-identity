@@ -10,7 +10,20 @@ All notable changes to the `midnight-did-rs` workspace are recorded
 here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [SemVer](https://semver.org/).
 
-## [Unreleased] — v0.5.0
+## [Unreleased]
+
+Reserved for post-0.5.0 work.
+
+## [0.5.0] — 2026-08-05
+
+### Overview
+
+`0.5.0` migrates the workspace onto the **did.compact 0.5.0** contract —
+the controller-authorization + recovery redesign — and closes the codegen
+gaps that porting it required. It also wires the new
+`recoverControllerKey` operation end-to-end. The wallet+proof-server+indexer
+bridge that turns `LiveBackend` from `todo!()` stubs into production paths
+is the remaining follow-up tracked under this line (see below).
 
 ### Contract 0.5.0 migration (did.compact controller-authorization + recovery)
 
@@ -52,9 +65,11 @@ mutations, `MapMutation` / `SetMutation` mutation enums, a
   recovery-authority match are the deploy-backend's responsibility
   (callers pass the already-derived new controller public key).
 
-The wallet+proof-server+indexer bridge follow-up (turning
-`LiveBackend::submit_tx` / `read_snapshot` from `todo!()` stubs into
-production paths) remains reserved for this release; see
+### Still outstanding in 0.5.0
+
+The wallet+proof-server+indexer bridge — turning `LiveBackend::submit_tx` /
+`read_snapshot` from `todo!()` stubs into production paths — is the remaining
+work on this line; see
 [doc/adr/0008-contract-abstraction-reform.md](doc/adr/0008-contract-abstraction-reform.md)
 ("Future work") for the four-step closure plan.
 
