@@ -57,9 +57,10 @@ mutations, `MapMutation` / `SetMutation` mutation enums, a
   `Contract::recover_controller_key`,
   `controller_operations::recover_controller_key` (+
   `recover_controller_key_with_derivation` /
-  `recover_did_controller_key` re-export), and the
-  `midnight_did_uniffi::recover_controller_key` FFI entry point, each
-  with round-trip tests. Ports `recoverControllerKey` from
+  `recover_did_controller_key` re-export), the
+  `midnight_did_uniffi::recover_controller_key` FFI entry point, and a
+  `recover` step in the reference CLI's demo flow — each with round-trip
+  tests. Ports `recoverControllerKey` from
   `packages/api/src/controller-operations.ts`; consistent with this
   crate's existing design, the recovery-authority signature + on-ledger
   recovery-authority match are the deploy-backend's responsibility

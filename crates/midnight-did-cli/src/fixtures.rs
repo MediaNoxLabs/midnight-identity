@@ -23,12 +23,10 @@
 use std::collections::BTreeMap;
 
 use midnight_did_api::contract::{LedgerPublicKeyJwk, LedgerVerificationMethod};
-use midnight_did_domain::{
-    crypto_codecs::encode_base64url,
-    did_document::{
-        CurveType, KeyType, NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk, Service, ServiceEndpoint,
-        ServiceType, VerificationMethod, VerificationMethodType,
-    },
+use midnight_did_domain::crypto_codecs::encode_base64url;
+use midnight_did_domain::did_document::{
+    CurveType, KeyType, NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk, Service, ServiceEndpoint,
+    ServiceType, VerificationMethod, VerificationMethodType,
 };
 use midnight_did_method::midnight_did::MidnightNetwork;
 
@@ -52,6 +50,12 @@ pub const ROTATED_SECRET_KEY: [u8; 32] = [0x55u8; 32];
 
 /// Public key after rotation (deterministic stub).
 pub const ROTATED_CONTROLLER_PK_BYTES: [u8; 32] = [0xAAu8; 32];
+
+/// Secret key after recovery-authority-authorized recovery.
+pub const RECOVERED_SECRET_KEY: [u8; 32] = [0x66u8; 32];
+
+/// Public key after recovery (deterministic stub).
+pub const RECOVERED_CONTROLLER_PK_BYTES: [u8; 32] = [0xBBu8; 32];
 
 /// Fragment id of the JWK verification method inserted by step 2.
 pub const VM_FRAGMENT: &str = "#key-1";
