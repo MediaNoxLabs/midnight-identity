@@ -19,8 +19,10 @@ use midnight_did_method::hex_ext::HashOutputExt;
 use midnight_did_runtime::{Backend, Contract};
 
 use crate::contract::FinalizedTxData;
-use crate::controller_operations::rotate_controller_key;
-pub use crate::controller_operations::rotate_controller_key as rotate_did_controller_key;
+use crate::controller_operations::{recover_controller_key, rotate_controller_key};
+pub use crate::controller_operations::{
+    recover_controller_key as recover_did_controller_key, rotate_controller_key as rotate_did_controller_key,
+};
 use crate::document_operations::deactivate;
 pub use crate::document_operations::{add_also_known_as, deactivate as deactivate_did, remove_also_known_as};
 use crate::error::ApiError;
@@ -115,6 +117,23 @@ where
 {
     let new_pk = derive_public_key(new_secret_key);
     rotate_controller_key(contract, store, new_secret_key, new_pk).await
+}
+
+/// Convenience: recover the controller key (recovery-authority-authorized)
+/// and persist the new controller secret as active.
+pub async fn recover_controller_key_with_derivation<B, S, F>(
+    contract: &Contract<B>,
+    store: &S,
+    new_secret_key: [u8; 32],
+    derive_public_key: F,
+) -> Result<FinalizedTxData, ApiError>
+where
+    B: Backend,
+    S: PrivateStateStore + ?Sized,
+    F: FnOnce([u8; 32]) -> [u8; 32],
+{
+    let new_pk = derive_public_key(new_secret_key);
+    recover_controller_key(contract, store, new_secret_key, new_pk).await
 }
 
 /// Convenience helper: deactivate the DID and save a sentinel zero private

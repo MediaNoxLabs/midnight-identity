@@ -101,6 +101,20 @@ impl<B: Backend> Contract<B> {
         .await
     }
 
+    /// `recoverControllerKey(new_pk)` — recovery-authority-authorized reset
+    /// of the controller public key (32 bytes). Same call payload as
+    /// [`Self::rotate_controller_key`], but the on-chain circuit authorises
+    /// it against the recovery authority rather than the current controller.
+    pub async fn recover_controller_key(
+        &self,
+        new_controller_public_key: [u8; 32],
+    ) -> Result<FinalizedTxData, BackendError> {
+        self.submit(DidContractCall::RecoverControllerKey {
+            new_public_key: new_controller_public_key,
+        })
+        .await
+    }
+
     /// `setVerificationMethod(method, mutation)`.
     pub async fn set_verification_method(
         &self,
@@ -245,6 +259,20 @@ mod tests {
             DidContractCall::RotateControllerKey {
                 new_public_key: [9u8; 32]
             }
+        );
+    }
+
+    #[test]
+    fn contract_records_recover_controller_key() {
+        let rt = rt();
+        let contract = Contract::new(RecordingBackend::new(), addr(), MidnightNetwork::Undeployed);
+        rt.block_on(contract.recover_controller_key([5u8; 32])).unwrap();
+        let recorded = contract.backend.recorded_calls();
+        assert_eq!(
+            recorded,
+            vec![DidContractCall::RecoverControllerKey {
+                new_public_key: [5u8; 32]
+            }]
         );
     }
 

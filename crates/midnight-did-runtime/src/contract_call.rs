@@ -487,6 +487,14 @@ pub enum DidContractCall {
         /// New controller public key (32 bytes).
         new_public_key: [u8; 32],
     },
+    /// `recoverControllerKey(new_pk)` — recovery-authority-authorized
+    /// controller-key reset. Distinct from [`Self::RotateControllerKey`]
+    /// (controller-authorized): the on-chain circuit checks the signature
+    /// against the recovery authority rather than the current controller.
+    RecoverControllerKey {
+        /// New controller public key (32 bytes).
+        new_public_key: [u8; 32],
+    },
     /// `setVerificationMethod(method, mutation)`.
     SetVerificationMethod {
         /// Ledger-shaped verification method.
@@ -599,6 +607,22 @@ mod tests {
         let bytes = call.encode();
         let decoded = DidContractCall::decode(&bytes).unwrap();
         assert_eq!(call, decoded);
+    }
+
+    #[test]
+    fn recover_controller_key_roundtrip() {
+        let call = DidContractCall::RecoverControllerKey {
+            new_public_key: [8u8; 32],
+        };
+        let bytes = call.encode();
+        let decoded = DidContractCall::decode(&bytes).unwrap();
+        assert_eq!(call, decoded);
+        // RecoverControllerKey and RotateControllerKey are distinct tags even
+        // with identical payloads.
+        let rotate = DidContractCall::RotateControllerKey {
+            new_public_key: [8u8; 32],
+        };
+        assert_ne!(call.encode(), rotate.encode());
     }
 
     #[test]

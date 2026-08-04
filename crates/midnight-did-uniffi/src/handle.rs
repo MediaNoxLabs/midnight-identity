@@ -22,10 +22,10 @@
 //! coroutines — cannot race on the mock contract's in-memory state.
 
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use midnight_did_method::midnight_did::{MidnightNetwork, parse_contract_address};
 use midnight_did_runtime::{Contract, RecordingBackend};
+use tokio::sync::Mutex;
 
 /// Default contract address for the mock — same value used by the
 /// integration tests in `midnight-did-api`. Real impls will replace the

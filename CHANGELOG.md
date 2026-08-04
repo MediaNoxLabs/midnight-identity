@@ -38,6 +38,19 @@ mutations, `MapMutation` / `SetMutation` mutation enums, a
   (upstream `main`); the previous pin (`6274cff`) was a divergent
   local-mirror line ("Redesign DID verification method storage",
   `Bytes<32>` controller keys) that is not on upstream `main`.
+- Wired the new `recoverControllerKey` operation (recovery-authority-
+  authorized controller-key reset) end-to-end, mirroring
+  `rotateControllerKey`: `DidContractCall::RecoverControllerKey`,
+  `Contract::recover_controller_key`,
+  `controller_operations::recover_controller_key` (+
+  `recover_controller_key_with_derivation` /
+  `recover_did_controller_key` re-export), and the
+  `midnight_did_uniffi::recover_controller_key` FFI entry point, each
+  with round-trip tests. Ports `recoverControllerKey` from
+  `packages/api/src/controller-operations.ts`; consistent with this
+  crate's existing design, the recovery-authority signature + on-ledger
+  recovery-authority match are the deploy-backend's responsibility
+  (callers pass the already-derived new controller public key).
 
 The wallet+proof-server+indexer bridge follow-up (turning
 `LiveBackend::submit_tx` / `read_snapshot` from `todo!()` stubs into
