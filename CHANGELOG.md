@@ -68,12 +68,15 @@ mutations, `MapMutation` / `SetMutation` mutation enums, a
 
 ### Review follow-ups (Codex CLI)
 
-- **FFI recovery/rotation now take the new controller secret.** The uniffi
+- **FFI controller-key operations now persist the correct secret.** The uniffi
   `rotate_controller_key` / `recover_controller_key` entry points previously
-  passed a zero secret to the API layer, which would persist the wrong
-  controller private state once a real (non-mock) store is wired. Both now
-  accept `new_secret_key_hex` alongside the public key, so the promoted active
-  private state matches the installed key. (Breaking FFI signature change.)
+  passed a zero secret to a **per-call** `InMemoryPrivateStateStore` that was
+  dropped on return — so neither the right secret nor any state actually
+  survived the call. Both now accept `new_secret_key_hex` (breaking FFI
+  signature change), and `DidServiceHandle` holds a **shared** private-state
+  store threaded into `create_did` / rotation / recovery, so a create → rotate
+  → recover sequence keeps the promoted active secret (covered by a new
+  `controller_state_persists_across_calls_on_one_handle` test).
 - **Constructor codegen threads zswap-local state** through impure-circuit
   calls (compiler-side, regenerated here): the generated constructor now
   carries the callee's returned `current_zswap_local_state` into the

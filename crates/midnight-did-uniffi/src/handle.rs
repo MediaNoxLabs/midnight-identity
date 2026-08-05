@@ -23,6 +23,7 @@
 
 use std::sync::Arc;
 
+use midnight_did_api::private_state::InMemoryPrivateStateStore;
 use midnight_did_method::midnight_did::{MidnightNetwork, parse_contract_address};
 use midnight_did_runtime::{Contract, RecordingBackend};
 use tokio::sync::Mutex;
@@ -43,6 +44,12 @@ const DEFAULT_ADDRESS: &str = "ccccccccccccccccccccccccccccccccccccccccccccccccc
 #[derive(uniffi::Object)]
 pub struct DidServiceHandle {
     pub(crate) contract: Arc<Mutex<Contract<RecordingBackend>>>,
+    /// Controller private-state store, shared across FFI calls on this handle
+    /// so a `create_did` / `rotate_controller_key` / `recover_controller_key`
+    /// sequence actually persists the promoted active secret (rather than
+    /// each call seeding — and dropping — its own store). `InMemoryPrivateStateStore`
+    /// has interior mutability, so a shared `&` reference is enough.
+    pub(crate) store: InMemoryPrivateStateStore,
 }
 
 #[uniffi::export]
@@ -62,6 +69,7 @@ impl DidServiceHandle {
                 parse_contract_address(DEFAULT_ADDRESS).expect("valid DEFAULT_ADDRESS"),
                 MidnightNetwork::Testnet,
             ))),
+            store: InMemoryPrivateStateStore::new(),
         })
     }
 

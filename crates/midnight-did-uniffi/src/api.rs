@@ -30,7 +30,6 @@
 use std::sync::Arc;
 
 use midnight_did_api::did_operations::{deactivate_did as api_deactivate, resolve_did as api_resolve};
-use midnight_did_api::private_state::InMemoryPrivateStateStore;
 use serde::Serialize;
 
 use crate::error::{FlatError, decode_hex_32};
@@ -53,8 +52,7 @@ pub async fn create_did(
     let _pk = decode_hex_32(&controller_public_key_hex, "controller_public_key_hex")?;
 
     let contract = handle.contract.lock().await;
-    let store = InMemoryPrivateStateStore::new();
-    let _state = midnight_did_api::did_operations::create_did(&*contract, &store, _seed)
+    let _state = midnight_did_api::did_operations::create_did(&*contract, &handle.store, _seed)
         .await
         .map_err(FlatError::from)?;
 
@@ -85,10 +83,10 @@ pub async fn rotate_controller_key(
     let new_pk = decode_hex_32(&new_controller_public_key_hex, "new_controller_public_key_hex")?;
 
     let contract = handle.contract.lock().await;
-    let store = InMemoryPrivateStateStore::new();
-    let result = midnight_did_api::controller_operations::rotate_controller_key(&*contract, &store, new_sk, new_pk)
-        .await
-        .map_err(FlatError::from)?;
+    let result =
+        midnight_did_api::controller_operations::rotate_controller_key(&*contract, &handle.store, new_sk, new_pk)
+            .await
+            .map_err(FlatError::from)?;
 
     Ok(serde_json::to_string(&RotateResponse {
         did: did_subject,
@@ -115,10 +113,10 @@ pub async fn recover_controller_key(
     let new_pk = decode_hex_32(&new_controller_public_key_hex, "new_controller_public_key_hex")?;
 
     let contract = handle.contract.lock().await;
-    let store = InMemoryPrivateStateStore::new();
-    let result = midnight_did_api::controller_operations::recover_controller_key(&*contract, &store, new_sk, new_pk)
-        .await
-        .map_err(FlatError::from)?;
+    let result =
+        midnight_did_api::controller_operations::recover_controller_key(&*contract, &handle.store, new_sk, new_pk)
+            .await
+            .map_err(FlatError::from)?;
 
     Ok(serde_json::to_string(&RotateResponse {
         did: did_subject,
@@ -231,6 +229,34 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["did"], "did:midnight:testnet:x");
         assert!(v.get("tx_hash").is_some());
+    }
+
+    #[tokio::test]
+    async fn controller_state_persists_across_calls_on_one_handle() {
+        use midnight_did_api::private_state::{PrivateStateSlot, restore_private_state};
+
+        // 32 bytes of 0x03 (secret) and 0x04 (public key).
+        const NEW_SK: &str = "0303030303030303030303030303030303030303030303030303030303030303";
+        const NEW_PK: &str = "0404040404040404040404040404040404040404040404040404040404040404";
+
+        let handle = DidServiceHandle::new();
+        create_did(handle.clone(), SEED.into(), PK.into()).await.unwrap();
+        rotate_controller_key(
+            handle.clone(),
+            "did:midnight:testnet:x".into(),
+            NEW_SK.into(),
+            NEW_PK.into(),
+        )
+        .await
+        .unwrap();
+
+        // The handle's shared store must have promoted the rotated secret to
+        // the active slot — proving state survives across FFI calls (would be
+        // lost if each call created its own store).
+        let active = restore_private_state(&handle.store, PrivateStateSlot::Active)
+            .await
+            .unwrap();
+        assert_eq!(active.unwrap().secret_key, [3u8; 32]);
     }
 
     #[tokio::test]
