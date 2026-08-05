@@ -66,6 +66,22 @@ mutations, `MapMutation` / `SetMutation` mutation enums, a
   recovery-authority match are the deploy-backend's responsibility
   (callers pass the already-derived new controller public key).
 
+### Review follow-ups (Codex CLI)
+
+- **FFI recovery/rotation now take the new controller secret.** The uniffi
+  `rotate_controller_key` / `recover_controller_key` entry points previously
+  passed a zero secret to the API layer, which would persist the wrong
+  controller private state once a real (non-mock) store is wired. Both now
+  accept `new_secret_key_hex` alongside the public key, so the promoted active
+  private state matches the installed key. (Breaking FFI signature change.)
+- **Constructor codegen threads zswap-local state** through impure-circuit
+  calls (compiler-side, regenerated here): the generated constructor now
+  carries the callee's returned `current_zswap_local_state` into the
+  `ConstructorResult` instead of restarting from empty — see
+  yshyn-iohk/compact `did-0.5.0-codegen` (A25). No behavioural change for the
+  0.5.0 contract (its constructor's only impure call is a pure-assert), but
+  correct for any future zswap-affecting constructor circuit.
+
 ### Still outstanding in 0.5.0
 
 The wallet+proof-server+indexer bridge — turning `LiveBackend::submit_tx` /

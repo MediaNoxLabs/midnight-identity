@@ -1651,8 +1651,9 @@ where
         let _cr_6 = self.assert_controller_public_key_distinct_from_recovery_authority(_cctx_6, _carg_6_0)?;
         let qctx = _cr_6.context.current_query_context;
         let current_private_state = _cr_6.context.current_private_state;
-        let _witness_ctx_17 = WitnessContext::new(ledger(&qctx.state), current_private_state, &qctx);
-        let (current_private_state, timestamp) = self.witnesses.current_timestamp(&_witness_ctx_17);
+        let _zswap = _cr_6.context.current_zswap_local_state;
+        let _witness_ctx_18 = WitnessContext::new(ledger(&qctx.state), current_private_state, &qctx);
+        let (current_private_state, timestamp) = self.witnesses.current_timestamp(&_witness_ctx_18);
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(0u8, true)
             .push(false, new_cell(0u8))
@@ -1701,7 +1702,7 @@ where
         Ok(ConstructorResult {
             current_contract_state: results.context.state,
             current_private_state,
-            current_zswap_local_state: ctx.empty_zswap_local_state,
+            current_zswap_local_state: _zswap,
         })
     }
 
