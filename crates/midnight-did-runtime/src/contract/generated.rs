@@ -1713,8 +1713,10 @@ where
         signature: compact_runtime::SchnorrSignature,
         pk: JubjubPoint,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let _cr_0 = compact_runtime::schnorr_verify_jubjub(ctx, digest, signature.clone(), pk.clone())?;
-        let ctx = _cr_0.context;
+        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let _cr_1 = compact_runtime::schnorr_verify_jubjub(ctx, digest, signature.clone(), pk.clone())?;
+        let ctx = _cr_1.context;
+        __gas_acc += _cr_1.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new().build();
 
         let results = query_for_verify(&ctx.current_query_context, &ops, ctx.gas_limit.clone(), &ctx.cost_model)?;
@@ -1725,7 +1727,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -1781,6 +1783,7 @@ where
         expected_version: u64,
         digest: [Fr; 4],
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         compact_assert!(
             (expected_version == {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1800,7 +1803,7 @@ where
             }),
             "Controller authorization version is stale"
         );
-        let _carg_1_2 = {
+        let _carg_2_2 = {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
                 .dup(0)
                 .idx_at_index(0u8, false)
@@ -1815,8 +1818,9 @@ where
             };
             compact_runtime::std_lib::decode_jubjub_point(_av)?
         };
-        let _cr_1 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_1_2)?;
-        let ctx = _cr_1.context;
+        let _cr_2 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_2_2)?;
+        let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new().build();
 
         let results = query_for_verify(&ctx.current_query_context, &ops, ctx.gas_limit.clone(), &ctx.cost_model)?;
@@ -1827,7 +1831,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -1838,8 +1842,10 @@ where
         expected_version: u64,
         digest: [Fr; 4],
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let _cr_0 = self.assert_controller(ctx, signature.clone(), expected_version, digest)?;
-        let ctx = _cr_0.context;
+        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let _cr_1 = self.assert_controller(ctx, signature.clone(), expected_version, digest)?;
+        let ctx = _cr_1.context;
+        __gas_acc += _cr_1.gas_cost.clone();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1869,7 +1875,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -1880,6 +1886,7 @@ where
         expected_version: u64,
         digest: [Fr; 4],
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         compact_assert!(
             (expected_version == {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1899,7 +1906,7 @@ where
             }),
             "Recovery authorization version is stale"
         );
-        let _carg_1_2 = {
+        let _carg_2_2 = {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
                 .dup(0)
                 .idx_at_index(0u8, false)
@@ -1914,8 +1921,9 @@ where
             };
             compact_runtime::std_lib::decode_jubjub_point(_av)?
         };
-        let _cr_1 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_1_2)?;
-        let ctx = _cr_1.context;
+        let _cr_2 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_2_2)?;
+        let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1945,7 +1953,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -2751,8 +2759,9 @@ where
         controller_signature: compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         let disclosed_new_controller_public_key = new_controller_public_key.clone();
-        let _carg_1_2 = pure_circuits::rotate_controller_key_authorization_digest(
+        let _carg_2_2 = pure_circuits::rotate_controller_key_authorization_digest(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
                     .dup(0)
@@ -2772,18 +2781,22 @@ where
             expected_version,
             disclosed_new_controller_public_key.clone(),
         )?;
-        let _cr_1 =
-            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_1_2)?;
-        let ctx = _cr_1.context;
-        let _cr_4 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
-        let ctx = _cr_4.context;
-        let _cr_6 = self.assert_controller_public_key_distinct_from_recovery_authority(
+        let _cr_2 =
+            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
+        let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
+        let _cr_6 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
+        let ctx = _cr_6.context;
+        __gas_acc += _cr_6.gas_cost.clone();
+        let _cr_9 = self.assert_controller_public_key_distinct_from_recovery_authority(
             ctx,
             disclosed_new_controller_public_key.clone(),
         )?;
-        let ctx = _cr_6.context;
-        let _cr_8 = self.record_update(ctx)?;
-        let ctx = _cr_8.context;
+        let ctx = _cr_9.context;
+        __gas_acc += _cr_9.gas_cost.clone();
+        let _cr_12 = self.record_update(ctx)?;
+        let ctx = _cr_12.context;
+        __gas_acc += _cr_12.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(0u8, true)
             .push(false, new_cell(1u8))
@@ -2800,7 +2813,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -2811,8 +2824,9 @@ where
         recovery_signature: compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         let disclosed_new_controller_public_key = new_controller_public_key.clone();
-        let _carg_1_2 = pure_circuits::recover_controller_key_authorization_digest(
+        let _carg_2_2 = pure_circuits::recover_controller_key_authorization_digest(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
                     .dup(0)
@@ -2832,17 +2846,21 @@ where
             expected_version,
             disclosed_new_controller_public_key.clone(),
         )?;
-        let _cr_1 = self.assert_recovery_can_update(ctx, recovery_signature.clone(), expected_version, _carg_1_2)?;
-        let ctx = _cr_1.context;
-        let _cr_4 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
-        let ctx = _cr_4.context;
-        let _cr_6 = self.assert_controller_public_key_distinct_from_recovery_authority(
+        let _cr_2 = self.assert_recovery_can_update(ctx, recovery_signature.clone(), expected_version, _carg_2_2)?;
+        let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
+        let _cr_6 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
+        let ctx = _cr_6.context;
+        __gas_acc += _cr_6.gas_cost.clone();
+        let _cr_9 = self.assert_controller_public_key_distinct_from_recovery_authority(
             ctx,
             disclosed_new_controller_public_key.clone(),
         )?;
-        let ctx = _cr_6.context;
-        let _cr_8 = self.record_update(ctx)?;
-        let ctx = _cr_8.context;
+        let ctx = _cr_9.context;
+        __gas_acc += _cr_9.gas_cost.clone();
+        let _cr_12 = self.record_update(ctx)?;
+        let ctx = _cr_12.context;
+        __gas_acc += _cr_12.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(0u8, true)
             .push(false, new_cell(1u8))
@@ -2859,7 +2877,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -2898,6 +2916,7 @@ where
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
         let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_set_mutation_defined(disclosed_mutation.clone())?;
 
         let _if_results_5 = if (disclosed_mutation == SetMutation::Insert) {
@@ -2972,6 +2991,7 @@ where
         };
         let _cr_6 = self.record_update(ctx)?;
         let ctx = _cr_6.context;
+        __gas_acc += _cr_6.gas_cost.clone();
 
         Ok(CircuitResults {
             result: (),
@@ -3018,6 +3038,7 @@ where
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
         let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_map_mutation_defined(disclosed_mutation.clone())?;
         let _ = pure_circuits::assert_supported_verification_method(disclosed_verification_method.clone())?;
 
@@ -3101,6 +3122,7 @@ where
         };
         let _cr_9 = self.record_update(ctx)?;
         let ctx = _cr_9.context;
+        __gas_acc += _cr_9.gas_cost.clone();
 
         Ok(CircuitResults {
             result: (),
@@ -3119,8 +3141,9 @@ where
         controller_signature: compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         let disclosed_id = method_id.clone();
-        let _carg_1_2 = pure_circuits::remove_verification_method_authorization_digest(
+        let _carg_2_2 = pure_circuits::remove_verification_method_authorization_digest(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
                     .dup(0)
@@ -3140,9 +3163,10 @@ where
             expected_version,
             disclosed_id.clone(),
         )?;
-        let _cr_1 =
-            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_1_2)?;
-        let ctx = _cr_1.context;
+        let _cr_2 =
+            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
+        let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -3164,10 +3188,12 @@ where
             },
             "Verification method does not exist"
         );
-        let _cr_5 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
-        let ctx = _cr_5.context;
-        let _cr_7 = self.record_update(ctx)?;
+        let _cr_7 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
         let ctx = _cr_7.context;
+        __gas_acc += _cr_7.gas_cost.clone();
+        let _cr_10 = self.record_update(ctx)?;
+        let ctx = _cr_10.context;
+        __gas_acc += _cr_10.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .idx_at_index(7u8, true)
@@ -3184,7 +3210,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -3223,6 +3249,7 @@ where
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
         let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_map_mutation_defined(disclosed_mutation.clone())?;
 
         let _if_results_5 = if (disclosed_mutation == MapMutation::Update) {
@@ -3294,6 +3321,7 @@ where
         };
         let _cr_8 = self.record_update(ctx)?;
         let ctx = _cr_8.context;
+        __gas_acc += _cr_8.gas_cost.clone();
 
         Ok(CircuitResults {
             result: (),
@@ -3312,8 +3340,9 @@ where
         controller_signature: compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         let disclosed_id = method_id.clone();
-        let _carg_1_2 = pure_circuits::remove_schnorr_jubjub_verification_method_authorization_digest(
+        let _carg_2_2 = pure_circuits::remove_schnorr_jubjub_verification_method_authorization_digest(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
                     .dup(0)
@@ -3333,9 +3362,10 @@ where
             expected_version,
             disclosed_id.clone(),
         )?;
-        let _cr_1 =
-            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_1_2)?;
-        let ctx = _cr_1.context;
+        let _cr_2 =
+            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
+        let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -3357,10 +3387,12 @@ where
             },
             "Verification method does not exist"
         );
-        let _cr_5 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
-        let ctx = _cr_5.context;
-        let _cr_7 = self.record_update(ctx)?;
+        let _cr_7 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
         let ctx = _cr_7.context;
+        __gas_acc += _cr_7.gas_cost.clone();
+        let _cr_10 = self.record_update(ctx)?;
+        let ctx = _cr_10.context;
+        __gas_acc += _cr_10.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .idx_at_index(8u8, true)
@@ -3377,7 +3409,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -3388,6 +3420,7 @@ where
         digest: [Fr; 4],
         signature: compact_runtime::SchnorrSignature,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -3451,9 +3484,10 @@ where
             };
             compact_runtime::std_lib::decode_via_field_repr::<SchnorrJubjubVerificationMethod>(_av)?
         };
-        let _cr_4 =
+        let _cr_5 =
             self.schnorr_verify_digest(ctx, digest, signature.clone(), verification_method.publicKey.clone())?;
-        let ctx = _cr_4.context;
+        let ctx = _cr_5.context;
+        __gas_acc += _cr_5.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new().build();
 
         let results = query_for_verify(&ctx.current_query_context, &ops, ctx.gas_limit.clone(), &ctx.cost_model)?;
@@ -3464,7 +3498,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -3506,6 +3540,7 @@ where
         let _cr_3 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_3_2)?;
         let ctx = _cr_3.context;
+        __gas_acc += _cr_3.gas_cost.clone();
         let _ = pure_circuits::assert_set_mutation_defined(disclosed_mutation.clone())?;
         compact_assert!(
             ({
@@ -3552,6 +3587,7 @@ where
         let _cr_6 =
             self.verification_method_relation_member(ctx, disclosed_relation.clone(), disclosed_method_id.clone())?;
         let ctx = _cr_6.context;
+        __gas_acc += _cr_6.gas_cost.clone();
         let current_present = _cr_6.result;
 
         let _if_results_9 = if (disclosed_mutation == SetMutation::Insert) {
@@ -3601,6 +3637,7 @@ where
         };
         let _cr_10 = self.record_update(ctx)?;
         let ctx = _cr_10.context;
+        __gas_acc += _cr_10.gas_cost.clone();
 
         Ok(CircuitResults {
             result: (),
@@ -3647,6 +3684,7 @@ where
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
         let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_map_mutation_defined(disclosed_mutation.clone())?;
 
         let _if_results_5 = if (disclosed_mutation == MapMutation::Update) {
@@ -3737,6 +3775,7 @@ where
         };
         let _cr_8 = self.record_update(ctx)?;
         let ctx = _cr_8.context;
+        __gas_acc += _cr_8.gas_cost.clone();
 
         Ok(CircuitResults {
             result: (),
@@ -3755,8 +3794,9 @@ where
         controller_signature: compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
+        let mut __gas_acc = compact_runtime::RunningCost::default();
         let disclosed_id = service_id.clone();
-        let _carg_1_2 = pure_circuits::remove_service_authorization_digest(
+        let _carg_2_2 = pure_circuits::remove_service_authorization_digest(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
                     .dup(0)
@@ -3776,9 +3816,10 @@ where
             expected_version,
             disclosed_id.clone(),
         )?;
-        let _cr_1 =
-            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_1_2)?;
-        let ctx = _cr_1.context;
+        let _cr_2 =
+            self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
+        let ctx = _cr_2.context;
+        __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -3800,8 +3841,9 @@ where
             },
             "Service with a given id does not exist"
         );
-        let _cr_5 = self.record_update(ctx)?;
-        let ctx = _cr_5.context;
+        let _cr_7 = self.record_update(ctx)?;
+        let ctx = _cr_7.context;
+        __gas_acc += _cr_7.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .idx_at_index(14u8, true)
@@ -3818,7 +3860,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 
@@ -3828,7 +3870,8 @@ where
         controller_signature: compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let _carg_0_2 = pure_circuits::deactivate_authorization_digest(
+        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let _carg_1_2 = pure_circuits::deactivate_authorization_digest(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
                     .dup(0)
@@ -3847,8 +3890,9 @@ where
             },
             expected_version,
         )?;
-        let _cr_0 = self.assert_controller(ctx, controller_signature.clone(), expected_version, _carg_0_2)?;
-        let ctx = _cr_0.context;
+        let _cr_1 = self.assert_controller(ctx, controller_signature.clone(), expected_version, _carg_1_2)?;
+        let ctx = _cr_1.context;
+        __gas_acc += _cr_1.gas_cost.clone();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -3868,8 +3912,9 @@ where
             },
             "DID is already inactive"
         );
-        let _cr_4 = self.record_update(ctx)?;
-        let ctx = _cr_4.context;
+        let _cr_6 = self.record_update(ctx)?;
+        let ctx = _cr_6.context;
+        __gas_acc += _cr_6.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .push(false, new_cell(5u8))
@@ -3891,7 +3936,7 @@ where
                 current_query_context: results.context,
                 ..ctx
             },
-            gas_cost: results.gas_cost,
+            gas_cost: __gas_acc + results.gas_cost,
         })
     }
 }
