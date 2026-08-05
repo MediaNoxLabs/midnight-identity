@@ -3057,7 +3057,12 @@ where
                 .rem(false)
                 .ins(true, 2)
                 .build();
-            query_for_verify(&ctx.current_query_context, &ops, ctx.gas_limit.clone(), &ctx.cost_model)?
+            query_for_verify(
+                &_cr_mid6_0.context.current_query_context,
+                &ops,
+                ctx.gas_limit.clone(),
+                &ctx.cost_model,
+            )?
         } else if (disclosed_mutation == MapMutation::Insert) {
             let _cr_h0 = self.verification_method_exists(ctx.clone(), disclosed_verification_method.id.clone())?;
             let ctx = _cr_h0.context;
@@ -3558,7 +3563,7 @@ where
             )?;
             __gas_acc += _cr_mid9_0.gas_cost.clone();
             let _cr_arm9 = self.insert_verification_method_relation(
-                ctx.clone(),
+                _cr_mid9_0.context,
                 disclosed_relation.clone(),
                 disclosed_method_id.clone(),
             )?;
