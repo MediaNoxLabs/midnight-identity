@@ -1626,6 +1626,40 @@ where
         let (current_private_state, tmp_1) = self.witnesses.local_controller_public_key(&_witness_ctx_2);
         let _witness_ctx_4 = WitnessContext::new(ledger(&qctx.state), current_private_state, &qctx);
         let (current_private_state, tmp_2) = self.witnesses.local_recovery_authority_public_key(&_witness_ctx_4);
+        let ops = OpProgramVerify::<DefaultDB>::new()
+            .idx_at_index(0u8, true)
+            .push(false, new_cell(2u8))
+            .push(true, new_cell(tmp_2.clone()))
+            .ins(false, 1)
+            .ins(true, 1)
+            .idx_at_index(0u8, true)
+            .push(false, new_cell(1u8))
+            .push(true, new_cell(tmp_1.clone()))
+            .ins(false, 1)
+            .ins(true, 1)
+            .idx_at_index(1u8, true)
+            .push(false, new_cell(4u8))
+            .push(true, new_cell(false))
+            .ins(false, 1)
+            .ins(true, 1)
+            .idx_at_index(1u8, true)
+            .push(false, new_cell(5u8))
+            .push(true, new_cell(true))
+            .ins(false, 1)
+            .ins(true, 1)
+            .idx_at_index(0u8, true)
+            .push(false, new_cell(3u8))
+            .push(true, new_cell(tmp_0.clone()))
+            .ins(false, 1)
+            .ins(true, 1)
+            .idx_at_index(0u8, true)
+            .push(false, new_cell(0u8))
+            .push(true, new_cell(tmp.clone()))
+            .ins(false, 1)
+            .ins(true, 1)
+            .build();
+        let _ctor_flush_6 = query_for_verify(&qctx, &ops, ctx.gas_limit.clone(), &ctx.cost_model)?;
+        let qctx = _ctor_flush_6.context;
         let _carg_6_0 = {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
                 .dup(0)
@@ -1652,39 +1686,9 @@ where
         let qctx = _cr_6.context.current_query_context;
         let current_private_state = _cr_6.context.current_private_state;
         let _zswap = _cr_6.context.current_zswap_local_state;
-        let _witness_ctx_18 = WitnessContext::new(ledger(&qctx.state), current_private_state, &qctx);
-        let (current_private_state, timestamp) = self.witnesses.current_timestamp(&_witness_ctx_18);
+        let _witness_ctx_52 = WitnessContext::new(ledger(&qctx.state), current_private_state, &qctx);
+        let (current_private_state, timestamp) = self.witnesses.current_timestamp(&_witness_ctx_52);
         let ops = OpProgramVerify::<DefaultDB>::new()
-            .idx_at_index(0u8, true)
-            .push(false, new_cell(0u8))
-            .push(true, new_cell(tmp.clone()))
-            .ins(false, 1)
-            .ins(true, 1)
-            .idx_at_index(0u8, true)
-            .push(false, new_cell(3u8))
-            .push(true, new_cell(tmp_0.clone()))
-            .ins(false, 1)
-            .ins(true, 1)
-            .idx_at_index(1u8, true)
-            .push(false, new_cell(5u8))
-            .push(true, new_cell(true))
-            .ins(false, 1)
-            .ins(true, 1)
-            .idx_at_index(1u8, true)
-            .push(false, new_cell(4u8))
-            .push(true, new_cell(false))
-            .ins(false, 1)
-            .ins(true, 1)
-            .idx_at_index(0u8, true)
-            .push(false, new_cell(1u8))
-            .push(true, new_cell(tmp_1.clone()))
-            .ins(false, 1)
-            .ins(true, 1)
-            .idx_at_index(0u8, true)
-            .push(false, new_cell(2u8))
-            .push(true, new_cell(tmp_2.clone()))
-            .ins(false, 1)
-            .ins(true, 1)
             .idx_at_index(1u8, true)
             .push(false, new_cell(2u8))
             .push(true, new_cell(timestamp))
