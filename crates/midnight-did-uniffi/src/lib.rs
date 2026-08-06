@@ -20,8 +20,9 @@
 //! `midnight-did-api` async surface can be flattened cleanly across the FFI
 //! boundary without an explosion of intermediate types. The FFI shape is:
 //!
-//! - 4 async functions ([`api::create_did`], [`api::rotate_controller_key`],
-//!   [`api::resolve_did`], [`api::deactivate`]).
+//! - 5 async functions ([`api::create_did`], [`api::rotate_controller_key`],
+//!   [`api::recover_controller_key`], [`api::resolve_did`],
+//!   [`api::deactivate`]).
 //! - One opaque handle object ([`handle::DidServiceHandle`]) wrapping the
 //!   in-memory mock contract.
 //! - One flat error enum ([`error::FlatError`]).
@@ -41,7 +42,7 @@ pub mod api;
 pub mod error;
 pub mod handle;
 
-pub use api::{create_did, deactivate, resolve_did, rotate_controller_key};
+pub use api::{create_did, deactivate, recover_controller_key, resolve_did, rotate_controller_key};
 pub use error::FlatError;
 pub use handle::DidServiceHandle;
 

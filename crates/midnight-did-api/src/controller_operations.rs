@@ -80,6 +80,55 @@ where
     Ok(result)
 }
 
+/// `recoverControllerKey(didContract, providers, newSecretKey)`.
+///
+/// Rust port of `packages/api/src/controller-operations.ts`'s
+/// `recoverControllerKey`. Recovery is the recovery-authority-authorized
+/// path to reset the controller key (used when the current controller key
+/// is lost); on success it installs a *new* controller private state, so the
+/// pending/promote lifecycle mirrors [`rotate_controller_key`].
+///
+/// The recovery-authority signature and the on-ledger recovery-authority
+/// match check that the TS source performs are the deploy-backend's
+/// responsibility (this API layer keeps derivation out of the circuit path —
+/// callers pass the already-derived `new_controller_public_key`). If the
+/// circuit finalises but active promotion fails, this returns
+/// [`ApiError::Controller(ControllerError::RotationOrphaned)`] so the caller
+/// can recover the pending private state once the tx confirms.
+pub async fn recover_controller_key<B, S>(
+    contract: &Contract<B>,
+    store: &S,
+    new_secret_key: [u8; 32],
+    new_controller_public_key: [u8; 32],
+) -> Result<FinalizedTxData, ApiError>
+where
+    B: Backend,
+    S: PrivateStateStore + ?Sized,
+{
+    let next_state = DidPrivateState {
+        secret_key: new_secret_key,
+    };
+
+    save_pending_controller_private_state(store, next_state.clone()).await?;
+
+    let result = match contract.recover_controller_key(new_controller_public_key).await {
+        Ok(result) => result,
+        Err(err) => {
+            let _ = clear_pending_controller_private_state(store).await;
+            return Err(ApiError::Contract(ContractError::Failed(err.to_string())));
+        }
+    };
+
+    if let Err(promote_err) = save_private_state(store, next_state, PrivateStateSlot::Active).await {
+        return Err(ApiError::Controller(crate::error::ControllerError::RotationOrphaned(
+            promote_err.to_string(),
+        )));
+    }
+    let _ = clear_pending_controller_private_state(store).await;
+
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use midnight_did_method::midnight_did::{MidnightNetwork, parse_contract_address};
@@ -111,6 +160,27 @@ mod tests {
         assert!(matches!(
             calls.first(),
             Some(DidContractCall::RotateControllerKey { new_public_key }) if *new_public_key == new_pk
+        ));
+
+        let active = restore_private_state(&store, PrivateStateSlot::Active).await.unwrap();
+        assert_eq!(active.unwrap().secret_key, new_sk);
+        let pending = restore_private_state(&store, PrivateStateSlot::Pending).await.unwrap();
+        assert!(pending.is_none());
+    }
+
+    #[tokio::test]
+    async fn recovers_and_promotes_private_state() {
+        let contract = contract();
+        let store = InMemoryPrivateStateStore::new();
+
+        let new_sk = [6u8; 32];
+        let new_pk = [7u8; 32];
+        recover_controller_key(&contract, &store, new_sk, new_pk).await.unwrap();
+
+        let calls = contract.backend.recorded_calls();
+        assert!(matches!(
+            calls.first(),
+            Some(DidContractCall::RecoverControllerKey { new_public_key }) if *new_public_key == new_pk
         ));
 
         let active = restore_private_state(&store, PrivateStateSlot::Active).await.unwrap();

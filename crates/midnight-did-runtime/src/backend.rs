@@ -28,12 +28,11 @@ use std::fmt;
 use std::sync::Mutex;
 
 use async_trait::async_trait;
-use compact_runtime::{empty_charged_state, ChargedState, DefaultDB};
-
 // Re-export the upstream raw-state types under the backend module so
 // downstream consumers (api-layer tests, future custom backends) can
 // implement `Backend` without taking a direct `compact-runtime` dep.
 pub use compact_runtime::{ChargedState as RawChargedState, DefaultDB as RawDb};
+use compact_runtime::{ChargedState, DefaultDB, empty_charged_state};
 
 use crate::contract_call::{DidContractCall, DidLedgerSnapshot};
 
@@ -393,7 +392,9 @@ mod tests {
     fn recording_backend_submit_rejects_garbage_envelope() {
         let rt = rt();
         let backend = RecordingBackend::new();
-        let res = rt.block_on(backend.submit_tx(BuiltTx { bytes: vec![0xff, 0xfe] }));
+        let res = rt.block_on(backend.submit_tx(BuiltTx {
+            bytes: vec![0xff, 0xfe],
+        }));
         assert!(matches!(res, Err(BackendError::Decode(_))));
         // No call recorded on decode failure.
         assert_eq!(backend.recorded_calls().len(), 0);

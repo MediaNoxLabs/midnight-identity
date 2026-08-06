@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Async FFI surface — 4 functions, all returning JSON strings.
+//! Async FFI surface — 5 functions, all returning JSON strings.
 //!
 //! Every function takes an `Arc<DidServiceHandle>` and primitive String
 //! arguments. Returning JSON keeps the FFI shape generic-free and pushes the
@@ -29,16 +29,11 @@
 
 use std::sync::Arc;
 
-use midnight_did_api::{
-    did_operations::{deactivate_did as api_deactivate, resolve_did as api_resolve},
-    private_state::InMemoryPrivateStateStore,
-};
+use midnight_did_api::did_operations::{deactivate_did as api_deactivate, resolve_did as api_resolve};
 use serde::Serialize;
 
-use crate::{
-    error::{FlatError, decode_hex_32},
-    handle::DidServiceHandle,
-};
+use crate::error::{FlatError, decode_hex_32};
+use crate::handle::DidServiceHandle;
 
 /// `create_did(handle, seed_hex, controller_public_key_hex) -> JSON`.
 ///
@@ -57,8 +52,7 @@ pub async fn create_did(
     let _pk = decode_hex_32(&controller_public_key_hex, "controller_public_key_hex")?;
 
     let contract = handle.contract.lock().await;
-    let store = InMemoryPrivateStateStore::new();
-    let _state = midnight_did_api::did_operations::create_did(&*contract, &store, _seed)
+    let _state = midnight_did_api::did_operations::create_did(&*contract, &handle.store, _seed)
         .await
         .map_err(FlatError::from)?;
 
@@ -69,28 +63,60 @@ pub async fn create_did(
     })?)
 }
 
-/// `rotate_controller_key(handle, did, new_pk_hex) -> JSON`.
+/// `rotate_controller_key(handle, did, new_secret_hex, new_pk_hex) -> JSON`.
 ///
-/// Drives the `rotateControllerKey` circuit on the mock contract. The
-/// `did_subject` argument is currently informational (the handle knows which
-/// contract to talk to), but it pins the FFI shape so a future real impl can
-/// resolve to the right contract instance.
+/// Drives the `rotateControllerKey` circuit on the mock contract. The new
+/// controller **secret** key is passed explicitly (as hex) so the API layer
+/// persists the secret that actually matches `new_controller_public_key_hex`
+/// as the active controller private state — a foreign caller must supply the
+/// keypair it derived off-device, since this layer keeps derivation out of
+/// the circuit path. The `did_subject` argument is informational (the handle
+/// already knows which contract to talk to) but pins the FFI shape.
 #[uniffi::export(async_runtime = "tokio")]
 pub async fn rotate_controller_key(
     handle: Arc<DidServiceHandle>,
     did_subject: String,
+    new_secret_key_hex: String,
     new_controller_public_key_hex: String,
 ) -> Result<String, FlatError> {
+    let new_sk = decode_hex_32(&new_secret_key_hex, "new_secret_key_hex")?;
     let new_pk = decode_hex_32(&new_controller_public_key_hex, "new_controller_public_key_hex")?;
 
     let contract = handle.contract.lock().await;
-    let store = InMemoryPrivateStateStore::new();
-    let result = midnight_did_api::controller_operations::rotate_controller_key(
-        &*contract, &store, [0u8; 32], // skeleton: real impl derives this from the new pk
-        new_pk,
-    )
-    .await
-    .map_err(FlatError::from)?;
+    let result =
+        midnight_did_api::controller_operations::rotate_controller_key(&*contract, &handle.store, new_sk, new_pk)
+            .await
+            .map_err(FlatError::from)?;
+
+    Ok(serde_json::to_string(&RotateResponse {
+        did: did_subject,
+        tx_hash: result.tx_hash,
+        block_height: result.block_height,
+    })?)
+}
+
+/// `recover_controller_key(handle, did, new_secret_hex, new_pk_hex) -> JSON`.
+///
+/// Drives the recovery-authority-authorized `recoverControllerKey` circuit on
+/// the mock contract — the path to reset a lost controller key. Same FFI shape
+/// as [`rotate_controller_key`] (the new controller **secret** is supplied so
+/// the correct private state is persisted); the on-chain authorisation differs
+/// (recovery authority vs current controller).
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn recover_controller_key(
+    handle: Arc<DidServiceHandle>,
+    did_subject: String,
+    new_secret_key_hex: String,
+    new_controller_public_key_hex: String,
+) -> Result<String, FlatError> {
+    let new_sk = decode_hex_32(&new_secret_key_hex, "new_secret_key_hex")?;
+    let new_pk = decode_hex_32(&new_controller_public_key_hex, "new_controller_public_key_hex")?;
+
+    let contract = handle.contract.lock().await;
+    let result =
+        midnight_did_api::controller_operations::recover_controller_key(&*contract, &handle.store, new_sk, new_pk)
+            .await
+            .map_err(FlatError::from)?;
 
     Ok(serde_json::to_string(&RotateResponse {
         did: did_subject,
@@ -186,12 +212,51 @@ mod tests {
     #[tokio::test]
     async fn rotate_controller_key_round_trip() {
         let handle = DidServiceHandle::new();
-        let json = rotate_controller_key(handle, "did:midnight:testnet:x".into(), PK.into())
+        let json = rotate_controller_key(handle, "did:midnight:testnet:x".into(), SEED.into(), PK.into())
             .await
             .unwrap();
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["did"], "did:midnight:testnet:x");
         assert!(v.get("tx_hash").is_some());
+    }
+
+    #[tokio::test]
+    async fn recover_controller_key_round_trip() {
+        let handle = DidServiceHandle::new();
+        let json = recover_controller_key(handle, "did:midnight:testnet:x".into(), SEED.into(), PK.into())
+            .await
+            .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(v["did"], "did:midnight:testnet:x");
+        assert!(v.get("tx_hash").is_some());
+    }
+
+    #[tokio::test]
+    async fn controller_state_persists_across_calls_on_one_handle() {
+        use midnight_did_api::private_state::{PrivateStateSlot, restore_private_state};
+
+        // 32 bytes of 0x03 (secret) and 0x04 (public key).
+        const NEW_SK: &str = "0303030303030303030303030303030303030303030303030303030303030303";
+        const NEW_PK: &str = "0404040404040404040404040404040404040404040404040404040404040404";
+
+        let handle = DidServiceHandle::new();
+        create_did(handle.clone(), SEED.into(), PK.into()).await.unwrap();
+        rotate_controller_key(
+            handle.clone(),
+            "did:midnight:testnet:x".into(),
+            NEW_SK.into(),
+            NEW_PK.into(),
+        )
+        .await
+        .unwrap();
+
+        // The handle's shared store must have promoted the rotated secret to
+        // the active slot — proving state survives across FFI calls (would be
+        // lost if each call created its own store).
+        let active = restore_private_state(&handle.store, PrivateStateSlot::Active)
+            .await
+            .unwrap();
+        assert_eq!(active.unwrap().secret_key, [3u8; 32]);
     }
 
     #[tokio::test]

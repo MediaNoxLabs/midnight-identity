@@ -10,11 +10,86 @@ All notable changes to the `midnight-did-rs` workspace are recorded
 here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [SemVer](https://semver.org/).
 
-## [Unreleased] — v0.5.0
+## [Unreleased]
 
-Reserved for the wallet+proof-server+indexer bridge follow-up that
-will turn `LiveBackend::submit_tx` + `LiveBackend::read_snapshot`
-from `todo!()` stubs into production paths. See
+Reserved for post-0.5.0 work.
+
+## [0.5.0] — 2026-08-05
+
+### Overview
+
+`0.5.0` migrates the workspace onto the **did.compact 0.5.0** contract —
+the controller-authorization + recovery redesign — and closes the codegen
+gaps that porting it required. It also wires the new
+`recoverControllerKey` operation end-to-end. The wallet+proof-server+indexer
+bridge that turns `LiveBackend` from `todo!()` stubs into production paths
+is the remaining follow-up tracked under this line (see below).
+
+### Contract 0.5.0 migration (did.compact controller-authorization + recovery)
+
+Re-generated `midnight-did-runtime`'s `contract/generated.rs` from the
+**midnight-did 0.5.0** contract (`third_party/midnight-did` submodule
+pinned to `midnightntwrk/midnight-did` `main` @ `42a8e4a`, "update docs
+and package baseline to 0.5.0"). This is the controller-authorization +
+recovery redesign: JubjubPoint `controllerPublicKey` /
+`recoveryAuthorityPublicKey` ledger fields, `localControllerPublicKey` /
+`localRecoveryAuthorityPublicKey` witnesses, Schnorr-signature-authorized
+mutations, `MapMutation` / `SetMutation` mutation enums, a
+`recoverControllerKey` circuit, and seven `CurveType` variants (adds
+`BLS12381G1` / `BLS12381G2`).
+
+- `flake.nix` / `flake.lock`: `compact` input repointed to the
+  `yshyn-iohk/compact` `did-0.5.0-codegen` branch, whose `compactc`
+  gained the codegen support the 0.5.0 contract needs — a JubjubPoint
+  ledger-read decoder + typed initial-cell default, interleaved
+  bare-call-in-if-branch mutation bodies, ctx-arg hoisting for impure
+  calls, constructor-mode impure-circuit context threading, and
+  multi-assert if/else branches. The regenerated contract compiles
+  cleanly (`cargo build -p midnight-did-runtime`) and `just codegen`
+  is idempotent.
+- `third_party/midnight-did`: submodule pin corrected to `42a8e4a`
+  (upstream `main`); the previous pin (`6274cff`) was a divergent
+  local-mirror line ("Redesign DID verification method storage",
+  `Bytes<32>` controller keys) that is not on upstream `main`.
+- Wired the new `recoverControllerKey` operation (recovery-authority-
+  authorized controller-key reset) end-to-end, mirroring
+  `rotateControllerKey`: `DidContractCall::RecoverControllerKey`,
+  `Contract::recover_controller_key`,
+  `controller_operations::recover_controller_key` (+
+  `recover_controller_key_with_derivation` /
+  `recover_did_controller_key` re-export), the
+  `midnight_did_uniffi::recover_controller_key` FFI entry point, and a
+  `recover` step in the reference CLI's demo flow — each with round-trip
+  tests. Ports `recoverControllerKey` from
+  `packages/api/src/controller-operations.ts`; consistent with this
+  crate's existing design, the recovery-authority signature + on-ledger
+  recovery-authority match are the deploy-backend's responsibility
+  (callers pass the already-derived new controller public key).
+
+### Review follow-ups (Codex CLI)
+
+- **FFI controller-key operations now persist the correct secret.** The uniffi
+  `rotate_controller_key` / `recover_controller_key` entry points previously
+  passed a zero secret to a **per-call** `InMemoryPrivateStateStore` that was
+  dropped on return — so neither the right secret nor any state actually
+  survived the call. Both now accept `new_secret_key_hex` (breaking FFI
+  signature change), and `DidServiceHandle` holds a **shared** private-state
+  store threaded into `create_did` / rotation / recovery, so a create → rotate
+  → recover sequence keeps the promoted active secret (covered by a new
+  `controller_state_persists_across_calls_on_one_handle` test).
+- **Constructor codegen threads zswap-local state** through impure-circuit
+  calls (compiler-side, regenerated here): the generated constructor now
+  carries the callee's returned `current_zswap_local_state` into the
+  `ConstructorResult` instead of restarting from empty — see
+  yshyn-iohk/compact `did-0.5.0-codegen` (A25). No behavioural change for the
+  0.5.0 contract (its constructor's only impure call is a pure-assert), but
+  correct for any future zswap-affecting constructor circuit.
+
+### Still outstanding in 0.5.0
+
+The wallet+proof-server+indexer bridge — turning `LiveBackend::submit_tx` /
+`read_snapshot` from `todo!()` stubs into production paths — is the remaining
+work on this line; see
 [doc/adr/0008-contract-abstraction-reform.md](doc/adr/0008-contract-abstraction-reform.md)
 ("Future work") for the four-step closure plan.
 

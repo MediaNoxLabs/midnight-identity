@@ -25,25 +25,23 @@
 //! capture-fixtures) renders to JSON.
 
 use anyhow::{Context, Result};
-use serde_json::{Value, json};
-
-use midnight_did_api::{
-    contract::DidLedgerSnapshot,
-    did_operations::{create_did, rotate_did_controller_key},
-    document_operations::{add_also_known_as, deactivate},
-    ledger_mappers::service_to_ledger,
-    private_state::InMemoryPrivateStateStore,
-    resolution::resolve,
-    service_operations::add_service,
-    verification_method_operations::{add_verification_method, add_verification_method_relation},
-};
+use midnight_did_api::contract::DidLedgerSnapshot;
+use midnight_did_api::did_operations::{create_did, recover_did_controller_key, rotate_did_controller_key};
+use midnight_did_api::document_operations::{add_also_known_as, deactivate};
+use midnight_did_api::ledger_mappers::service_to_ledger;
+use midnight_did_api::private_state::InMemoryPrivateStateStore;
+use midnight_did_api::resolution::resolve;
+use midnight_did_api::service_operations::add_service;
+use midnight_did_api::verification_method_operations::{add_verification_method, add_verification_method_relation};
 use midnight_did_domain::did_document::VerificationMethodRelation;
 use midnight_did_method::midnight_did::parse_contract_address;
 use midnight_did_runtime::{Contract, RecordingBackend};
+use serde_json::{Value, json};
 
 use crate::fixtures::{
     self, ALSO_KNOWN_AS_URI, CONTRACT_ADDRESS, CREATED_MS, INITIAL_CONTROLLER_PK_HEX, INITIAL_SECRET_KEY, NETWORK,
-    ROTATED_CONTROLLER_PK_BYTES, ROTATED_SECRET_KEY, STEP_ADVANCE_MS, VM_FRAGMENT,
+    RECOVERED_CONTROLLER_PK_BYTES, RECOVERED_SECRET_KEY, ROTATED_CONTROLLER_PK_BYTES, ROTATED_SECRET_KEY,
+    STEP_ADVANCE_MS, VM_FRAGMENT,
 };
 
 /// Single step's serialized output.
@@ -66,18 +64,20 @@ pub enum Step {
     SetService,
     SetAka,
     Rotate,
+    Recover,
     Resolve,
     Deactivate,
 }
 
 impl Step {
     /// All steps in execution order.
-    pub const ALL: [Step; 7] = [
+    pub const ALL: [Step; 8] = [
         Step::Create,
         Step::SetVm,
         Step::SetService,
         Step::SetAka,
         Step::Rotate,
+        Step::Recover,
         Step::Resolve,
         Step::Deactivate,
     ];
@@ -90,6 +90,7 @@ impl Step {
             "set-service" => Step::SetService,
             "set-aka" | "set-also-known-as" => Step::SetAka,
             "rotate" => Step::Rotate,
+            "recover" => Step::Recover,
             "resolve" => Step::Resolve,
             "deactivate" => Step::Deactivate,
             _ => return None,
@@ -104,6 +105,7 @@ impl Step {
             Step::SetService => "set-service",
             Step::SetAka => "set-aka",
             Step::Rotate => "rotate",
+            Step::Recover => "recover",
             Step::Resolve => "resolve",
             Step::Deactivate => "deactivate",
         }
@@ -117,6 +119,7 @@ impl Step {
             Step::SetService => "set-service-insert",
             Step::SetAka => "set-alsoKnownAs-insert",
             Step::Rotate => "rotate",
+            Step::Recover => "recover",
             Step::Resolve => "resolve",
             Step::Deactivate => "deactivate",
         }
@@ -193,6 +196,7 @@ impl FlowDriver {
             Step::SetService => self.step_set_service().await,
             Step::SetAka => self.step_set_aka().await,
             Step::Rotate => self.step_rotate().await,
+            Step::Recover => self.step_recover().await,
             Step::Resolve => self.step_resolve().await,
             Step::Deactivate => self.step_deactivate().await,
         }
@@ -354,6 +358,40 @@ impl FlowDriver {
         Ok(StepOutput {
             name: Step::Rotate.name(),
             display_name: Step::Rotate.display_name(),
+            document,
+        })
+    }
+
+    /// Recovery-authority-authorized controller-key reset. Mirrors
+    /// [`Self::step_rotate`]; the on-chain circuit authorises this against
+    /// the recovery authority rather than the current controller (the mock
+    /// backend records the call without enforcing that).
+    async fn step_recover(&mut self) -> Result<StepOutput> {
+        recover_did_controller_key(
+            &self.contract,
+            &self.store,
+            RECOVERED_SECRET_KEY,
+            RECOVERED_CONTROLLER_PK_BYTES,
+        )
+        .await
+        .context("recover_controller_key failed")?;
+        self.advance();
+        let new_pk_hex = hex::encode(RECOVERED_CONTROLLER_PK_BYTES);
+        let updated_ms = self.updated_ms;
+        let version = self.version;
+        let op_count = self.operation_count;
+        self.mutate_ledger(|state| {
+            state.controller_public_key_hex = new_pk_hex;
+            state.version = version;
+            state.operation_count = op_count;
+            state.updated_ms = updated_ms;
+        })
+        .await;
+
+        let document = self.resolved_value().await?;
+        Ok(StepOutput {
+            name: Step::Recover.name(),
+            display_name: Step::Recover.display_name(),
             document,
         })
     }

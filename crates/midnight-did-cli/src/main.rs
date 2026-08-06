@@ -30,7 +30,6 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-
 use flow::{FlowDriver, Step, StepOutput};
 use printer::{JsonLayout, print_document, print_header};
 
@@ -104,7 +103,7 @@ async fn run(pretty: bool, compact: bool, single_step: Option<String>) -> Result
     let steps: Vec<Step> = match single_step.as_deref() {
         Some(name) => vec![Step::from_cli(name).with_context(|| {
             format!(
-                "unknown step `{name}` — try one of: create, set-vm, set-service, set-aka, rotate, resolve, deactivate"
+                "unknown step `{name}` — try one of: create, set-vm, set-service, set-aka, rotate, recover, resolve, deactivate"
             )
         })?],
         None => Step::ALL.to_vec(),
