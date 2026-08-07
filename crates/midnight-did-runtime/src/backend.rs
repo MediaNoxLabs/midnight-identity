@@ -403,8 +403,10 @@ mod tests {
     #[test]
     fn recording_backend_read_snapshot_records_synthetic_read_ledger() {
         let rt = rt();
-        let mut snap = DidLedgerSnapshot::default();
-        snap.version = 7;
+        let snap = DidLedgerSnapshot {
+            version: 7,
+            ..DidLedgerSnapshot::default()
+        };
         let backend = RecordingBackend::with_snapshot(snap.clone());
         let read = rt.block_on(backend.read_snapshot()).unwrap();
         assert_eq!(read, snap);
@@ -431,8 +433,10 @@ mod tests {
     #[test]
     fn resolver_backend_returns_snapshot() {
         let rt = rt();
-        let mut snap = DidLedgerSnapshot::default();
-        snap.version = 42;
+        let snap = DidLedgerSnapshot {
+            version: 42,
+            ..DidLedgerSnapshot::default()
+        };
         let backend = ResolverBackend::with_snapshot(snap.clone());
         let got = rt.block_on(backend.read_snapshot()).unwrap();
         assert_eq!(got, snap);

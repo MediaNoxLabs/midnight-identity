@@ -289,8 +289,10 @@ mod tests {
     #[test]
     fn read_snapshot_returns_seeded_value() {
         let rt = rt();
-        let mut snap = DidLedgerSnapshot::default();
-        snap.version = 42;
+        let snap = DidLedgerSnapshot {
+            version: 42,
+            ..DidLedgerSnapshot::default()
+        };
         let backend = RecordingBackend::with_snapshot(snap.clone());
         let contract = Contract::new(backend, addr(), MidnightNetwork::Undeployed);
         let got = rt.block_on(contract.read_snapshot()).unwrap();

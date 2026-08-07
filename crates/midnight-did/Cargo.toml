@@ -1,31 +1,31 @@
 [package]
-name = "midnight-did"
+name                   = "midnight-did"
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 authors.workspace      = true
 repository.workspace   = true
-homepage      = "https://github.com/MediaNoxLabs/midnight-identity"
-documentation = "https://docs.rs/midnight-did"
-readme        = "README.md"
-description   = "Umbrella crate re-exporting the full Midnight DID Rust stack — domain types, method profile, async API, and (optional) runtime."
-keywords = ["midnight", "did", "ssi", "identity", "blockchain"]
-categories = ["cryptography"]
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+documentation          = "https://docs.rs/midnight-did"
+readme                 = "README.md"
+description            = "Umbrella crate re-exporting the full Midnight DID Rust stack — domain types, method profile, async API, and (optional) runtime."
+keywords               = [ "midnight", "did", "ssi", "identity", "blockchain" ]
+categories             = [ "cryptography" ]
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+rustdoc-args = [ "--cfg", "docsrs" ]
 
 [lib]
 path = "src/lib.rs"
 
 [features]
-default = []
+default = [  ]
 # Pull in `midnight-did-runtime` (the codegen target). Off by default
 # because the runtime crate currently fails to build against the
 # upstream halo2 snapshot — see ADR 0003 and DID-P2-2.
-runtime = ["dep:midnight-did-runtime"]
+runtime = [ "dep:midnight-did-runtime" ]
 
 [dependencies]
 midnight-did-domain  = { workspace = true }

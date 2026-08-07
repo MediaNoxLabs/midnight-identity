@@ -32,22 +32,28 @@ codegen:
 codegen-check: codegen
     git diff --exit-code -- crates/midnight-did-runtime/src/contract crates/midnight-did-runtime/assets/keys
 
+# Our 7 workspace crates. Bare `cargo fmt/clippy/nextest` also sweep the
+# path-mounted third_party crates (cargo absorbs them as workspace
+# members), and we don't gate vendored code — so every recipe scopes to
+# this list, mirroring CI.
+crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli"
+
 build:
-    cargo build --all-targets
+    cargo build --all-targets {{crate_flags}}
 
 test:
-    cargo nextest run
+    cargo nextest run {{crate_flags}}
 
 fmt:
-    cargo fmt
+    cargo fmt {{crate_flags}}
     taplo fmt
 
 fmt-check:
-    cargo fmt -- --check
+    cargo fmt {{crate_flags}} -- --check
     taplo fmt --check
 
 lint:
-    cargo clippy --all-targets -- -D warnings
+    cargo clippy --all-targets {{crate_flags}} -- -D warnings
 
 # Line-coverage floor enforced by `coverage-gate` (and CI). Raise it as
 # coverage improves; never lower it to admit a regression.
