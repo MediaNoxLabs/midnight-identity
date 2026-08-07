@@ -1,0 +1,29 @@
+# This file is part of MediaNoxLabs/midnight-identity.
+# Copyright (C) 2026 Midnight Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name                   = "midnight-did-indexer"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+description            = "Indexer-backed read-only Backend for the Midnight DID method: GraphQL contract-state fetch + snapshot decode."
+# Blocked on the same unpublished upstream deps as midnight-did-runtime
+# (see doc/publishing.md).
+publish = false
+
+[dependencies]
+midnight-did-runtime = { workspace = true }
+async-trait          = "0.1"
+hex                  = { workspace = true }
+reqwest              = { version = "0.12", default-features = false, features = [ "json", "rustls-tls" ] }
+serde                = { workspace = true }
+serde_json           = { workspace = true }
+thiserror            = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = [ "macros", "rt" ] }

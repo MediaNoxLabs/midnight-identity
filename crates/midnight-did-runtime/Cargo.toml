@@ -32,6 +32,7 @@ compact-runtime = { workspace = true }
 # tripwire when a third_party/midnight-ledger symlink is missing.
 midnight-base-crypto     = { workspace = true }
 midnight-onchain-runtime = { workspace = true }
+midnight-serialize       = { workspace = true }
 
 # Sibling first-party crates — R2-2 (v0.4.0) lifts ledger-shape types
 # (`DidLedgerSnapshot`, `LedgerVerificationMethod`, `MapMutation`, …) into

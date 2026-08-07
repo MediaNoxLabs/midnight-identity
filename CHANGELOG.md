@@ -14,6 +14,22 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Added
 
+- **LiveBackend read path (issue #4)** — resolution can now go live:
+  - `midnight-did-runtime::state_decode`: deserialize indexer
+    `contractAction(address){state}` bytes (`tagged_deserialize` of
+    `contract-state[v6]`) and project the nested `[4][15]`-chunked
+    ledger layout into `DidLedgerSnapshot` — scalars via the generated
+    `ledger()` accessors, Map/Set fields via a direct alignment-encoded
+    atom walk (round-trip tested against chain-shaped fixtures).
+  - New crate `midnight-did-indexer`: minimal GraphQL client issuing
+    the same `CONTRACT_STATE_QUERY` as the TS
+    `indexer-public-data-provider` 4.x, plus `IndexerBackend` — a
+    read-only `Backend` (`submit_tx` → `ReadOnly`).
+  - Known codegen follow-ups discovered en route (tracked on the
+    compact PR): the constructor's initial-state scaffold is flat
+    rather than `[4][15]`-chunked (A29), and the generated `id()`
+    accessor decodes via field-repr where cells are alignment-encoded.
+
 - Repository moved to `MediaNoxLabs/midnight-identity` (from
   `yshyn-iohk/midnight-did-rs`); all self-references, Cargo `repository`/
   `homepage` metadata, and the compact flake input
