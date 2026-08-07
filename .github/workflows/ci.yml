@@ -21,11 +21,13 @@ name: CI
 # workspace Cargo.toml references — without them, bare `cargo` fails at
 # `cargo metadata`.
 #
-# Four jobs:
+# Six jobs:
 #   - pre-check:    cargo fmt --check + clippy -D warnings on Linux.
 #   - test:         cargo test --locked on Linux AND macOS.
 #   - wasm-build:   cargo build --target wasm32-unknown-unknown on the
 #                   four wasm-clean crates.
+#   - coverage:     cargo-llvm-cov line-coverage floor (see justfile
+#                    `coverage_floor`) over the four gated crates.
 #   - codegen-check: regen generated.rs against flake-pinned compactc,
 #                    assert no drift.
 
@@ -47,7 +49,8 @@ on:
       - "nix/**"
   push:
     branches:
-      - main
+      - rust-codegen
+      - develop
     paths:
       - "crates/midnight-did-domain/**"
       - "crates/midnight-did-method/**"
@@ -84,17 +87,20 @@ jobs:
   pre-check:
     name: Format + Clippy
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -141,16 +147,19 @@ jobs:
           - ubuntu-latest
           - macos-latest
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -181,15 +190,18 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Cache Cargo registry and wasm target
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -219,43 +231,80 @@ jobs:
             -p midnight-did-domain \
             --locked
 
-  # Regenerate generated.rs from did.compact via the flake-pinned compactc
-  # and assert no drift against the committed file.
-  #
-  # Manual-trigger only (workflow_dispatch). This job needs the private
-  # `midnightntwrk/midnight-did` submodule which the default GITHUB_TOKEN
-  # cannot access from this fork. To make it run automatically on PRs:
-  #
-  #   1. Create a fine-grained PAT with `contents: read` on
-  #      `midnightntwrk/midnight-did`.
-  #   2. Add it as repo secret `MIDNIGHT_DID_PAT`.
-  #   3. Wire `submodules: recursive` + `token: ${{ secrets.MIDNIGHT_DID_PAT }}`
-  #      into the checkout step below.
-  #   4. Change the `if:` guard to `if: ${{ secrets.MIDNIGHT_DID_PAT != '' }}`.
-  #
-  # Until then, run `just codegen-check` locally under `nix develop` to
-  # exercise this gate.
-  codegen-check:
-    name: Codegen regen check (did.compact -> generated.rs)
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+  # Line-coverage gate over the four gated crates (cargo-llvm-cov via the
+  # devshell toolchain's llvm-tools). The floor lives in the justfile
+  # (`coverage_floor`) so local `just ci` and CI enforce the same number.
+  # generated.rs is excluded — it's a codegen artifact gated by
+  # codegen-check, not by tests.
+  coverage:
+    name: Coverage gate
     needs: pre-check
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Magic Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+
+      - name: Cache Cargo registry and git trees
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Enforce coverage floor
+        run: nix develop --command just coverage-gate
+
+      - name: Export LCOV report
+        if: always()
+        run: nix develop --command just coverage-lcov
+
+      - name: Upload LCOV artifact
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: lcov
+          path: target/lcov.info
+          retention-days: 14
+
+  # Regenerate generated.rs from did.compact via the flake-pinned compactc
+  # and assert no drift against the committed file.
+  #
+  # `midnightntwrk/midnight-did` went public, so the submodule fetches
+  # with the default GITHUB_TOKEN and this gate runs on every PR/push.
+  codegen-check:
+    name: Codegen regen check (did.compact -> generated.rs)
+    needs: pre-check
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
-          # Once MIDNIGHT_DID_PAT is configured, uncomment to enable
-          # private-submodule fetch:
-          # token: ${{ secrets.MIDNIGHT_DID_PAT }}
+          persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Run codegen and assert no drift
         run: nix develop --command just codegen-check

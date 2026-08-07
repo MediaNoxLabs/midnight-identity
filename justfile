@@ -49,4 +49,30 @@ fmt-check:
 lint:
     cargo clippy --all-targets -- -D warnings
 
-ci: fmt-check lint build test
+# Line-coverage floor enforced by `coverage-gate` (and CI). Raise it as
+# coverage improves; never lower it to admit a regression.
+coverage_floor := "75"
+
+# Coverage over the four CI-gated crates (domain, method, api, umbrella),
+# excluding the codegen artifact generated.rs. HTML report for humans.
+coverage:
+    cargo llvm-cov --locked \
+        -p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did \
+        --ignore-filename-regex 'contract/generated\.rs' \
+        --html --open
+
+# Same scope, but fails if line coverage drops below the floor. CI gate.
+coverage-gate:
+    cargo llvm-cov --locked \
+        -p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did \
+        --ignore-filename-regex 'contract/generated\.rs' \
+        --summary-only --fail-under-lines {{coverage_floor}}
+
+# LCOV export for CI artifact upload / external services.
+coverage-lcov:
+    cargo llvm-cov --locked \
+        -p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did \
+        --ignore-filename-regex 'contract/generated\.rs' \
+        --lcov --output-path target/lcov.info
+
+ci: fmt-check lint build test coverage-gate

@@ -12,7 +12,32 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-Reserved for post-0.5.0 work.
+### Added
+
+- Repository moved to `MediaNoxLabs/midnight-identity` (from
+  `yshyn-iohk/midnight-did-rs`); all self-references, Cargo `repository`/
+  `homepage` metadata, and the compact flake input
+  (`github:MediaNoxLabs/compact/codegen-rust`) repointed.
+- Public-repo hardening, mirroring `midnightntwrk/midnight-did`:
+  `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `CODEOWNERS`, issue
+  templates (bug / feature / documentation), PR template with a
+  contract-surface checklist, grouped weekly `dependabot.yml`
+  (cargo + github-actions, 7-day cooldown, majors excluded), and
+  `.envrc` commit/tag-signing defaults.
+- Coverage gating: `cargo-llvm-cov` in the devshell (`llvm-tools`
+  toolchain component), `just coverage` / `coverage-gate` /
+  `coverage-lcov` recipes with a 75% line floor (baseline 77.18%), a CI
+  `coverage` job uploading LCOV artifacts, and `coverage-gate` wired
+  into `just ci`.
+
+### Changed
+
+- CI: `DeterminateSystems/*` actions pinned to release SHAs (previously
+  `@main`); `persist-credentials: false` on all checkouts;
+  `timeout-minutes` on every job; push triggers repointed from `main`
+  to `rust-codegen` + `develop`; `codegen-check` now runs on every
+  PR/push (the `midnightntwrk/midnight-did` submodule went public, so
+  the default token fetches it).
 
 ## [0.5.0] — 2026-08-05
 

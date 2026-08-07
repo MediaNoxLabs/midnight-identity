@@ -12,6 +12,7 @@
           just
           taplo
           cargo-nextest
+          cargo-llvm-cov
           git
           jq
         ]);
