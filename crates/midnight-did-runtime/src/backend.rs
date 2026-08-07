@@ -414,6 +414,118 @@ mod tests {
     }
 
     #[test]
+    fn backend_error_display_variants() {
+        assert_eq!(
+            BackendError::Network("indexer down".into()).to_string(),
+            "backend network failure: indexer down"
+        );
+        assert_eq!(
+            BackendError::Decode("bad envelope".into()).to_string(),
+            "backend decode failure: bad envelope"
+        );
+        assert_eq!(BackendError::ReadOnly.to_string(), "backend is read-only");
+        assert_eq!(
+            BackendError::Other("unmodelled".into()).to_string(),
+            "backend error: unmodelled"
+        );
+    }
+
+    #[test]
+    fn backend_error_is_a_std_error() {
+        // Display must flow through the `std::error::Error` object surface
+        // (the shape every `?`-based caller actually sees).
+        let err: Box<dyn std::error::Error> = Box::new(BackendError::ReadOnly);
+        assert_eq!(err.to_string(), "backend is read-only");
+        assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn live_backend_constructs_without_wiring() {
+        // Only construction is testable: the trait methods are todo!()
+        // until the wallet/proof bridge lands.
+        let via_new = LiveBackend::new();
+        let via_default = LiveBackend::default();
+        assert_eq!(format!("{via_new:?}"), format!("{via_default:?}"));
+        let dbg = format!("{via_new:?}");
+        assert!(dbg.contains("LiveBackend"), "got {dbg}");
+        assert!(dbg.contains("wallet_sdk"), "got {dbg}");
+    }
+
+    #[test]
+    fn recording_backend_default_matches_new() {
+        let rt = rt();
+        let backend = RecordingBackend::default();
+        assert!(backend.recorded_calls().is_empty());
+        let state = rt.block_on(backend.read_state()).expect("read_state");
+        assert_eq!(state, empty_charged_state::<DefaultDB>());
+    }
+
+    #[test]
+    fn recording_backend_debug_reports_call_count() {
+        let rt = rt();
+        let backend = RecordingBackend::new();
+        assert!(format!("{backend:?}").contains("recorded_call_count: 0"));
+        rt.block_on(backend.submit_tx(BuiltTx {
+            bytes: DidContractCall::Deactivate.encode(),
+        }))
+        .unwrap();
+        assert!(format!("{backend:?}").contains("recorded_call_count: 1"));
+    }
+
+    #[test]
+    fn recording_backend_with_state_and_set_state_round_trip() {
+        let rt = rt();
+        let seeded = empty_charged_state::<DefaultDB>();
+        let backend = RecordingBackend::with_state(seeded.clone());
+        assert_eq!(rt.block_on(backend.read_state()).unwrap(), seeded);
+        assert!(backend.recorded_calls().is_empty(), "read_state must not record");
+
+        let replacement = empty_charged_state::<DefaultDB>();
+        backend.set_state(replacement.clone());
+        assert_eq!(rt.block_on(backend.read_state()).unwrap(), replacement);
+    }
+
+    #[test]
+    fn recording_backend_set_snapshot_replaces_served_snapshot() {
+        let rt = rt();
+        let backend = RecordingBackend::new();
+        assert_eq!(
+            rt.block_on(backend.read_snapshot()).unwrap(),
+            DidLedgerSnapshot::default()
+        );
+        let snap = DidLedgerSnapshot {
+            version: 9,
+            ..DidLedgerSnapshot::default()
+        };
+        backend.set_snapshot(snap.clone());
+        assert_eq!(rt.block_on(backend.read_snapshot()).unwrap(), snap);
+        // Both reads recorded a synthetic ReadLedger entry.
+        assert_eq!(
+            backend.recorded_calls(),
+            vec![DidContractCall::ReadLedger, DidContractCall::ReadLedger]
+        );
+    }
+
+    #[test]
+    fn synth_tx_hash_is_deterministic_and_short_hex() {
+        let a = synth_tx_hash(b"same-bytes");
+        let b = synth_tx_hash(b"same-bytes");
+        let c = synth_tx_hash(b"other-bytes");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+        assert_eq!(a.len(), 16);
+        assert!(a.chars().all(|ch| ch.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn resolver_backend_debug_is_opaque() {
+        let backend = ResolverBackend::new(empty_charged_state::<DefaultDB>());
+        let dbg = format!("{backend:?}");
+        assert!(dbg.contains("ResolverBackend"), "got {dbg}");
+        assert!(dbg.contains("<ChargedState<DefaultDB>>"), "got {dbg}");
+    }
+
+    #[test]
     fn resolver_backend_rejects_submit() {
         let rt = rt();
         let backend = ResolverBackend::new(empty_charged_state::<DefaultDB>());

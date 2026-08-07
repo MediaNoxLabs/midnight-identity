@@ -76,6 +76,23 @@ and the project adheres to [SemVer](https://semver.org/).
   out-of-field + subgroup validation. Cross-language golden vectors
   generated from the TS reference; a TS-produced signature verifies in
   Rust byte-for-byte.
+- **Coverage push + widened gate (issue #11)** — 141 new tests across
+  domain (`did_document.rs` 62→98%, `uri.rs` 62→97%, `ledger_utils.rs`
+  41→98%), runtime (`backend.rs` 70→98%, `state_decode.rs` 80→96%),
+  indexer (56→99%), and resolver (`config.rs` 26→100%, `service.rs`
+  74→88%). The coverage gate now spans **every first-party crate**
+  (was 4), excluding only the codegen artifact and bin entrypoints:
+  **88.70% lines, floor raised 80 → 85**. New `coverage-ratchet` CI
+  step warns when the floor lags measured coverage by >5 points, so
+  the floor only moves up between contributions.
+- **Repo settings applied via API (issue #14)** — branch protection
+  (solo-maintainer variant: `develop` = signatures + no force-push;
+  `rust-codegen` = the five CI checks required + signatures, admins
+  enforced), secret scanning + push protection, private vulnerability
+  reporting, dependabot alerts + security fixes, read-only default
+  workflow token, signoff-on-web-commits, squash/auto-merge/delete-
+  on-merge policy, `crates-io` environment; compact repo: signoff,
+  alerts, branch protection on `main`+`codegen-rust`.
 - **ADR 0009 — crate granularity policy**: the six-reason split test
   (target/dep-weight isolation, publishing cadence, feature
   exclusivity, binding boundary, compile-time blast radius, pluggable

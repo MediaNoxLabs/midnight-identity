@@ -231,11 +231,12 @@ jobs:
             -p midnight-did-domain \
             --locked
 
-  # Line-coverage gate over the four gated crates (cargo-llvm-cov via the
-  # devshell toolchain's llvm-tools). The floor lives in the justfile
-  # (`coverage_floor`) so local `just ci` and CI enforce the same number.
-  # generated.rs is excluded — it's a codegen artifact gated by
-  # codegen-check, not by tests.
+  # Line-coverage gate over every first-party crate (cargo-llvm-cov via
+  # the devshell toolchain's llvm-tools). The floor lives in the justfile
+  # (`coverage_floor`) so local `just ci` and CI enforce the same number;
+  # the ratchet step warns when the floor lags measured coverage by >5.
+  # generated.rs (codegen artifact, gated by codegen-check) and bin
+  # entrypoints are excluded.
   coverage:
     name: Coverage gate
     needs: pre-check
@@ -268,6 +269,9 @@ jobs:
 
       - name: Enforce coverage floor
         run: nix develop --command just coverage-gate
+
+      - name: Ratchet check (warn when the floor is stale)
+        run: nix develop --command just coverage-ratchet
 
       - name: Export LCOV report
         if: always()

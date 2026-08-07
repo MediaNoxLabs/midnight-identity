@@ -57,28 +57,45 @@ lint:
 
 # Line-coverage floor enforced by `coverage-gate` (and CI). Raise it as
 # coverage improves; never lower it to admit a regression.
-coverage_floor := "80"
+coverage_floor := "85"
 
-# Coverage over the four CI-gated crates (domain, method, api, umbrella),
-# excluding the codegen artifact generated.rs. HTML report for humans.
+# Coverage scope: every first-party crate; excludes the codegen artifact
+# (gated by codegen-check, not tests) and service/demo bin entrypoints.
+coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli"
+coverage_exclude := 'contract/generated\.rs|src/main\.rs|src/bin/'
+
+# HTML coverage report for humans.
 coverage:
     cargo llvm-cov --locked \
-        -p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did \
-        --ignore-filename-regex 'contract/generated\.rs' \
+        {{coverage_crates}} \
+        --ignore-filename-regex '{{coverage_exclude}}' \
         --html --open
 
 # Same scope, but fails if line coverage drops below the floor. CI gate.
 coverage-gate:
     cargo llvm-cov --locked \
-        -p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did \
-        --ignore-filename-regex 'contract/generated\.rs' \
+        {{coverage_crates}} \
+        --ignore-filename-regex '{{coverage_exclude}}' \
         --summary-only --fail-under-lines {{coverage_floor}}
 
 # LCOV export for CI artifact upload / external services.
 coverage-lcov:
     cargo llvm-cov --locked \
-        -p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did \
-        --ignore-filename-regex 'contract/generated\.rs' \
+        {{coverage_crates}} \
+        --ignore-filename-regex '{{coverage_exclude}}' \
         --lcov --output-path target/lcov.info
 
-ci: fmt-check lint build test coverage-gate
+# Ratchet nag: fail-free warning when measured coverage exceeds the floor
+# by >5 points — time to raise `coverage_floor` in the same PR.
+coverage-ratchet:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    measured=$(cargo llvm-cov report --summary-only --ignore-filename-regex '{{coverage_exclude}}|third_party/' 2>/dev/null | awk '/^TOTAL/ {print $(NF-3)}' | tr -d '%')
+    floor={{coverage_floor}}
+    headroom=$(echo "$measured $floor" | awk '{printf "%.2f", $1 - $2}')
+    echo "coverage: measured=${measured}% floor=${floor}% headroom=${headroom}"
+    if (( $(echo "$headroom > 5" | bc -l) )); then
+        echo "::warning::coverage floor is stale (headroom ${headroom} > 5) — raise coverage_floor in justfile"
+    fi
+
+ci: fmt-check lint build test coverage-gate coverage-ratchet

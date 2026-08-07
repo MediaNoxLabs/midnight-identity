@@ -459,19 +459,40 @@ fn curve_type(d: u8) -> Result<CurveType, BackendError> {
 
 #[cfg(test)]
 mod tests {
-    use compact_runtime::{Map, new_array, new_cell, new_map};
+    use compact_runtime::{Alignment, AlignmentAtom, Map, Value, ValueAtom, new_array, new_cell, new_map};
 
     use super::*;
     use crate::contract as generated;
+
+    /// Extract the `AlignedValue` out of a `StateValue::Cell`.
+    fn cell_av(sv: &StateValue<DefaultDB>) -> AlignedValue {
+        match sv {
+            StateValue::Cell(av) => (**av).clone(),
+            other => panic!("expected Cell, got {}", variant_name(other)),
+        }
+    }
+
+    /// Replace the atom at `index` of a cell's aligned value. The decoder
+    /// never re-validates alignment, so tests can inject arbitrary bytes
+    /// (unknown discriminants, oversized coordinates, multi-byte "u8"s).
+    fn with_mutated_atom(sv: &StateValue<DefaultDB>, index: usize, bytes: Vec<u8>) -> StateValue<DefaultDB> {
+        let mut av = cell_av(sv);
+        av.value.0[index] = ValueAtom(bytes);
+        new_cell::<DefaultDB, _>(av)
+    }
 
     /// Build a chain-shaped (nested `[4][15]`) DID contract state the way
     /// the TS reference constructor lays it out. NOT via the generated
     /// `initial_state` — that scaffold is flat (compact A29 bug) and
     /// deliberately unrepresentative of on-chain state.
     fn chain_shaped_state() -> ChargedState<DefaultDB> {
-        let point = JubjubPoint::generator();
+        chain_state_with(|_, _| {})
+    }
 
-        let vm = generated::VerificationMethod {
+    /// Like [`chain_shaped_state`], but lets a test corrupt individual
+    /// slots of chunk `[0]` / chunk `[1]` before the outer array is built.
+    fn sample_vm_cell() -> StateValue<DefaultDB> {
+        new_cell(generated::VerificationMethod {
             id: "#key-1".to_string().into(),
             typ: generated::VerificationMethodType::JsonWebKey,
             publicKeyJwk: generated::PublicKeyJwk {
@@ -480,64 +501,81 @@ mod tests {
                 x: "b64url-x".to_string().into(),
                 y: "".to_string().into(),
             },
-        };
-        let sjvm = generated::SchnorrJubjubVerificationMethod {
+        })
+    }
+
+    fn sample_sjvm_cell() -> StateValue<DefaultDB> {
+        new_cell(generated::SchnorrJubjubVerificationMethod {
             id: "#key-jub".to_string().into(),
-            publicKey: point,
-        };
-        let service = generated::Service {
+            publicKey: JubjubPoint::generator(),
+        })
+    }
+
+    fn sample_service_cell() -> StateValue<DefaultDB> {
+        new_cell(generated::Service {
             id: "#svc-1".to_string().into(),
             typ: "LinkedDomains".to_string().into(),
             serviceEndpoint: "https://example.com".to_string().into(),
-        };
+        })
+    }
 
-        let opaque_key = |s: &str| -> AlignedValue {
-            let sv = new_cell::<DefaultDB, _>(compact_runtime::std_lib::OpaqueString(s.to_string()));
-            match &sv {
-                StateValue::Cell(av) => (**av).clone(),
-                _ => unreachable!("new_cell returns Cell"),
-            }
-        };
-        let map_of = |entries: Vec<(&str, StateValue<DefaultDB>)>| -> StateValue<DefaultDB> {
-            let mut m: Map<AlignedValue, StateValue<DefaultDB>, DefaultDB> = Map::new();
-            for (k, v) in entries {
-                m = m.insert(opaque_key(k), v);
-            }
-            StateValue::Map(m)
-        };
-        // Sets store the element as key with a placeholder cell value.
-        let set_of = |elems: Vec<&str>| -> StateValue<DefaultDB> {
-            map_of(elems.into_iter().map(|e| (e, new_cell(0u8))).collect())
-        };
+    fn opaque_key(s: &str) -> AlignedValue {
+        let sv = new_cell::<DefaultDB, _>(compact_runtime::std_lib::OpaqueString(s.to_string()));
+        cell_av(&sv)
+    }
 
-        let outer = new_array::<DefaultDB>(vec![
-            // chunk [0]: fields 0..4
-            new_array(vec![
-                new_cell(2u32),                                            // contractVersion
-                new_cell(point),                                           // controllerPublicKey
-                new_cell(point),                                           // recoveryAuthorityPublicKey
-                new_cell(generated::ContractAddress { bytes: [7u8; 32] }), // id
-            ]),
-            // chunk [1]: fields 4..19
-            new_array(vec![
-                set_of(vec!["did:example:alias1", "did:example:alias0"]), // alsoKnownAs
-                new_cell(3u64),                                           // version
-                new_cell(1_700_000_000_000u64),                           // created
-                new_cell(1_700_000_100_000u64),                           // updated
-                new_cell(false),                                          // deactivated
-                new_cell(true),                                           // active
-                new_cell(5u64),                                           // operationCount
-                map_of(vec![("#key-1", new_cell(vm))]),                   // verificationMethods
-                map_of(vec![("#key-jub", new_cell(sjvm))]),               // schnorrJubjubVerificationMethods
-                set_of(vec!["#key-1"]),                                   // authenticationRelation
-                new_map(),                                                // assertionMethodRelation (empty Map)
-                StateValue::Null,                                         // keyAgreementRelation (never-written Null)
-                new_map(),                                                // capabilityInvocationRelation
-                new_map(),                                                // capabilityDelegationRelation
-                map_of(vec![("#svc-1", new_cell(service))]),              // services
-            ]),
-        ]);
-        ChargedState::new(outer)
+    fn map_of(entries: Vec<(&str, StateValue<DefaultDB>)>) -> StateValue<DefaultDB> {
+        raw_map_of(entries.into_iter().map(|(k, v)| (opaque_key(k), v)).collect())
+    }
+
+    fn raw_map_of(entries: Vec<(AlignedValue, StateValue<DefaultDB>)>) -> StateValue<DefaultDB> {
+        let mut m: Map<AlignedValue, StateValue<DefaultDB>, DefaultDB> = Map::new();
+        for (k, v) in entries {
+            m = m.insert(k, v);
+        }
+        StateValue::Map(m)
+    }
+
+    /// Sets store the element as key with a placeholder cell value.
+    fn set_of(elems: Vec<&str>) -> StateValue<DefaultDB> {
+        map_of(elems.into_iter().map(|e| (e, new_cell(0u8))).collect())
+    }
+
+    fn chain_state_with(
+        mutate: impl FnOnce(&mut Vec<StateValue<DefaultDB>>, &mut Vec<StateValue<DefaultDB>>),
+    ) -> ChargedState<DefaultDB> {
+        let point = JubjubPoint::generator();
+        let vm = sample_vm_cell();
+        let sjvm = sample_sjvm_cell();
+        let service = sample_service_cell();
+
+        // chunk [0]: fields 0..4
+        let mut chunk0 = vec![
+            new_cell(2u32),                                            // contractVersion
+            new_cell(point),                                           // controllerPublicKey
+            new_cell(point),                                           // recoveryAuthorityPublicKey
+            new_cell(generated::ContractAddress { bytes: [7u8; 32] }), // id
+        ];
+        // chunk [1]: fields 4..19
+        let mut chunk1 = vec![
+            set_of(vec!["did:example:alias1", "did:example:alias0"]), // alsoKnownAs
+            new_cell(3u64),                                           // version
+            new_cell(1_700_000_000_000u64),                           // created
+            new_cell(1_700_000_100_000u64),                           // updated
+            new_cell(false),                                          // deactivated
+            new_cell(true),                                           // active
+            new_cell(5u64),                                           // operationCount
+            map_of(vec![("#key-1", vm)]),                             // verificationMethods
+            map_of(vec![("#key-jub", sjvm)]),                         // schnorrJubjubVerificationMethods
+            set_of(vec!["#key-1"]),                                   // authenticationRelation
+            new_map(),                                                // assertionMethodRelation (empty Map)
+            StateValue::Null,                                         // keyAgreementRelation (never-written Null)
+            new_map(),                                                // capabilityInvocationRelation
+            new_map(),                                                // capabilityDelegationRelation
+            map_of(vec![("#svc-1", service)]),                        // services
+        ];
+        mutate(&mut chunk0, &mut chunk1);
+        ChargedState::new(new_array::<DefaultDB>(vec![new_array(chunk0), new_array(chunk1)]))
     }
 
     #[test]
@@ -615,5 +653,230 @@ mod tests {
         let snap_direct = decode_ledger_snapshot(&state).expect("direct decode");
         let snap_via_bytes = snapshot_from_bytes(&bytes).expect("bytes decode");
         assert_eq!(snap_direct, snap_via_bytes);
+    }
+
+    // ── error paths ──────────────────────────────────────────────────
+
+    /// Assert `result` is a `Decode` error whose message contains `needle`.
+    fn assert_decode_err<T: std::fmt::Debug>(result: Result<T, BackendError>, needle: &str) {
+        match result {
+            Err(BackendError::Decode(msg)) => {
+                assert!(msg.contains(needle), "message {msg:?} does not contain {needle:?}");
+            }
+            other => panic!("expected Decode error containing {needle:?}, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn snapshot_from_bytes_rejects_garbage_bytes() {
+        assert_decode_err(snapshot_from_bytes(&[0xde, 0xad, 0xbe, 0xef]), "deserialize failed");
+        assert_decode_err(snapshot_from_bytes(&[]), "deserialize failed");
+    }
+
+    #[test]
+    fn non_array_outer_state_is_rejected() {
+        let state = ChargedState::<DefaultDB>::new(StateValue::Null);
+        assert_decode_err(decode_ledger_snapshot(&state), "expected outer StateValue::Array");
+    }
+
+    #[test]
+    fn missing_second_chunk_is_rejected() {
+        let state = ChargedState::new(new_array::<DefaultDB>(vec![new_array(vec![])]));
+        assert_decode_err(decode_ledger_snapshot(&state), "no [1] chunk");
+    }
+
+    #[test]
+    fn missing_ledger_slot_is_rejected() {
+        // Drop the id cell ([0][3]) — the first raw read in decode order.
+        let state = chain_state_with(|chunk0, _| {
+            chunk0.truncate(3);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "missing ledger slot [0][3] (id)");
+    }
+
+    #[test]
+    fn non_map_collection_slot_is_rejected() {
+        // alsoKnownAs must be Map/Null; a scalar Cell is a layout error.
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::ALSO_KNOWN_AS] = new_cell(1u8);
+        });
+        assert_decode_err(
+            decode_ledger_snapshot(&state),
+            "field alsoKnownAs: expected Map/Null, found Cell",
+        );
+    }
+
+    #[test]
+    fn non_map_typed_slot_is_rejected() {
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::SERVICES] = new_array(vec![]);
+        });
+        assert_decode_err(
+            decode_ledger_snapshot(&state),
+            "field services: expected Map/Null, found Array",
+        );
+    }
+
+    #[test]
+    fn non_utf8_set_key_is_rejected() {
+        let bad_key = AlignedValue::new(
+            Value(vec![ValueAtom(vec![0xff, 0xfe])]),
+            Alignment::singleton(AlignmentAtom::Bytes { length: 2 }),
+        )
+        .expect("2-byte atom fits Bytes{2}");
+        let state = chain_state_with(move |_, chunk1| {
+            chunk1[slot::ALSO_KNOWN_AS] = raw_map_of(vec![(bad_key, new_cell(0u8))]);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "key is not UTF-8");
+    }
+
+    #[test]
+    fn non_utf8_typed_map_key_is_rejected() {
+        let bad_key = AlignedValue::new(
+            Value(vec![ValueAtom(vec![0x80])]),
+            Alignment::singleton(AlignmentAtom::Bytes { length: 1 }),
+        )
+        .expect("1-byte atom fits Bytes{1}");
+        let state = chain_state_with(move |_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] = raw_map_of(vec![(bad_key, sample_vm_cell())]);
+        });
+        assert_decode_err(
+            decode_ledger_snapshot(&state),
+            "field verificationMethods: key is not UTF-8",
+        );
+    }
+
+    #[test]
+    fn non_cell_map_value_is_rejected() {
+        // A collection entry whose value is an Array, not a Cell.
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] = map_of(vec![("#key-1", new_array(vec![]))]);
+        });
+        assert_decode_err(
+            decode_ledger_snapshot(&state),
+            "field verificationMethods: expected Cell value, found Array",
+        );
+    }
+
+    #[test]
+    fn unknown_verification_method_type_discriminant_is_rejected() {
+        // VM cell atoms: [id, typ, kty, crv, x, y] — set typ to 9.
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] =
+                map_of(vec![("#key-1", with_mutated_atom(&sample_vm_cell(), 1, vec![9]))]);
+        });
+        assert_decode_err(
+            decode_ledger_snapshot(&state),
+            "unknown VerificationMethodType discriminant 9",
+        );
+    }
+
+    #[test]
+    fn unknown_key_type_discriminant_is_rejected() {
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] =
+                map_of(vec![("#key-1", with_mutated_atom(&sample_vm_cell(), 2, vec![9]))]);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "unknown KeyType discriminant 9");
+    }
+
+    #[test]
+    fn unknown_curve_type_discriminant_is_rejected() {
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] =
+                map_of(vec![("#key-1", with_mutated_atom(&sample_vm_cell(), 3, vec![9]))]);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "unknown CurveType discriminant 9");
+    }
+
+    #[test]
+    fn enum_discriminant_tables_cover_all_variants() {
+        // Direct checks of every discriminant the on-chain cells can carry.
+        assert_eq!(verification_method_type(0).unwrap(), VerificationMethodType::Undefined);
+        assert_eq!(verification_method_type(1).unwrap(), VerificationMethodType::JsonWebKey);
+        assert_eq!(key_type(0).unwrap(), KeyType::EC);
+        assert_eq!(key_type(1).unwrap(), KeyType::RSA);
+        assert_eq!(key_type(2).unwrap(), KeyType::oct);
+        assert_eq!(key_type(3).unwrap(), KeyType::OKP);
+        assert_eq!(curve_type(0).unwrap(), CurveType::Ed25519);
+        assert_eq!(curve_type(1).unwrap(), CurveType::X25519);
+        assert_eq!(curve_type(2).unwrap(), CurveType::Jubjub);
+        assert_eq!(curve_type(3).unwrap(), CurveType::P256);
+        assert_eq!(curve_type(4).unwrap(), CurveType::Secp256k1);
+        assert_eq!(curve_type(5).unwrap(), CurveType::BLS12381G1);
+        assert_eq!(curve_type(6).unwrap(), CurveType::BLS12381G2);
+        assert!(verification_method_type(2).is_err());
+        assert!(key_type(4).is_err());
+        assert!(curve_type(7).is_err());
+    }
+
+    #[test]
+    fn multi_byte_enum_atom_is_rejected() {
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] =
+                map_of(vec![("#key-1", with_mutated_atom(&sample_vm_cell(), 1, vec![1, 1]))]);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "expected 1-byte atom, got 2 bytes");
+    }
+
+    #[test]
+    fn empty_enum_atom_decodes_as_zero() {
+        // Zero-valued atoms may be stored with their bytes stripped.
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] =
+                map_of(vec![("#key-1", with_mutated_atom(&sample_vm_cell(), 1, vec![]))]);
+        });
+        let snap = decode_ledger_snapshot(&state).expect("empty atom is zero");
+        assert_eq!(
+            snap.verification_methods.get("#key-1").unwrap().typ,
+            VerificationMethodType::Undefined
+        );
+    }
+
+    #[test]
+    fn oversized_coordinate_atom_is_rejected() {
+        // Schnorr VM cell atoms: [id, publicKey.x, publicKey.y].
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::SCHNORR_JUBJUB_VERIFICATION_METHODS] = map_of(vec![(
+                "#key-jub",
+                with_mutated_atom(&sample_sjvm_cell(), 1, vec![0xaa; 33]),
+            )]);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "coordinate atom is 33 bytes (>32)");
+    }
+
+    #[test]
+    fn short_coordinate_atom_is_zero_padded() {
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::SCHNORR_JUBJUB_VERIFICATION_METHODS] = map_of(vec![(
+                "#key-jub",
+                with_mutated_atom(&sample_sjvm_cell(), 1, vec![0x01]),
+            )]);
+        });
+        let snap = decode_ledger_snapshot(&state).expect("short coordinate pads");
+        let sj = snap.schnorr_jubjub_verification_methods.get("#key-jub").unwrap();
+        assert_eq!(sj.public_key.x(), format!("01{}", "00".repeat(31)));
+    }
+
+    #[test]
+    fn trailing_atoms_are_rejected() {
+        // A 6-atom VM cell in the 3-atom services shape: the first three
+        // atoms decode as strings, then finish() must flag the leftovers.
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::SERVICES] = map_of(vec![("#svc-1", sample_vm_cell())]);
+        });
+        assert_decode_err(
+            decode_ledger_snapshot(&state),
+            "field services: 3 trailing atom(s) after decode",
+        );
+    }
+
+    #[test]
+    fn missing_atom_is_rejected() {
+        // A 1-atom cell in the 3-atom services shape.
+        let state = chain_state_with(|_, chunk1| {
+            chunk1[slot::SERVICES] = map_of(vec![("#svc-1", new_cell(0u8))]);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "missing atom 1 (typ)");
     }
 }

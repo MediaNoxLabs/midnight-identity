@@ -2310,6 +2310,7 @@ name = "midnight-did-indexer"
 version = "0.5.0"
 dependencies = [
  "async-trait",
+ "axum",
  "hex",
  "midnight-did-api",
  "midnight-did-method",
