@@ -24,7 +24,7 @@
       flake = false;
     };
     compact = {
-      url = "github:yshyn-iohk/compact/did-0.5.0-codegen";
+      url = "github:MediaNoxLabs/compact/codegen-rust";
     };
   };
 
