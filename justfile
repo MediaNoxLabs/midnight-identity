@@ -57,7 +57,7 @@ lint:
 
 # Line-coverage floor enforced by `coverage-gate` (and CI). Raise it as
 # coverage improves; never lower it to admit a regression.
-coverage_floor := "75"
+coverage_floor := "80"
 
 # Coverage over the four CI-gated crates (domain, method, api, umbrella),
 # excluding the codegen artifact generated.rs. HTML report for humans.

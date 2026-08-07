@@ -45,6 +45,7 @@
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod hex_ext;
+pub mod holder_binding;
 pub mod midnight_did;
 pub mod network_mapping;
 pub mod offchain;

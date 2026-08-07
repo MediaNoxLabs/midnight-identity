@@ -900,4 +900,409 @@ mod tests {
         s.verification_method[0].id = "key-1".into(); // missing leading '#'
         assert!(matches!(validate_state_shape(&s), Err(OffchainError::FragmentRequired)));
     }
+
+    // -----------------------------------------------------------------
+    // Test codec: serde_json-backed CompactValueCodec
+    // -----------------------------------------------------------------
+
+    /// Test-only chunk codec: one JSON chunk per state. Stands in for the
+    /// runtime-backed `CompactType` serializer so the encode/decode entry
+    /// points and the long-form round trip can be exercised in-crate.
+    struct JsonCompactValueCodec;
+
+    impl CompactValueCodec for JsonCompactValueCodec {
+        fn to_chunks(state: &OffchainMidnightDidState) -> Result<Vec<Vec<u8>>, OffchainError> {
+            Ok(vec![serde_json::to_vec(state).expect("state serializes")])
+        }
+
+        fn from_chunks(chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError> {
+            let first = chunks.first().ok_or(OffchainError::CompactCodecMissing)?;
+            serde_json::from_slice(first).map_err(|_| OffchainError::CompactCodecMissing)
+        }
+    }
+
+    const ALL_KEY_KINDS: [OffchainKeyKind; 7] = [
+        OffchainKeyKind::Jubjub,
+        OffchainKeyKind::Ed25519,
+        OffchainKeyKind::P256,
+        OffchainKeyKind::X25519,
+        OffchainKeyKind::Secp256k1,
+        OffchainKeyKind::BLS12381G1,
+        OffchainKeyKind::BLS12381G2,
+    ];
+
+    fn coords_for(kind: OffchainKeyKind) -> (String, String) {
+        let x_len = match kind {
+            OffchainKeyKind::BLS12381G1 => 48,
+            OffchainKeyKind::BLS12381G2 => 96,
+            _ => 32,
+        };
+        (encode_base64url(&vec![7u8; x_len]), encode_base64url(&[9u8; 32]))
+    }
+
+    fn method(id: &str, kind: OffchainKeyKind, mask: u8) -> OffchainVerificationMethod {
+        let (x, y) = coords_for(kind);
+        OffchainVerificationMethod {
+            id: id.into(),
+            public_key_jwk: jwk_from_key_kind(kind, &x, &y).expect("test jwk is valid"),
+            relationships: mask_to_relationships(mask),
+        }
+    }
+
+    fn service(id: &str, endpoint: &str) -> OffchainService {
+        OffchainService {
+            id: id.into(),
+            type_: "LinkedDomains".into(),
+            service_endpoint: endpoint.into(),
+        }
+    }
+
+    fn rich_state() -> OffchainMidnightDidState {
+        OffchainMidnightDidState {
+            version: 7,
+            also_known_as: vec!["did:example:alias-1".into(), "did:example:alias-2".into()],
+            verification_method: vec![
+                method("#key-1", OffchainKeyKind::Jubjub, 1 | 2),
+                method("#key-2", OffchainKeyKind::Ed25519, 4),
+                method("#key-3", OffchainKeyKind::P256, 8),
+                method("#key-4", OffchainKeyKind::X25519, 4),
+            ],
+            service: vec![
+                service("#svc-1", "https://example.com"),
+                service("#svc-2", "https://registry.example.com"),
+            ],
+        }
+    }
+
+    fn envelope(payload: &str) -> EncodedOffchainMidnightDidState {
+        EncodedOffchainMidnightDidState {
+            encoding: OFFCHAIN_STATE_ENCODING.to_owned(),
+            payload: payload.to_owned(),
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Key kinds
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn key_kind_wire_tags_round_trip_for_every_kind() {
+        for kind in ALL_KEY_KINDS {
+            assert_eq!(OffchainKeyKind::from_u8(kind as u8), Some(kind));
+            let (x, y) = coords_for(kind);
+            let jwk = jwk_from_key_kind(kind, &x, &y).expect("jwk builds");
+            assert_eq!(key_kind_from_jwk(&jwk).expect("kind maps back"), kind);
+            // OKP kinds must not carry a y coordinate; EC kinds must.
+            let is_ec = matches!(
+                kind,
+                OffchainKeyKind::Jubjub | OffchainKeyKind::P256 | OffchainKeyKind::Secp256k1
+            );
+            assert_eq!(jwk.y().is_some(), is_ec);
+        }
+    }
+
+    #[test]
+    fn key_kind_from_u8_rejects_unknown_tags() {
+        for tag in [0u8, 8, 42, 255] {
+            assert_eq!(OffchainKeyKind::from_u8(tag), None);
+        }
+    }
+
+    #[test]
+    fn key_kind_from_jwk_rejects_unsupported_profiles() {
+        // RSA/Ed25519 passes the generic JWK validation (the coordinate
+        // lengths line up) but is not an offchain wire profile.
+        let jwk = PublicKeyJwk::new(NewPublicKeyJwk {
+            kty: KeyType::RSA,
+            crv: CurveType::Ed25519,
+            x: encode_base64url(&[7u8; 32]),
+            y: Some(encode_base64url(&[9u8; 32])),
+            extensions: Default::default(),
+        })
+        .expect("RSA jwk passes generic validation");
+        assert!(matches!(
+            key_kind_from_jwk(&jwk),
+            Err(OffchainError::UnsupportedKeyType { .. })
+        ));
+    }
+
+    #[test]
+    fn jwk_from_key_kind_rejects_bad_coordinates() {
+        // Wrong x length for Ed25519.
+        assert!(jwk_from_key_kind(OffchainKeyKind::Ed25519, &encode_base64url(&[1u8; 16]), "").is_err());
+        // Non-base64url x.
+        assert!(jwk_from_key_kind(OffchainKeyKind::P256, "not base64!", &encode_base64url(&[9u8; 32])).is_err());
+        // Empty y for an EC curve (y is required and length-checked).
+        assert!(jwk_from_key_kind(OffchainKeyKind::Secp256k1, &encode_base64url(&[7u8; 32]), "").is_err());
+    }
+
+    // -----------------------------------------------------------------
+    // Relationship masks
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn relationship_mask_round_trips_all_five_bits() {
+        for mask in 0u8..32 {
+            assert_eq!(relationships_to_mask(&mask_to_relationships(mask)), mask);
+        }
+        let all = OffchainVerificationRelationships {
+            authentication: true,
+            assertion_method: true,
+            key_agreement: true,
+            capability_invocation: true,
+            capability_delegation: true,
+        };
+        assert_eq!(relationships_to_mask(&all), 0b1_1111);
+    }
+
+    // -----------------------------------------------------------------
+    // MOD1 frame error paths
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn mod1_rejects_truncated_and_oversized_frames() {
+        // Shorter than the header.
+        assert!(matches!(
+            compact_value_from_bytes(b"MOD1"),
+            Err(OffchainError::ShortFrame)
+        ));
+        // Declared chunk count exceeds what the payload can hold.
+        assert!(matches!(
+            compact_value_from_bytes(b"MOD1\x00\x00\x00\x02"),
+            Err(OffchainError::TooManyChunks)
+        ));
+        // Chunk length spills past the end of the payload.
+        assert!(matches!(
+            compact_value_from_bytes(b"MOD1\x00\x00\x00\x01\x00\x00\x00\x05\xaa\xbb"),
+            Err(OffchainError::ChunkOverflow)
+        ));
+        // Second chunk's length prefix is truncated.
+        assert!(matches!(
+            compact_value_from_bytes(b"MOD1\x00\x00\x00\x02\x00\x00\x00\x02\xaa\xbb\x00\x00"),
+            Err(OffchainError::ShortFrame)
+        ));
+        // Bytes past the last declared chunk.
+        let mut frame = compact_value_to_bytes(&[vec![1, 2, 3]]).unwrap();
+        frame.push(0);
+        assert!(matches!(
+            compact_value_from_bytes(&frame),
+            Err(OffchainError::TrailingBytes)
+        ));
+    }
+
+    // -----------------------------------------------------------------
+    // Encode / decode entry points
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn encode_decode_round_trips_rich_state() {
+        let state = rich_state();
+        let encoded = encode_offchain_midnight_did_state::<JsonCompactValueCodec>(&state).unwrap();
+        assert_eq!(encoded.encoding, OFFCHAIN_STATE_ENCODING);
+        let decoded = decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&encoded).unwrap();
+        assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn encode_decode_round_trips_remaining_key_kinds() {
+        let mut state = sample_state();
+        state.verification_method = vec![
+            method("#k-secp", OffchainKeyKind::Secp256k1, 2),
+            method("#k-g1", OffchainKeyKind::BLS12381G1, 4),
+            method("#k-g2", OffchainKeyKind::BLS12381G2, 16),
+        ];
+        let encoded = encode_offchain_midnight_did_state::<JsonCompactValueCodec>(&state).unwrap();
+        let decoded = decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&encoded).unwrap();
+        assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn decode_rejects_unknown_encoding_tag() {
+        let err = decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&EncodedOffchainMidnightDidState {
+            encoding: "something-else".into(),
+            payload: "AAAA".into(),
+        })
+        .unwrap_err();
+        assert!(matches!(err, OffchainError::UnsupportedEncoding { .. }));
+    }
+
+    #[test]
+    fn decode_rejects_malformed_payloads() {
+        // Empty, bad charset, and impossible length-mod-4.
+        for payload in ["", "abc!", "AAAAA"] {
+            assert!(matches!(
+                decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&envelope(payload)),
+                Err(OffchainError::BadBase64Url)
+            ));
+        }
+        // Valid alphabet but non-zero trailing bits: the strict base64
+        // engine rejects it during decode (the NonCanonicalBase64Url
+        // re-encode check is a defensive second line).
+        assert!(matches!(
+            decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&envelope("AB")),
+            Err(OffchainError::Codec(_))
+        ));
+        // Canonical base64url that is not a MOD1 frame.
+        let payload = encode_base64url(b"NOPE\x00\x00\x00\x00");
+        assert!(matches!(
+            decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&envelope(&payload)),
+            Err(OffchainError::BadMagic)
+        ));
+    }
+
+    #[test]
+    fn unimplemented_codec_errors_on_decode_too() {
+        let frame = compact_value_to_bytes(&[vec![1]]).unwrap();
+        let err =
+            decode_offchain_midnight_did_state::<UnimplementedCompactValueCodec>(&envelope(&encode_base64url(&frame)))
+                .unwrap_err();
+        assert!(matches!(err, OffchainError::CompactCodecMissing));
+    }
+
+    #[test]
+    fn encode_rejects_invalid_state_shapes() {
+        fn encode(state: &OffchainMidnightDidState) -> Result<EncodedOffchainMidnightDidState, OffchainError> {
+            encode_offchain_midnight_did_state::<JsonCompactValueCodec>(state)
+        }
+
+        let mut s = sample_state();
+        s.version = 0;
+        assert!(matches!(encode(&s), Err(OffchainError::BadVersion)));
+
+        let mut s = sample_state();
+        s.also_known_as = vec!["did:example:a".into(); MAX_ALSO_KNOWN_AS + 1];
+        assert!(matches!(encode(&s), Err(OffchainError::TooManyAlsoKnownAs)));
+
+        let mut s = sample_state();
+        s.verification_method.clear();
+        assert!(matches!(encode(&s), Err(OffchainError::NoVerificationMethod)));
+
+        let mut s = sample_state();
+        s.verification_method = (0..=MAX_VERIFICATION_METHODS)
+            .map(|i| method(&format!("#key-{i}"), OffchainKeyKind::Ed25519, 1))
+            .collect();
+        assert!(matches!(encode(&s), Err(OffchainError::TooManyVerificationMethods)));
+
+        let mut s = sample_state();
+        s.service = (0..=MAX_SERVICES)
+            .map(|i| service(&format!("#svc-{i}"), "https://example.com"))
+            .collect();
+        assert!(matches!(encode(&s), Err(OffchainError::TooManyServices)));
+
+        let mut s = rich_state();
+        s.service[0].id = "svc-1".into(); // missing leading '#'
+        assert!(matches!(encode(&s), Err(OffchainError::FragmentRequired)));
+
+        let mut s = rich_state();
+        s.service[0].type_ = String::new();
+        assert!(matches!(encode(&s), Err(OffchainError::EmptyServiceField)));
+
+        let mut s = rich_state();
+        s.service[0].service_endpoint = String::new();
+        assert!(matches!(encode(&s), Err(OffchainError::EmptyServiceField)));
+    }
+
+    // -----------------------------------------------------------------
+    // DID-string builders + long-form round trip
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn short_form_did_string_embeds_state_hash() {
+        let state = rich_state();
+        let did = create_offchain_midnight_did_string_from_state::<JsonCompactValueCodec>(&state).unwrap();
+        let encoded = encode_offchain_midnight_did_state::<JsonCompactValueCodec>(&state).unwrap();
+        let hash = bytes_to_state_hash(&decode_base64url(&encoded.payload).unwrap());
+        assert_eq!(did.0, format!("did:midnight:offchain:{}", hash.to_hex()));
+    }
+
+    #[test]
+    fn long_form_round_trips_and_resolves() {
+        let state = rich_state();
+        let long = create_long_form_offchain_midnight_did_string::<JsonCompactValueCodec>(&state).unwrap();
+        let parsed = parse_long_form_offchain_midnight_did_string(&long.0).unwrap();
+        assert_eq!(parsed.did.0, long.0);
+        assert_eq!(parsed.encoded_state.encoding, OFFCHAIN_STATE_ENCODING);
+
+        // The short form derived from the parsed hash prefixes the long form.
+        let short = create_offchain_midnight_did_string(&parsed.state_hash);
+        assert!(long.0.starts_with(&short.0));
+
+        // Decode the embedded state and project it to a DID Document.
+        let decoded = decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&parsed.encoded_state).unwrap();
+        assert_eq!(decoded, state);
+
+        let doc = offchain_state_to_did_document(&short, &decoded).unwrap();
+        assert_eq!(doc.id.as_str(), short.0);
+        assert_eq!(doc.controller, short);
+        assert_eq!(doc.verification_method.len(), 4);
+        assert_eq!(doc.also_known_as.as_deref(), Some(&state.also_known_as[..]));
+        assert_eq!(doc.authentication.as_deref(), Some(&["#key-1".to_owned()][..]));
+        assert_eq!(doc.assertion_method.as_deref(), Some(&["#key-1".to_owned()][..]));
+        assert_eq!(
+            doc.key_agreement.as_deref(),
+            Some(&["#key-2".to_owned(), "#key-4".to_owned()][..])
+        );
+        assert_eq!(doc.capability_invocation.as_deref(), Some(&["#key-3".to_owned()][..]));
+        assert_eq!(doc.capability_delegation, None);
+        assert_eq!(doc.service.as_ref().map(Vec::len), Some(2));
+        assert_eq!(
+            doc.context,
+            DocumentContext::Many(vec![
+                "https://www.w3.org/ns/did/v1".into(),
+                "https://w3id.org/security/jwk/v1".into(),
+            ])
+        );
+
+        let meta = create_offchain_midnight_did_document_metadata(&decoded);
+        assert_eq!(meta.deactivated, Some(false));
+        assert_eq!(meta.version_id.as_deref(), Some("7"));
+    }
+
+    #[test]
+    fn projection_omits_empty_collections() {
+        let state = sample_state();
+        let did = create_offchain_midnight_did_string_from_state::<JsonCompactValueCodec>(&state).unwrap();
+        let doc = offchain_state_to_did_document(&did, &state).unwrap();
+        assert_eq!(doc.also_known_as, None);
+        assert_eq!(doc.service, None);
+        assert_eq!(doc.assertion_method, None);
+        assert_eq!(doc.authentication.as_ref().map(Vec::len), Some(1));
+    }
+
+    #[test]
+    fn parse_long_form_rejects_bad_inputs() {
+        let state = rich_state();
+        let long = create_long_form_offchain_midnight_did_string::<JsonCompactValueCodec>(&state).unwrap();
+        let payload = long.0.rsplit(':').next().unwrap().to_owned();
+
+        // Malformed DID string entirely.
+        assert!(matches!(
+            parse_long_form_offchain_midnight_did_string("did:midnight:offchain"),
+            Err(OffchainError::Did(_))
+        ));
+        // Wrong network.
+        let onchain = format!("did:midnight:devnet:{}", "c".repeat(64));
+        assert!(matches!(
+            parse_long_form_offchain_midnight_did_string(&onchain),
+            Err(OffchainError::NotOffchain)
+        ));
+        // Short form: no embedded state.
+        let short = format!("did:midnight:offchain:{}", "c".repeat(64));
+        assert!(matches!(
+            parse_long_form_offchain_midnight_did_string(&short),
+            Err(OffchainError::MissingEncodedState)
+        ));
+        // Payload does not hash to the DID's state hash.
+        let mismatched = format!("did:midnight:offchain:{}:{}", "c".repeat(64), payload);
+        assert!(matches!(
+            parse_long_form_offchain_midnight_did_string(&mismatched),
+            Err(OffchainError::StateHashMismatch)
+        ));
+        // Bad payload encoding is rejected by the DID parser first.
+        let bad_payload = format!("did:midnight:offchain:{}:not+base64url", "c".repeat(64));
+        assert!(matches!(
+            parse_long_form_offchain_midnight_did_string(&bad_payload),
+            Err(OffchainError::Did(MidnightDidError::BadOffchainStateEncoding))
+        ));
+    }
 }

@@ -52,6 +52,27 @@ and the project adheres to [SemVer](https://semver.org/).
   identical modulo the TS `null`-for-empty quirk (#15); all error legs
   byte-matched.
 
+- **VC shared seams, phase 1 (issue #6)** — the API surface the
+  Midnight VC layer consumes from the DID layer:
+  - `midnight-did-method::holder_binding`: domain-separated method-id
+    hashing (`SHA-256(domain ‖ NUL ‖ fragment)`,
+    `midnight:offchain:holder-method-id:v1`) + method-reference
+    normalization, ported from the VC reference adapter with a TS
+    golden-vector test; `hash_domains` submodule owns the off-chain
+    tag vocabulary.
+  - `midnight-did-domain::crypto_codecs` documented as the canonical
+    JWK ↔ curve-point codec surface (the TS VC stack duplicates these
+    codecs in two adapters; the Rust port consumes this module).
+  - Test hardening: `offchain.rs` 47.7% → 99.6% lines,
+    `crypto_codecs.rs` 66.2% → 99.4%; workspace coverage 77.2% →
+    86.7%; **coverage floor raised 75 → 80**.
+- **ADR 0009 — crate granularity policy**: the six-reason split test
+  (target/dep-weight isolation, publishing cadence, feature
+  exclusivity, binding boundary, compile-time blast radius, pluggable
+  trait backends), module-by-default otherwise; megazord rule for
+  UniFFI (one cdylib), future WASM as a single sibling leaf; current
+  9 crates audited (all pass), #8 to absorb `midnight-did-indexer`.
+
 ### Fixed
 
 - DID document `@context` updated to the 0.5.0 spelling
