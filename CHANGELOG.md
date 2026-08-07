@@ -37,6 +37,21 @@ and the project adheres to [SemVer](https://semver.org/).
     quirk. Harness: `infra/standalone.yml` +
     `doc/integration-standalone.md`.
 
+- **Rust DID resolver service (issue #5)** — new crate
+  `midnight-did-resolver` (axum): `GET /resolve/{did}`,
+  `POST /resolve`, `/health`, `/ready`; W3C resolution envelope with
+  the TS service's status mapping (`notFound` 404,
+  `invalidDid`/`networkMismatch` 400, `internalError` 500) but
+  **typed** error classification (no string matching); SSRF endpoint
+  policy for per-request `indexerUrl` overrides; env config
+  (`RESOLVER_HOST/PORT`, `MIDNIGHT_INDEXER_HTTP_URL`,
+  `MIDNIGHT_NETWORK`, `RESOLVER_TIMEOUT_MS`). Route tests run against
+  a mock indexer serving **real captured chain state**. Live
+  head-to-head vs the TS `did-resolver-service` on the same DID:
+  `didDocumentMetadata` + `didResolutionMetadata` identical, document
+  identical modulo the TS `null`-for-empty quirk (#15); all error legs
+  byte-matched.
+
 ### Fixed
 
 - DID document `@context` updated to the 0.5.0 spelling

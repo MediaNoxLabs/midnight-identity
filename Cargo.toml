@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-method", "crates/midnight-did-runtime", "crates/midnight-did-uniffi" ]
+members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi" ]
 
 [workspace.package]
 version      = "0.5.0"
@@ -46,6 +46,7 @@ midnight-did-method = { path = "crates/midnight-did-method", version = "=0.5.0" 
 midnight-did-api = { path = "crates/midnight-did-api", version = "=0.5.0" }
 # runtime crate — codegen target (currently blocked on upstream halo2 skew).
 midnight-did-runtime = { path = "crates/midnight-did-runtime", version = "=0.5.0" }
+midnight-did-indexer = { path = "crates/midnight-did-indexer" }
 # umbrella crate — re-exports the full 4-crate stack for monolithic consumers.
 midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 

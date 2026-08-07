@@ -30,6 +30,8 @@ in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues)
 | `midnight-did-api` | Async operation builders (create / update / rotate / recover / resolve / deactivate) over `Contract<B: Backend>` | blocked¹ |
 | `midnight-did-runtime` | `compactc --rust` codegen target: generated contract bindings, `Backend` trait, mock + resolver backends | blocked¹ |
 | `midnight-did` | Umbrella re-export crate | blocked¹ |
+| `midnight-did-indexer` | Indexer GraphQL client + read-only `IndexerBackend` (live resolution) | blocked¹ |
+| `midnight-did-resolver` | HTTP DID resolution service (axum) — Rust counterpart of `midnight-did-resolver` (TS) | no (service binary) |
 | `midnight-did-uniffi` | Swift / Kotlin / Python bindings (UniFFI) | no (by design) |
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
 

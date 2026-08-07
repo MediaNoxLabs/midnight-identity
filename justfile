@@ -36,7 +36,7 @@ codegen-check: codegen
 # path-mounted third_party crates (cargo absorbs them as workspace
 # members), and we don't gate vendored code — so every recipe scopes to
 # this list, mirroring CI.
-crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer"
+crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver"
 
 build:
     cargo build --all-targets {{crate_flags}}
