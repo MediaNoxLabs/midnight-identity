@@ -1,0 +1,70 @@
+# This file is part of MediaNoxLabs/midnight-identity.
+# Copyright (C) 2026 Midnight Foundation
+# SPDX-License-Identifier: Apache-2.0
+#
+# Policy for the `dev-loops` pi.dev extension (see doc/pi-development.md).
+# Adapted from midnightntwrk/midnight-did's .devloops to this repo's
+# nix + just Rust workflow. Review changes to this file like executable
+# tooling — it drives what agents run and when they stop for a human.
+
+repository:
+  defaultBaseBranch: develop
+  requirePrBase: develop
+
+gates:
+  draft:
+    - scope          # PR does one thing; no drive-by changes
+    - correctness    # logic reviewed against the driving issue
+    - coverage       # tests added/updated; `just coverage-gate` honest
+    - contract-surface # crates' public API changes are deliberate
+  preApproval:
+    - ci-guard       # all CI jobs green, no skipped required checks
+    - codegen        # generated.rs only via `just codegen`; codegen-check green
+    - docs           # README/doc/CHANGELOG updated where behavior changed
+    - security       # no new unsafe, no secret material, deps vetted
+    - external-review
+
+personas:
+  security:
+    prompt: >
+      Review as a security engineer for a public SSI library: key
+      material handling, private-state persistence, unsafe code,
+      dependency provenance, and CI supply-chain (pinned actions,
+      least-privilege permissions).
+  contract-surface:
+    prompt: >
+      Review changes under crates/midnight-did-runtime/src/contract/ as
+      codegen artifacts: they must be reproducible via `just codegen`
+      against the flake-pinned compactc, never hand-edited. Compare the
+      compact input pin when generated.rs changes.
+
+autonomy:
+  stopAt: [ready-for-review, merge]
+  humanMergeOnly: true
+
+workflow:
+  requireDraftFirst: true
+  requireRetrospective: false
+
+validation:
+  preCommit:
+    always:
+      - nix develop --command just fmt-check
+      - nix develop --command just lint
+    onContractChange:
+      - nix develop --command just codegen-check
+  prePush:
+    always:
+      - nix develop --command just ci
+
+externalReview:
+  reviewers:
+    - codex review --base origin/develop
+  maxRounds: 2
+
+ciWatch:
+  pollSeconds: 30
+  fixLoop:
+    requireSignedCommits: true
+    requireDco: true
+    validateLocallyBeforePush: true

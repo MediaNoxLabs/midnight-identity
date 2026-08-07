@@ -15,6 +15,10 @@
           cargo-llvm-cov
           git
           jq
+          # Optional pi.dev operator shell (see doc/pi-development.md).
+          # nix provides the binary; .pi/settings.json pins the
+          # dev-loops extension it loads.
+          pi-coding-agent
         ]);
 
         shellHook = ''

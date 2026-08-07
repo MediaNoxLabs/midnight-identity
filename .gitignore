@@ -24,3 +24,10 @@ docs/superpowers/
 
 # IDE / Gemini CLI scratch
 .antigravitycli/
+
+# pi.dev agent shell — only .pi/settings.json is tracked; installed
+# extension packages, git scratch, and harness artifacts stay local.
+.pi/git/
+.pi/npm/
+.pi/harness/
+.pi/nix-global/
