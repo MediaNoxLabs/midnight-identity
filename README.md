@@ -1,34 +1,43 @@
+<!--
+This file is part of MediaNoxLabs/midnight-identity.
+Copyright (C) 2026 Midnight Foundation
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # midnight-identity
 
-[![CI](https://github.com/MediaNoxLabs/midnight-identity/actions/workflows/ci.yml/badge.svg?branch=rust-codegen)](https://github.com/MediaNoxLabs/midnight-identity/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-v0.4.1-blue)](./CHANGELOG.md)
+[![CI](https://github.com/MediaNoxLabs/midnight-identity/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/MediaNoxLabs/midnight-identity/actions/workflows/ci.yml)
+[![version](https://img.shields.io/badge/version-v0.5.0-blue)](./CHANGELOG.md)
+[![license](https://img.shields.io/badge/license-Apache--2.0-green)](./LICENSE)
 
-Midnight DID Method, in Rust. Native port of the TypeScript reference
-implementation (`@midnight-ntwrk/midnight-did-*`), byte-parity with the
-TS wire format on both the offchain DID URL frame and the on-chain
-contract envelope.
+**Rust libraries for the Midnight SSI domain.**
 
-## Highlights
+This repository is the home of the self-sovereign-identity stack for
+the [Midnight](https://midnight.network) blockchain, implemented in
+Rust. Today that means a complete, byte-parity port of the
+[`did:midnight` DID method](https://github.com/midnightntwrk/midnight-did)
+(W3C DID Core data model, method profile, async operation API, Compact
+contract bindings, FFI). The roadmap extends the same foundations to
+Verifiable Credentials and a standalone DID resolver service — tracked
+in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues).
 
-- **5-crate split** — pure-data domain layer, Midnight method profile,
-  operation builders + ledger mappers, runtime (codegen target), and an
-  umbrella re-export crate. Each downstream consumer (wallet, resolver,
-  wasm, UniFFI) pulls only the cones it needs.
-- **DID CRUD via `Contract<B: Backend>`** — v0.4.0 retired the
-  `DidContract` async trait; the concrete `Contract<B>` wrapper +
-  3-method `Backend` trait is the new seam between operation builders
-  and the transport layer. See
-  [ADR 0008](./doc/adr/0008-contract-abstraction-reform.md).
-- **Builder + decode validation gates (v0.4.1)** — both sides of
-  `BuiltTx::bytes` are locked for the SchnorrJubjub ledger-shape
-  types: callers can no longer struct-literal a malformed value, and
-  incoming envelopes can't smuggle one in either.
-- **TS reference byte-parity** — 13 JSON fixtures captured from the
-  TS test suite, replayed against the Rust types.
-- **56 integration + 34 builder/decode validation tests** at the api
-  layer, plus 231 workspace-wide unit tests.
+## What's here
 
-## Crate layout (v0.4.0+)
+| Crate | Purpose | Publishable |
+|---|---|---|
+| `midnight-did-domain` | Pure-data W3C DID Core model + crypto codecs (zero `midnight-*` deps, wasm-clean) | yes |
+| `midnight-did-method` | `did:midnight:*` parsing, network mapping, MOD1 offchain codec | blocked¹ |
+| `midnight-did-api` | Async operation builders (create / update / rotate / recover / resolve / deactivate) over `Contract<B: Backend>` | blocked¹ |
+| `midnight-did-runtime` | `compactc --rust` codegen target: generated contract bindings, `Backend` trait, mock + resolver backends | blocked¹ |
+| `midnight-did` | Umbrella re-export crate | blocked¹ |
+| `midnight-did-uniffi` | Swift / Kotlin / Python bindings (UniFFI) | no (by design) |
+| `midnight-did-cli` | Reference CLI demo | no (by design) |
+
+¹ crates.io publication is blocked until the upstream `midnight-ledger`
+crates and `compact-runtime` are published; consume via git until then.
+See the publishing issue in the backlog.
+
+## Architecture
 
 ```
                 ┌───────────────────────────────┐
@@ -62,9 +71,16 @@ contract envelope.
 ```
 
 The dep direction is strict: domain ← method ← api ← runtime ← umbrella.
-The resolver use case stops at `midnight-did-method`; the wallet pulls
-the umbrella. See [`doc/architecture.md`](./doc/architecture.md) for
-the full breakdown.
+A resolver stops at `midnight-did-method`; a wallet pulls the umbrella.
+Full breakdown in [`doc/architecture.md`](./doc/architecture.md); design
+history in [`doc/adr/`](./doc/adr/) (ADRs 0001–0008).
+
+The contract bindings in `midnight-did-runtime/src/contract/` are
+**generated** — by the Rust-codegen branch of the
+[Compact compiler](https://github.com/MediaNoxLabs/compact) (flake input
+`github:MediaNoxLabs/compact/codegen-rust`) from the vendored
+[`did.compact` 0.5.0](https://github.com/midnightntwrk/midnight-did)
+contract. Never hand-edit them; run `just codegen`.
 
 ## Quick start
 
@@ -90,40 +106,61 @@ let contract = Contract::new(
     network,
 );
 
-// drive any of the 12 inherent `Contract<B>` methods,
-// or hand `&contract` to the operation builders in midnight-did-api…
+// drive any of the inherent `Contract<B>` methods, or hand `&contract`
+// to the operation builders in midnight-did-api…
 
 let recorded = contract.backend().recorded_calls();
 assert_eq!(recorded.len(), 1);
 ```
 
-In production code, the same surface accepts a `LiveBackend`:
+In production code the same surface accepts a `LiveBackend`
+(`submit_tx`/`read_snapshot` are `todo!()` in v0.5.0 — the
+wallet+proof-server+indexer bridge is the tracked follow-up).
 
-```rust
-use midnight_did_runtime::backend::LiveBackend;
+## Development
 
-// NOTE: LiveBackend::{submit_tx, read_snapshot} are todo!() in v0.4.1.
-// The Rust API shape is final; the implementation lands once the
-// wallet+proof-server+indexer bridge is wired up. See ADR 0008,
-// "Future work".
-let contract = Contract::new(LiveBackend::new(/* …deps… */), addr, network);
+Everything runs inside the nix devshell:
+
+```bash
+nix develop            # toolchain + compactc + third_party mounts
+just --list            # available recipes
+just ci                # fmt-check + lint + build + test + coverage-gate
+just codegen-check     # regen generated.rs, assert no drift
+just coverage          # HTML coverage report (line floor: see justfile)
 ```
 
-## CI + wasm gate
+An optional [pi.dev operator shell](./doc/pi-development.md) layers the
+`dev-loops` workflow on top of the devshell.
 
-Every PR is built on Linux + macOS (host target) **and** against
-`wasm32-unknown-unknown` for the `midnight-did-domain` +
-`midnight-did-api` crates. The wasm gate enforces the design claim
-that the domain + api layers are runtime-agnostic and free of any
-`midnight-*` deps that would block in-browser use (see
-[`doc/architecture.md`](./doc/architecture.md) §6).
+**Branch model:** `rust-codegen` is the stable mainline; `develop` is
+the integration branch — PRs target `develop`.
 
-## Pointers
+## CI
 
-- [`CHANGELOG.md`](./CHANGELOG.md) — release notes.
-- [`doc/architecture.md`](./doc/architecture.md) — full architecture
-  overview.
-- [`doc/adr/`](./doc/adr/) — Architecture Decision Records (ADRs
-  0001–0008).
-- [`doc/specs/`](./doc/specs/) — implementation specs (R1 type-safety
-  sweep, R2 contract-abstraction reform).
+Every PR runs: fmt + clippy (`-D warnings`), tests on Linux + macOS,
+a `wasm32-unknown-unknown` build of the wasm-clean `midnight-did-domain`
+crate, a line-coverage floor (cargo-llvm-cov), and the codegen
+drift-check against the flake-pinned compactc.
+
+## Community
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — workflow, DCO + GPG signing,
+  validation tiers.
+- [SECURITY.md](./SECURITY.md) — how to report vulnerabilities
+  (never via public issues).
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
+- [Issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues)
+  — the primary planning surface for this repo.
+
+## Related repositories
+
+- [MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact) —
+  Compact compiler fork carrying the `--rust` codegen backend
+  (`codegen-rust` branch) and `compact-runtime`.
+- [midnightntwrk/midnight-did](https://github.com/midnightntwrk/midnight-did)
+  — TypeScript reference implementation + the `did.compact` contract
+  (vendored here as a submodule).
+- [midnightntwrk/midnight-did-resolver](https://github.com/midnightntwrk/midnight-did-resolver)
+  — TS resolver service; the model for the planned Rust resolver.
+- [midnightntwrk/midnight-verifiable-credentials](https://github.com/midnightntwrk/midnight-verifiable-credentials)
+  — Compact-first VC stack; the model for the planned shared SSI crates.

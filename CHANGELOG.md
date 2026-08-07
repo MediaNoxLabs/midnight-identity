@@ -29,6 +29,19 @@ and the project adheres to [SemVer](https://semver.org/).
   `coverage-lcov` recipes with a 75% line floor (baseline 77.18%), a CI
   `coverage` job uploading LCOV artifacts, and `coverage-gate` wired
   into `just ci`.
+- pi.dev operator shell (optional) layered on the nix devshell:
+  `pi-coding-agent` in the devshell, tracked `.pi/settings.json`
+  pinning `dev-loops@0.9.0`, repo policy in `.devloops`, docs in
+  `doc/pi-development.md`.
+- Release pipeline (`.github/workflows/release.yml`): tag-triggered
+  verify → crates.io publish (dependency-ordered `PUBLISH_CRATES`,
+  currently `midnight-did-domain` only) → GitHub Release; publishing
+  policy in `doc/publishing.md`.
+- Documentation: README rewritten around the repo mission (Rust
+  libraries for the Midnight SSI domain) with crate/publishability
+  table and branch model; `midnight-did-runtime` crate README; research
+  docs for VC shared components and the Rust DID resolver
+  (`doc/research/`).
 
 ### Changed
 
