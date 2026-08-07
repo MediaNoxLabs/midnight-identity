@@ -1,14 +1,14 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# midnight-did-rs — Architecture Overview
+# midnight-identity — Architecture Overview
 
 Status: living document. Last updated 2026-06-26.
 
-`midnight-did-rs` is the Rust port of the Midnight DID Method reference
+`midnight-identity` is the Rust port of the Midnight DID Method reference
 implementation (TypeScript: `@midnight-ntwrk/midnight-did`). This document
 captures the current shape of the workspace, where it is heading, and the
 design patterns that knit the layers together. ADRs at

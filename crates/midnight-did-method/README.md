@@ -1,5 +1,5 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 
 Midnight method profile for the Rust port of the [Midnight DID Method][adr].
 
-[adr]: https://github.com/yshyn-iohk/midnight-did-rs/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md
+[adr]: https://github.com/MediaNoxLabs/midnight-identity/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md
 
 This crate sits between [`midnight-did-domain`][domain] (pure W3C DID Core
 types) and [`midnight-did-api`][api] (the async operation layer). It hosts

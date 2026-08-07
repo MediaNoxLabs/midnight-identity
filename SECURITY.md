@@ -1,5 +1,5 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 # Security Policy
 
 This document describes how to report security vulnerabilities in
-`midnight-did-rs` and what we consider in-scope. It follows the
+`midnight-identity` and what we consider in-scope. It follows the
 Midnight Foundation
 [security policy](https://github.com/midnightntwrk/midnight-did/blob/main/SECURITY.md)
 and the
@@ -16,7 +16,7 @@ applied to the upstream TypeScript reference.
 
 ## Supported versions
 
-`midnight-did-rs` has not yet cut a tagged release. All active
+`midnight-identity` has not yet cut a tagged release. All active
 development happens on the `cycle-1-bootstrap` branch (and, once it
 lands, `main`). Once releases begin, the policy is:
 
@@ -37,7 +37,7 @@ of the private channels:
 
 - **Preferred:** GitHub's
   [private vulnerability reporting](https://docs.github.com/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
-  on the `midnightntwrk/midnight-did-rs` repository.
+  on the `MediaNoxLabs/midnight-identity` repository.
 - **Fallback:** email
   [security@midnight.foundation](mailto:security@midnight.foundation)
   if the GitHub flow is unavailable.

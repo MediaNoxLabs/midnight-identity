@@ -41,7 +41,7 @@
 //!   `features = ["runtime"]` to also pull the codegen target.
 //!
 //! See
-//! [ADR 0003](https://github.com/yshyn-iohk/midnight-did-rs/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md)
+//! [ADR 0003](https://github.com/MediaNoxLabs/midnight-identity/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md)
 //! for the design rationale.
 
 #![forbid(unsafe_code)]

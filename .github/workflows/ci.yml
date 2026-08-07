@@ -1,6 +1,6 @@
 name: CI
 
-# CI for the midnight-did-rs workspace. Gates the four functional crates
+# CI for the midnight-identity workspace. Gates the four functional crates
 # and the umbrella crate:
 #
 #   - midnight-did-domain : pure data model, zero midnight-* deps

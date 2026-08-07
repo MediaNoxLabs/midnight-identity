@@ -1,12 +1,12 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
 # Changelog
 
-All notable changes to the `midnight-did-rs` workspace are recorded
+All notable changes to the `midnight-identity` workspace are recorded
 here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [SemVer](https://semver.org/).
 
@@ -162,11 +162,11 @@ sides.
 - Architecture audit Rec #1 (the finding):
   `docs/superpowers/notes/2026-06-26-architecture-audit.md`
 - Encoding-side commit:
-  [`59ed1f5`](https://github.com/yshyn-iohk/midnight-did-rs/commit/59ed1f5)
+  [`59ed1f5`](https://github.com/MediaNoxLabs/midnight-identity/commit/59ed1f5)
 - Decoding-side commits:
-  [`b3fdb20`](https://github.com/yshyn-iohk/midnight-did-rs/commit/b3fdb20),
-  [`3080d49`](https://github.com/yshyn-iohk/midnight-did-rs/commit/3080d49),
-  [`8d9df0d`](https://github.com/yshyn-iohk/midnight-did-rs/commit/8d9df0d)
+  [`b3fdb20`](https://github.com/MediaNoxLabs/midnight-identity/commit/b3fdb20),
+  [`3080d49`](https://github.com/MediaNoxLabs/midnight-identity/commit/3080d49),
+  [`8d9df0d`](https://github.com/MediaNoxLabs/midnight-identity/commit/8d9df0d)
 
 ## [0.4.0] — 2026-06-25
 

@@ -1,6 +1,6 @@
-# midnight-did-rs
+# midnight-identity
 
-[![CI](https://github.com/yshyn-iohk/midnight-did-rs/actions/workflows/ci.yml/badge.svg?branch=cycle-1-bootstrap)](https://github.com/yshyn-iohk/midnight-did-rs/actions/workflows/ci.yml)
+[![CI](https://github.com/MediaNoxLabs/midnight-identity/actions/workflows/ci.yml/badge.svg?branch=rust-codegen)](https://github.com/MediaNoxLabs/midnight-identity/actions/workflows/ci.yml)
 [![version](https://img.shields.io/badge/version-v0.4.1-blue)](./CHANGELOG.md)
 
 Midnight DID Method, in Rust. Native port of the TypeScript reference

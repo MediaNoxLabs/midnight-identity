@@ -8,7 +8,7 @@ edition      = "2024"
 rust-version = "1.85"
 license      = "Apache-2.0"
 authors      = ["Midnight Foundation"]
-repository   = "https://github.com/yshyn-iohk/midnight-did-rs"
+repository   = "https://github.com/MediaNoxLabs/midnight-identity"
 
 [workspace.dependencies]
 # midnight-ledger crates (path-mounted by devshell into third_party/midnight-ledger)

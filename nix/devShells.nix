@@ -72,7 +72,7 @@
             echo "Linked $LINK -> $TARGET"
           fi
 
-          echo "Entered midnight-did-rs devshell. Run 'just --list' for available commands."
+          echo "Entered midnight-identity devshell. Run 'just --list' for available commands."
         '';
 
         env = {

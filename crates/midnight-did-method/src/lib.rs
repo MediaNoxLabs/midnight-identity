@@ -35,7 +35,7 @@
 //!
 //! Resolver-only and wasm consumers want the method profile without the
 //! wallet path that lives in the api crate. See
-//! [ADR 0003](https://github.com/yshyn-iohk/midnight-did-rs/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md)
+//! [ADR 0003](https://github.com/MediaNoxLabs/midnight-identity/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md)
 //! for the rationale.
 
 #![forbid(unsafe_code)]

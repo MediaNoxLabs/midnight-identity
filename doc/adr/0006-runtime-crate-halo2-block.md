@@ -163,7 +163,7 @@ midnight-did-runtime 2>&1 \| grep '^error' \| sort \| uniq -c`):
 
 All four buckets are **upstream issues** — either compact-rust-passes
 (emitter) or compact-runtime (trait impls / proxy plumbing). None can
-be fixed inside `midnight-did-rs` without editing `generated.rs`
+be fixed inside `midnight-identity` without editing `generated.rs`
 (forbidden) or the `compact-runtime` source under
 `third_party/compact/` (which is a read-only Nix-store symlink).
 
@@ -230,7 +230,7 @@ Remaining 30 split:
 ## How to refresh the pin in the future
 
 ```sh
-cd ~/iohk/midnight-did-rs
+cd ~/iohk/midnight-identity
 
 # 1. flake.nix — bump the midnight-zk input ref / rev
 $EDITOR flake.nix

@@ -1,12 +1,12 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Contributing to midnight-did-rs
+# Contributing to midnight-identity
 
-Thank you for considering a contribution! `midnight-did-rs` is the native
+Thank you for considering a contribution! `midnight-identity` is the native
 Rust port of the Midnight DID Method reference implementation (TypeScript:
 [`@midnight-ntwrk/midnight-did`](https://github.com/midnightntwrk/midnight-did)),
 aimed at running on every target Rust reaches — native server, desktop,
@@ -34,8 +34,8 @@ dev loop:
 1. **Clone + enter the devshell.** With [direnv](https://direnv.net/):
 
    ```bash
-   git clone https://github.com/midnightntwrk/midnight-did-rs.git
-   cd midnight-did-rs
+   git clone https://github.com/MediaNoxLabs/midnight-identity.git
+   cd midnight-identity
    direnv allow            # or: nix develop
    ```
 
@@ -134,7 +134,7 @@ regenerated `generated.rs` + keys in the same PR.
   for Markdown. The canonical Rust header is:
 
   ```rust
-  // This file is part of midnightntwrk/midnight-did-rs.
+  // This file is part of MediaNoxLabs/midnight-identity.
   // Copyright (C) 2026 Midnight Foundation
   // SPDX-License-Identifier: Apache-2.0
   // Licensed under the Apache License, Version 2.0 (the "License");
@@ -212,7 +212,7 @@ five-minute conversation beats a 500-line refactor request in review.
 ## Questions and help
 
 - **Found a bug or have a feature idea?** Open a
-  [GitHub issue](https://github.com/midnightntwrk/midnight-did-rs/issues).
+  [GitHub issue](https://github.com/MediaNoxLabs/midnight-identity/issues).
 - **ADR-level design question?** Tag the maintainers on the issue or
   draft PR — these decisions are worth getting right early.
 - **Security issue?** Don't open a public issue — see
