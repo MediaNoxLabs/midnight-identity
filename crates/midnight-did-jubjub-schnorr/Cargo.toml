@@ -1,0 +1,25 @@
+# This file is part of MediaNoxLabs/midnight-identity.
+# Copyright (C) 2026 Midnight Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name                   = "midnight-did-jubjub-schnorr"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+description            = "Schnorr-over-Jubjub signature suite for the Midnight DID/VC stack — the Rust port of @midnight-ntwrk/midnight-did-jubjub-schnorr, compatible with the in-circuit schnorrVerify."
+# Blocked on unpublished midnight-transient-crypto (see doc/publishing.md).
+publish = false
+
+[dependencies]
+midnight-transient-crypto = { workspace = true }
+rand                      = "0.8"
+sha2                      = "0.10"
+thiserror                 = "2"
+
+[dev-dependencies]
+hex = { workspace = true }

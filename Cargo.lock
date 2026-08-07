@@ -2322,6 +2322,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-did-jubjub-schnorr"
+version = "0.5.0"
+dependencies = [
+ "hex",
+ "midnight-transient-crypto",
+ "rand 0.8.6",
+ "sha2 0.10.9",
+ "thiserror",
+]
+
+[[package]]
 name = "midnight-did-method"
 version = "0.5.0"
 dependencies = [

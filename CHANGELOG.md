@@ -66,6 +66,16 @@ and the project adheres to [SemVer](https://semver.org/).
   - Test hardening: `offchain.rs` 47.7% → 99.6% lines,
     `crypto_codecs.rs` 66.2% → 99.4%; workspace coverage 77.2% →
     86.7%; **coverage floor raised 75 → 80**.
+- **`midnight-did-jubjub-schnorr` crate (issue #7)** — the
+  Schnorr-over-Jubjub suite (Rust port of the TS 0.5.0 package;
+  ADR-0009-approved new crate): seed→scalar/public-key derivation,
+  4-limb digest packing, `transientHash`-mod-2²⁴⁸ challenge (matching
+  in-circuit `schnorrVerify`; documented as **incompatible** with
+  `midnight_transient_crypto::schnorr`'s mod-r reduction in ledger-8+),
+  deterministic v1 nonce derivation, 96-byte encode/decode with
+  out-of-field + subgroup validation. Cross-language golden vectors
+  generated from the TS reference; a TS-produced signature verifies in
+  Rust byte-for-byte.
 - **ADR 0009 — crate granularity policy**: the six-reason split test
   (target/dep-weight isolation, publishing cadence, feature
   exclusivity, binding boundary, compile-time blast radius, pluggable
