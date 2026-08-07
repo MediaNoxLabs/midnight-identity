@@ -41,7 +41,7 @@ midnight-did-cli --help                       # full subcommand list
   "didDocument": {
     "@context": [
       "https://www.w3.org/ns/did/v1",
-      "https://w3c.github.io/vc-jws-2020/contexts/v1"
+      "https://w3id.org/security/jwk/v1"
     ],
     "controller": "did:midnight:undeployed:0123...cdef",
     "id":         "did:midnight:undeployed:0123...cdef"

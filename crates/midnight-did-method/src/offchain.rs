@@ -618,7 +618,7 @@ pub fn offchain_state_to_did_document(
     Ok(OffchainProjectedDocument {
         context: DocumentContext::Many(vec![
             "https://www.w3.org/ns/did/v1".into(),
-            "https://w3c.github.io/vc-jws-2020/contexts/v1".into(),
+            "https://w3id.org/security/jwk/v1".into(),
         ]),
         id: DidString::parse(&did.0)?,
         also_known_as: if state.also_known_as.is_empty() {

@@ -27,3 +27,7 @@ thiserror            = "2"
 
 [dev-dependencies]
 tokio = { version = "1", features = [ "macros", "rt" ] }
+
+# For the live-resolve example only (examples build against dev-deps).
+midnight-did-api    = { workspace = true }
+midnight-did-method = { workspace = true }

@@ -318,7 +318,7 @@ async fn resolved_document_carries_w3c_contexts() {
     );
     assert_eq!(
         ctx_array.get(1).and_then(|v| v.as_str()),
-        Some("https://w3c.github.io/vc-jws-2020/contexts/v1")
+        Some("https://w3id.org/security/jwk/v1")
     );
 }
 

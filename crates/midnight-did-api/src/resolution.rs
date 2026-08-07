@@ -172,7 +172,7 @@ pub fn ledger_state_to_did_document(
     Ok(DidDocument {
         context: DocumentContext::Many(vec![
             "https://www.w3.org/ns/did/v1".into(),
-            "https://w3c.github.io/vc-jws-2020/contexts/v1".into(),
+            "https://w3id.org/security/jwk/v1".into(),
         ]),
         id: DidString::parse(did.clone()).map_err(|e| ApiError::mapping(format!("invalid DID id: {e}")))?,
         controller: Some(Controller::One(

@@ -29,6 +29,20 @@ and the project adheres to [SemVer](https://semver.org/).
     compact PR): the constructor's initial-state scaffold is flat
     rather than `[4][15]`-chunked (A29), and the generated `id()`
     accessor decodes via field-repr where cells are alignment-encoded.
+  - **Live acceptance passed (2026-08-07)**: a 0.5.0 DID deployed via
+    the TS reference stack resolves from pure Rust
+    (`cargo run -p midnight-did-indexer --example live_resolve`) with
+    **byte-identical metadata** and a document identical to the
+    upstream `MidnightDIDResolver` output modulo TS's `null`-for-empty
+    quirk. Harness: `infra/standalone.yml` +
+    `doc/integration-standalone.md`.
+
+### Fixed
+
+- DID document `@context` updated to the 0.5.0 spelling
+  (`https://w3id.org/security/jwk/v1`, was the stale
+  `vc-jws-2020` URL) in `resolution.rs`, `offchain.rs`, and the 13
+  API JSON fixtures — found by the live parity diff.
 
 - Repository moved to `MediaNoxLabs/midnight-identity` (from
   `yshyn-iohk/midnight-did-rs`); all self-references, Cargo `repository`/
