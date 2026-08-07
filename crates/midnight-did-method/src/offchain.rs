@@ -1009,21 +1009,32 @@ mod tests {
     }
 
     #[test]
-    fn key_kind_from_jwk_rejects_unsupported_profiles() {
-        // RSA/Ed25519 passes the generic JWK validation (the coordinate
-        // lengths line up) but is not an offchain wire profile.
-        let jwk = PublicKeyJwk::new(NewPublicKeyJwk {
-            kty: KeyType::RSA,
-            crv: CurveType::Ed25519,
-            x: encode_base64url(&[7u8; 32]),
-            y: Some(encode_base64url(&[9u8; 32])),
-            extensions: Default::default(),
-        })
-        .expect("RSA jwk passes generic validation");
-        assert!(matches!(
-            key_kind_from_jwk(&jwk),
-            Err(OffchainError::UnsupportedKeyType { .. })
-        ));
+    fn unsupported_jwk_profiles_fail_at_construction() {
+        // After the issue-#17 fix, the domain validator's pairing rules
+        // (OKP/EC curve restrictions + coordinate-table rejection for
+        // RSA/oct) leave exactly the seven offchain wire profiles
+        // constructible — so `key_kind_from_jwk`'s rejection arm is pure
+        // defense-in-depth, unreachable through validated values.
+        assert!(
+            PublicKeyJwk::new(NewPublicKeyJwk {
+                kty: KeyType::RSA,
+                crv: CurveType::Ed25519,
+                x: encode_base64url(&[7u8; 32]),
+                y: Some(encode_base64url(&[9u8; 32])),
+                extensions: Default::default(),
+            })
+            .is_err()
+        );
+        assert!(
+            PublicKeyJwk::new(NewPublicKeyJwk {
+                kty: KeyType::EC,
+                crv: CurveType::Ed25519,
+                x: encode_base64url(&[7u8; 32]),
+                y: Some(encode_base64url(&[9u8; 32])),
+                extensions: Default::default(),
+            })
+            .is_err()
+        );
     }
 
     #[test]

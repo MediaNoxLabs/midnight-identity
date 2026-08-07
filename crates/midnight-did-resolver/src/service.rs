@@ -24,9 +24,7 @@
 
 use midnight_did_api::resolution::{ResolvedMidnightDid, ledger_state_to_did_document, ledger_state_to_metadata};
 use midnight_did_indexer::IndexerClient;
-use midnight_did_method::midnight_did::{
-    MidnightNetwork, MidnightSubjectId, parse_midnight_did, parse_midnight_did_string,
-};
+use midnight_did_method::midnight_did::{MidnightSubjectId, parse_midnight_did, parse_midnight_did_string};
 use midnight_did_runtime::state_decode::{charged_state_from_bytes, decode_ledger_snapshot};
 
 use crate::config::ResolverConfig;
@@ -89,9 +87,6 @@ impl ResolverService {
                 NetworkMismatch,
                 "offchain DIDs are not resolvable against an indexer",
             ));
-        }
-        if matches!(network, MidnightNetwork::Offchain) {
-            return Err(ResolutionError::new(NetworkMismatch, "offchain network"));
         }
         if let Some(expected) = self.config.expected_network
             && network != expected

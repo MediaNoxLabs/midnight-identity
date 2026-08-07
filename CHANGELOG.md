@@ -102,6 +102,23 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Fixed
 
+- **Resolution wire parity complete (#15)**: `alsoKnownAs`/`service`
+  serialize as explicit `null` when absent, matching the TS document
+  type; the 13 API fixtures updated in lockstep. The resolved document
+  is now **byte-identical** to the TS resolver's output (verified
+  against the captured chain fixture).
+- **JWK validation gap (#17)**: a `(kty, crv)` pair with no
+  coordinate-table entry now fails validation (previously silently
+  skipped the length check), matching the TS validator — closes the
+  `kty: RSA, crv: Ed25519` hole; `decode_x`'s string-length fallback
+  removed with it.
+- **`assert_absolute_uri` (#18)**: removed the discarded
+  `normalize_uri_string` call and the misleading comment — TS parity is
+  returning the trimmed alias verbatim (verified against the reference).
+- **Resolver polish (#19)**: unreachable offchain-network branch
+  removed; `RESOLVER_ALLOW_PRIVATE_INDEXER` now strict-parses
+  (case-insensitive true/false/1/0/yes/no, anything else fails startup
+  instead of silently mapping to false).
 - DID document `@context` updated to the 0.5.0 spelling
   (`https://w3id.org/security/jwk/v1`, was the stale
   `vc-jws-2020` URL) in `resolution.rs`, `offchain.rs`, and the 13

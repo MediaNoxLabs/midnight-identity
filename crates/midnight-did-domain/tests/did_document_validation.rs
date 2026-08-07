@@ -745,11 +745,16 @@ fn did_document_metadata_round_trips_all_fields_and_extras() {
 
 #[test]
 fn did_resolution_result_round_trips() {
+    // alsoKnownAs/service serialize as explicit nulls when absent
+    // (TS parity, issue #15) — deserialization accepts both null and
+    // missing, so the round-trip is asymmetric by design.
     let value = json!({
         "@context": "https://w3id.org/did-resolution/v1",
         "didDocument": {
             "@context": "https://www.w3.org/ns/did/v1",
-            "id": SUBJECT
+            "alsoKnownAs": null,
+            "id": SUBJECT,
+            "service": null
         },
         "didDocumentMetadata": { "deactivated": true },
         "didResolutionMetadata": {

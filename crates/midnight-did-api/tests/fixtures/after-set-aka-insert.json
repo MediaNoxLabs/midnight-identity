@@ -8,7 +8,8 @@
       "did:example:aka-1"
     ],
     "controller": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "service": null
   },
   "didDocumentMetadata": {
     "created": "2023-11-14T22:13:20Z",

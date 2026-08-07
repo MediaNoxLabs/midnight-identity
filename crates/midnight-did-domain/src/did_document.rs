@@ -602,18 +602,22 @@ impl PublicKeyJwk {
             }
             _ => {}
         }
-        if let Some(expected_x) = public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::X) {
-            if decode_base64url_bytes(&self.x, expected_x, "publicKeyJwk.x").is_err() {
+        // TS parity (`isBase64UrlCoordinate`): an unsupported (kty, crv)
+        // pair has NO table entry and therefore rejects — a `None`
+        // byte-length is a validation failure, not a skip. This is what
+        // keeps e.g. `kty: RSA, crv: Ed25519` out (issue #17).
+        match public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::X) {
+            Some(expected_x) if decode_base64url_bytes(&self.x, expected_x, "publicKeyJwk.x").is_ok() => {}
+            _ => {
                 issues.push(ValidationIssue::new(
                     "publicKeyJwk.x must be canonical base64url for the supported curve length",
                 ));
             }
         }
         if let Some(y) = &self.y {
-            if let Some(expected_y) =
-                public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::Y)
-            {
-                if decode_base64url_bytes(y, expected_y, "publicKeyJwk.y").is_err() {
+            match public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::Y) {
+                Some(expected_y) if decode_base64url_bytes(y, expected_y, "publicKeyJwk.y").is_ok() => {}
+                _ => {
                     issues.push(ValidationIssue::new(
                         "publicKeyJwk.y must be canonical base64url for the supported curve length",
                     ));
@@ -634,7 +638,11 @@ impl PublicKeyJwk {
     /// `(kty, crv)` profile.
     pub fn decode_x(&self) -> Result<Vec<u8>, CodecError> {
         let expected = public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::X)
-            .unwrap_or(self.x.len());
+            .ok_or_else(|| CodecError::UnexpectedByteLength {
+                label: "publicKeyJwk.x (unsupported kty/crv profile)".into(),
+                expected: 0,
+                actual: self.x.len(),
+            })?;
         decode_base64url_bytes(&self.x, expected, "publicKeyJwk.x")
     }
 }
@@ -956,7 +964,11 @@ pub struct DidDocument {
     /// DID Subject.
     pub id: DidString,
     /// Optional alternate identifiers.
-    #[serde(rename = "alsoKnownAs", default, skip_serializing_if = "Option::is_none")]
+    ///
+    /// TS parity (#15): serialized as an explicit `null` when absent —
+    /// the reference document type defaults these two fields to `null`
+    /// rather than omitting them.
+    #[serde(rename = "alsoKnownAs", default)]
     pub also_known_as: Option<Vec<String>>,
     /// Optional controller(s).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -980,7 +992,9 @@ pub struct DidDocument {
     #[serde(rename = "capabilityDelegation", default, skip_serializing_if = "Option::is_none")]
     pub capability_delegation: Option<Vec<DidKeyId>>,
     /// Service endpoints.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ///
+    /// TS parity (#15): explicit `null` when absent (see `also_known_as`).
+    #[serde(default)]
     pub service: Option<Vec<Service>>,
     /// Unrecognised properties (DID-Core allows extension).
     #[serde(flatten)]

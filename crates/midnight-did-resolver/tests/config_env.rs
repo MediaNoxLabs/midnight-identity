@@ -79,19 +79,26 @@ fn from_env_covers_defaults_overrides_and_errors() {
         ("1", true),
         ("true", true),
         ("yes", true),
+        ("TRUE", true), // case-insensitive (#19 strict-parse fix)
         ("0", false),
         ("false", false),
         ("no", false),
-        ("TRUE", false), // spelling is case-sensitive
-        ("", false),
+        ("No", false),
     ] {
         set("RESOLVER_ALLOW_PRIVATE_INDEXER", raw);
-        let cfg = ResolverConfig::from_env().expect("bool var never errors");
+        let cfg = ResolverConfig::from_env().expect("recognized bool spellings parse");
         assert_eq!(
             cfg.allow_private_indexer_overrides, expected,
             "RESOLVER_ALLOW_PRIVATE_INDEXER={raw:?}"
         );
     }
+    // Unrecognized spellings fail startup instead of silently mapping
+    // to false (#19).
+    set("RESOLVER_ALLOW_PRIVATE_INDEXER", "maybe");
+    let err = ResolverConfig::from_env().expect_err("garbage bool must fail");
+    assert!(err.contains("RESOLVER_ALLOW_PRIVATE_INDEXER"), "got {err}");
+    set("RESOLVER_ALLOW_PRIVATE_INDEXER", "");
+    assert!(ResolverConfig::from_env().is_err(), "empty bool must fail");
 
     // ── unparsable values fail startup with the var named ────────────
     clear_all();

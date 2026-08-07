@@ -79,7 +79,15 @@ impl ResolverConfig {
             cfg.timeout_ms = v.parse().map_err(|e| format!("RESOLVER_TIMEOUT_MS: {e}"))?;
         }
         if let Ok(v) = std::env::var("RESOLVER_ALLOW_PRIVATE_INDEXER") {
-            cfg.allow_private_indexer_overrides = matches!(v.as_str(), "1" | "true" | "yes");
+            cfg.allow_private_indexer_overrides = match v.to_ascii_lowercase().as_str() {
+                "1" | "true" | "yes" => true,
+                "0" | "false" | "no" => false,
+                other => {
+                    return Err(format!(
+                        "RESOLVER_ALLOW_PRIVATE_INDEXER: expected true/false/1/0/yes/no, got '{other}'"
+                    ));
+                }
+            };
         }
         Ok(cfg)
     }
