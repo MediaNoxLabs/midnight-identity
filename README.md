@@ -21,6 +21,11 @@ contract bindings, FFI). The roadmap extends the same foundations to
 Verifiable Credentials and a standalone DID resolver service — tracked
 in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues).
 
+**The Verifiable Credentials track has started** (issue #13): the
+credential model and the generated bindings for the Midnight VC
+Compact contracts now ship as `midnight-vc-domain` and
+`midnight-vc-runtime`.
+
 ## What's here
 
 | Crate | Purpose | Publishable |
@@ -34,10 +39,15 @@ in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues)
 | `midnight-did-resolver` | HTTP DID resolution service (axum) — Rust counterpart of `midnight-did-resolver` (TS) | no (service binary) |
 | `midnight-did-uniffi` | Swift / Kotlin / Python bindings (UniFFI) | no (by design) |
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
+| `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
+| `midnight-vc-runtime` | `compactc --rust` codegen target for the VC contracts (credentials / iso-registry / same-holder bindings) | no (`publish = false`)² |
 
 ¹ crates.io publication is blocked until the upstream `midnight-ledger`
 crates and `compact-runtime` are published; consume via git until then.
 See the publishing issue in the backlog.
+
+² same upstream blocker, and it is a generated-code artifact rather
+than a library surface — see [doc/publishing.md](./doc/publishing.md).
 
 ## Architecture
 
@@ -128,6 +138,7 @@ nix develop            # toolchain + compactc + third_party mounts
 just --list            # available recipes
 just ci                # fmt-check + lint + build + test + coverage-gate
 just codegen-check     # regen generated.rs, assert no drift
+just codegen-vc-check  # same, for the VC contract bindings
 just coverage          # HTML coverage report (line floor: see justfile)
 ```
 
@@ -141,8 +152,9 @@ the integration branch — PRs target `develop`.
 
 Every PR runs: fmt + clippy (`-D warnings`), tests on Linux + macOS,
 a `wasm32-unknown-unknown` build of the wasm-clean `midnight-did-domain`
-crate, a line-coverage floor (cargo-llvm-cov), and the codegen
-drift-check against the flake-pinned compactc.
+crate, a line-coverage floor (cargo-llvm-cov) over every first-party
+crate, and the DID and VC codegen drift-checks against the
+flake-pinned compactc.
 
 ## Community
 

@@ -32,11 +32,54 @@ codegen:
 codegen-check: codegen
     git diff --exit-code -- crates/midnight-did-runtime/src/contract crates/midnight-did-runtime/assets/keys
 
-# Our 7 workspace crates. Bare `cargo fmt/clippy/nextest` also sweep the
-# path-mounted third_party crates (cargo absorbs them as workspace
-# members), and we don't gate vendored code — so every recipe scopes to
-# this list, mirroring CI.
-crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr"
+# Re-generate the VC Rust bindings from the vendored Midnight VC contracts.
+#
+# Same compiler and flags as `codegen`, one invocation per contract entry point
+# (paths confirmed against each package's package.json `compact` script). Unlike
+# did.compact these contracts export only `pure circuit`s, so compactc emits no
+# zkir/prover/verifier artifacts and there is nothing to copy into `assets/`.
+#
+# `revocation-registry.compact` is deliberately absent: it is blocked on
+# compiler gap G1 (MediaNoxLabs/compact#5). See src/contract/mod.rs.
+codegen-vc:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git submodule update --init third_party/midnight-verifiable-credentials
+    mkdir -p target-gen crates/midnight-vc-runtime/src/contract
+    vc=third_party/midnight-verifiable-credentials/packages
+    # "<module>:<entry point>" — module name is the Rust file under src/contract/.
+    contracts=(
+        "credentials:$vc/core/primitives/credentials/src/credentials.compact"
+        "iso_registry:$vc/core/primitives/iso-registry/src/iso-registry.compact"
+        "same_holder:$vc/core/capabilities/same-holder/src/same-holder.compact"
+    )
+    for entry in "${contracts[@]}"; do
+        module="${entry%%:*}"
+        entry_point="${entry#*:}"
+        out="target-gen/vc-${module}-out"
+        rm -rf "$out"
+        compactc --rust --skip-ts "$entry_point" "$out"
+        # Header is prepended by this recipe (never hand-edited into the
+        # generated file) so it survives every regeneration byte-identically.
+        {
+            echo "//! GENERATED — do not edit; run \`just codegen-vc\`."
+            echo "//!"
+            echo "//! Source: \`${entry_point#third_party/midnight-verifiable-credentials/}\`"
+            echo "//! in the pinned \`third_party/midnight-verifiable-credentials\` submodule."
+            cat "$out/contract/lib.rs"
+        } > "crates/midnight-vc-runtime/src/contract/${module}.rs"
+    done
+    cargo fmt -p midnight-vc-runtime
+
+# Verify re-running the VC codegen produces no diff (regression signal for CI).
+codegen-vc-check: codegen-vc
+    git diff --exit-code -- crates/midnight-vc-runtime/src/contract
+
+# Our first-party workspace crates. Bare `cargo fmt/clippy/nextest` also
+# sweep the path-mounted third_party crates (cargo absorbs them as
+# workspace members), and we don't gate vendored code — so every recipe
+# scopes to this list, mirroring CI.
+crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr -p midnight-vc-domain -p midnight-vc-runtime"
 
 build:
     cargo build --all-targets {{crate_flags}}
@@ -61,8 +104,12 @@ coverage_floor := "85"
 
 # Coverage scope: every first-party crate; excludes the codegen artifact
 # (gated by codegen-check, not tests) and service/demo bin entrypoints.
-coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli"
-coverage_exclude := 'contract/generated\.rs|src/main\.rs|src/bin/'
+coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-vc-domain -p midnight-vc-runtime"
+# `contract/generated\.rs` is the DID codegen artifact; the three
+# `contract/{credentials,iso_registry,same_holder}\.rs` files are the VC ones.
+# Generated code is gated by `codegen-check` / `codegen-vc-check`, not by tests;
+# every hand-written line in those crates stays in scope.
+coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/iso_registry\.rs|contract/same_holder\.rs|src/main\.rs|src/bin/'
 
 # HTML coverage report for humans.
 coverage:

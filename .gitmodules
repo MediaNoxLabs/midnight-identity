@@ -2,3 +2,7 @@
 	path = third_party/midnight-did
 	url = https://github.com/midnightntwrk/midnight-did.git
 	branch = main
+[submodule "third_party/midnight-verifiable-credentials"]
+	path = third_party/midnight-verifiable-credentials
+	url = https://github.com/midnightntwrk/midnight-verifiable-credentials.git
+	branch = main

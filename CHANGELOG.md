@@ -14,6 +14,73 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Added
 
+- **VC core crates, slice 1 (issue #13)** — the Verifiable Credentials
+  track starts. Split per ADR 0009's "by spec boundary, not per
+  credential family" directive: one credential-model crate and one
+  generated-bindings crate.
+  - New crate **`midnight-vc-domain`** (ADR 0009 rules 1 + 2): the
+    pure-data credential model — `CredentialSchemaDescriptor`,
+    `CredentialClaimDescriptor`, `ClaimDisclosure`
+    (public / selective / committed / predicate-only),
+    `CredentialCapabilityDescriptor`, `ProofArtifactRequirement`,
+    `CredentialPackageRequirement`, `CredentialCompositionManifest`,
+    `CredentialFamilyDefinition`, the `CredentialCodec` /
+    `PresentationCodec` traits + `CodecDescriptor`, the
+    `CredentialModelError` vocabulary and the full descriptor
+    validators. Also the status vocabulary from `core/status`
+    (`StatusMode` / `EnabledStatusMode`, `StatusBinding`,
+    `StatusPolicy`, `FreshnessPolicy`, `StatusEvidence`, `StatusQuery`,
+    `StatusState`, `StatusCapabilityDescriptor`). Zero `midnight-*`
+    dependencies — wasm-clean like `midnight-did-domain`, and
+    publishable on its own cadence. serde derives reproduce the
+    TypeScript wire spellings exactly (camelCase properties,
+    kebab-case enum literals, absent-not-null optionals); 72 tests,
+    **100% line coverage**.
+  - New crate **`midnight-vc-runtime`** (ADR 0009 rule 1 — drags
+    `compact-runtime` → halo2/arkworks, so it cannot join the wasm
+    gate): the `compactc --rust --skip-ts` codegen target for the three
+    VC contracts the codegen survey confirmed compile TODO-free —
+    `core/primitives/credentials/src/credentials.compact` (the VC/VP
+    envelope), `core/primitives/iso-registry/src/iso-registry.compact`
+    and `core/capabilities/same-holder/src/same-holder.compact`. One
+    generated module per contract under `src/contract/`, re-exported as
+    modules (not globbed — `same-holder.compact` `include`s
+    `credentials.compact`, so its output redeclares those types).
+    `publish = false` per `doc/publishing.md`.
+  - New submodule **`third_party/midnight-verifiable-credentials`**,
+    pinned to rev **`a9f1d451afc10c9c44a2937e880a22870e7b65ed`** — the
+    rev the codegen survey validated. The VC repo is mid-restructure,
+    so floating on `main` risks silent breakage: between this pin and
+    `main` the credentials contract gained `verification-v1.compact`
+    (+471 lines), which the survey never exercised. Same pinning
+    discipline as the `did.compact` `42a8e4a` pin.
+  - **`just codegen-vc` / `just codegen-vc-check`** mirror the DID
+    `codegen` / `codegen-check` pair; `codegen-vc-check` is wired into
+    CI as its own job (the VC submodule is public, so the default
+    `GITHUB_TOKEN` fetches it). The `//! GENERATED` header is prepended
+    by the recipe, never hand-edited in, so it survives every
+    regeneration byte-identically. These contracts export only
+    `pure circuit`s, so compactc emits no zkir/prover/verifier
+    artifacts and there is nothing to vendor under `assets/`.
+  - Coverage scope extended to both crates; the three generated binding
+    modules join `contract/generated.rs` in `coverage_exclude`
+    (generated code is gated by `codegen-vc-check`, not by tests).
+
+  **Deferred, deliberately:**
+  - `packages/registry/status-registry/src/revocation-registry.compact`
+    is **blocked on compiler gap G1** (MediaNoxLabs/compact#5, fix in
+    flight) and is left out, with a `TODO(#13/G1)` in
+    `crates/midnight-vc-runtime/src/contract/mod.rs` recording that it
+    joins `just codegen-vc` once G1 lands.
+  - `core/status/src/outcomes.ts` and `ports.ts` (verification outcome
+    codes, reader/writer/verifier ports) are behavioural rather than
+    plain data and belong with the status-verification slice.
+  - The ported TS packages (`packages/core/model`, `packages/core/status`)
+    landed upstream **after** the pinned codegen rev, so the port
+    follows `main` rev `b8646e2`; the retrieval command is recorded in
+    `midnight-vc-domain`'s crate docs. The submodule working tree stays
+    on the surveyed rev for codegen reproducibility.
+
 - **LiveBackend read path (issue #4)** — resolution can now go live:
   - `midnight-did-runtime::state_decode`: deserialize indexer
     `contractAction(address){state}` bytes (`tagged_deserialize` of

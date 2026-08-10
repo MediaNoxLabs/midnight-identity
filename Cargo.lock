@@ -2663,6 +2663,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-vc-domain"
+version = "0.5.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "midnight-vc-runtime"
+version = "0.5.0"
+dependencies = [
+ "compact-runtime",
+ "midnight-base-crypto",
+ "midnight-onchain-runtime",
+ "midnight-serialize",
+]
+
+[[package]]
 name = "midnight-zk-stdlib"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

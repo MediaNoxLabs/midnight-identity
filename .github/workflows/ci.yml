@@ -1,19 +1,20 @@
 name: CI
 
-# CI for the midnight-identity workspace. Gates the four functional crates
-# and the umbrella crate:
+# CI for the midnight-identity workspace. Gates the functional DID crates,
+# the umbrella crate and the VC credential model:
 #
 #   - midnight-did-domain : pure data model, zero midnight-* deps
 #   - midnight-did-method : Midnight method profile (did:midnight:*)
 #   - midnight-did-api    : operation builders on Contract<B: Backend>
 #                           (DidContract trait retired in v0.4.0 — ADR 0008)
 #   - midnight-did        : umbrella re-export crate
+#   - midnight-vc-domain  : pure-data VC credential model (issue #13)
 #
-# The codegen-target crate `midnight-did-runtime` is intentionally NOT in
-# the pre-check / test / wasm-build jobs — it transitively depends on
-# halo2 / arkworks crates that do not compile to wasm. It IS exercised
-# by the codegen-check job below (regenerates generated.rs under the
-# flake-pinned compactc and asserts no drift).
+# The codegen-target crates `midnight-did-runtime` and `midnight-vc-runtime`
+# are intentionally NOT in the test / wasm-build jobs — they transitively
+# depend on halo2 / arkworks crates that do not compile to wasm. They ARE
+# exercised by the codegen-check / codegen-vc-check jobs below (regenerate
+# the bindings under the flake-pinned compactc and assert no drift).
 #
 # Every job runs under `nix develop`. The devshell's shellHook
 # materialises path-mounted third_party crates (midnight-ledger,
@@ -21,15 +22,16 @@ name: CI
 # workspace Cargo.toml references — without them, bare `cargo` fails at
 # `cargo metadata`.
 #
-# Six jobs:
+# Seven jobs:
 #   - pre-check:    cargo fmt --check + clippy -D warnings on Linux.
 #   - test:         cargo test --locked on Linux AND macOS.
 #   - wasm-build:   cargo build --target wasm32-unknown-unknown on the
-#                   four wasm-clean crates.
+#                   wasm-clean crates.
 #   - coverage:     cargo-llvm-cov line-coverage floor (see justfile
-#                    `coverage_floor`) over the four gated crates.
+#                    `coverage_floor`) over every first-party crate.
 #   - codegen-check: regen generated.rs against flake-pinned compactc,
 #                    assert no drift.
+#   - codegen-vc-check: same, for the three VC contract binding modules.
 
 on:
   pull_request:
@@ -39,7 +41,10 @@ on:
       - "crates/midnight-did-api/**"
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
+      - "crates/midnight-vc-domain/**"
+      - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
+      - "third_party/midnight-verifiable-credentials/**"
       - "flake.nix"
       - "flake.lock"
       - "Justfile"
@@ -57,7 +62,10 @@ on:
       - "crates/midnight-did-api/**"
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
+      - "crates/midnight-vc-domain/**"
+      - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
+      - "third_party/midnight-verifiable-credentials/**"
       - "flake.nix"
       - "flake.lock"
       - "Justfile"
@@ -113,13 +121,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Check formatting (domain + method + api + umbrella)
+      - name: Check formatting (DID gated set + VC crates)
         run: |
           nix develop --command bash -c '
             cargo fmt -p midnight-did-domain --check &&
             cargo fmt -p midnight-did-method --check &&
             cargo fmt -p midnight-did-api    --check &&
-            cargo fmt -p midnight-did        --check
+            cargo fmt -p midnight-did        --check &&
+            cargo fmt -p midnight-vc-domain  --check &&
+            cargo fmt -p midnight-vc-runtime --check
           '
 
       - name: Run Clippy on midnight-did-domain
@@ -133,6 +143,14 @@ jobs:
 
       - name: Run Clippy on midnight-did (umbrella)
         run: nix develop --command cargo clippy -p midnight-did --all-targets -- -D warnings
+
+      - name: Run Clippy on midnight-vc-domain
+        run: nix develop --command cargo clippy -p midnight-vc-domain --all-targets -- -D warnings
+
+      # The generated binding modules carry compactc's own #![allow(clippy::all)],
+      # so this lints the hand-written lib.rs / contract/mod.rs surface.
+      - name: Run Clippy on midnight-vc-runtime
+        run: nix develop --command cargo clippy -p midnight-vc-runtime --all-targets -- -D warnings
 
   # Test matrix on Linux + macOS.
   test:
@@ -180,8 +198,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-target-did-
 
-      - name: Run tests (domain + method + api)
-        run: nix develop --command cargo test -p midnight-did-domain -p midnight-did-method -p midnight-did-api --locked
+      - name: Run tests (domain + method + api + vc-domain)
+        run: |
+          nix develop --command cargo test --locked \
+            -p midnight-did-domain -p midnight-did-method -p midnight-did-api \
+            -p midnight-vc-domain
 
   # Build the wasm-clean crates against wasm32-unknown-unknown.
   wasm-build:
@@ -312,3 +333,33 @@ jobs:
 
       - name: Run codegen and assert no drift
         run: nix develop --command just codegen-check
+
+  # Same gate for the VC contracts (issue #13): regenerate the three
+  # credentials / iso-registry / same-holder binding modules from the pinned
+  # `third_party/midnight-verifiable-credentials` submodule and assert no drift
+  # against the committed files.
+  #
+  # `midnightntwrk/midnight-verifiable-credentials` is public, so the submodule
+  # fetches with the default GITHUB_TOKEN — no extra credentials needed.
+  codegen-vc-check:
+    name: Codegen regen check (VC contracts -> vc-runtime bindings)
+    needs: pre-check
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Magic Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+
+      - name: Run VC codegen and assert no drift
+        run: nix develop --command just codegen-vc-check
