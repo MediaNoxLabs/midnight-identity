@@ -169,6 +169,15 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Fixed
 
+- **`codegen-check` was half-vacuous**: `assets/keys/*.zkir` were never
+  tracked (and not gitignored), so the gate's artifact diff compared
+  nothing and always passed. The 12 `.zkir` circuit artifacts are now
+  tracked — verified byte-reproducible across regeneration under the
+  flake-pinned compactc — so circuit-lowering drift is caught instead of
+  silently ignored. The recipe documents that `*.prover`/`*.verifier`
+  stay ungated because the devshell ships no `zkir` tool and therefore
+  never emits them.
+
 - **Resolution wire parity complete (#15)**: `alsoKnownAs`/`service`
   serialize as explicit `null` when absent, matching the TS document
   type; the 13 API fixtures updated in lockstep. The resolved document

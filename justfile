@@ -29,6 +29,16 @@ codegen:
     cargo fmt -p midnight-did-runtime
 
 # Verify re-running codegen produces no diff (regression signal for CI).
+#
+# Gate scope: `src/contract/generated.rs` AND the 12 `assets/keys/*.zkir`
+# circuit artifacts — both are tracked and byte-reproducible under the
+# flake-pinned compactc (verified 2026-08-10), so a change in circuit
+# lowering shows up here rather than silently.
+#
+# NOT gated: `*.prover` / `*.verifier` proving keys. The devshell has no
+# `zkir` tool ("Warning: ZKIR not found; skipping final circuit
+# compilation"), so `just codegen` never emits them and there is nothing
+# to compare. Wire them in only alongside a zkir-providing devshell.
 codegen-check: codegen
     git diff --exit-code -- crates/midnight-did-runtime/src/contract crates/midnight-did-runtime/assets/keys
 
@@ -100,7 +110,7 @@ lint:
 
 # Line-coverage floor enforced by `coverage-gate` (and CI). Raise it as
 # coverage improves; never lower it to admit a regression.
-coverage_floor := "85"
+coverage_floor := "87"
 
 # Coverage scope: every first-party crate; excludes the codegen artifact
 # (gated by codegen-check, not tests) and service/demo bin entrypoints.
