@@ -34,11 +34,11 @@
         "zkir-wasm": "zkir-wasm"
       },
       "locked": {
-        "lastModified": 1786007228,
-        "narHash": "sha256-V62yff1D++/fm2GoGLU8f74pqcpnrdlW+wAKQPCvg+M=",
+        "lastModified": 1786351847,
+        "narHash": "sha256-B+TeWuSfqt37Js/PbuQgIoCutwWB4NQRcLJj7sQrW8c=",
         "owner": "MediaNoxLabs",
         "repo": "compact",
-        "rev": "09263a9fe28da60782d9e9bfe36280feb920548d",
+        "rev": "e5fa4f6f108bf7f188e020c1b6685d30a7ff9507",
         "type": "github"
       },
       "original": {

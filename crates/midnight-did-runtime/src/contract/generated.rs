@@ -1585,25 +1585,29 @@ where
     }
     pub fn initial_state(&self, ctx: ConstructorContext<PS>) -> Result<ConstructorResult<PS>, CompactError> {
         let sv = new_array(vec![
-            new_cell(0u32),
-            new_cell(compact_runtime::JubjubPoint::default()),
-            new_cell(compact_runtime::JubjubPoint::default()),
-            new_cell(ContractAddress::default()),
-            new_map(),
-            new_cell(0u64),
-            new_cell(0u64),
-            new_cell(0u64),
-            new_cell(false),
-            new_cell(false),
-            new_cell(0u64),
-            new_map(),
-            new_map(),
-            new_map(),
-            new_map(),
-            new_map(),
-            new_map(),
-            new_map(),
-            new_map(),
+            new_array(vec![
+                new_cell(0u32),
+                new_cell(compact_runtime::JubjubPoint::default()),
+                new_cell(compact_runtime::JubjubPoint::default()),
+                new_cell(ContractAddress::default()),
+            ]),
+            new_array(vec![
+                new_map(),
+                new_cell(0u64),
+                new_cell(0u64),
+                new_cell(0u64),
+                new_cell(false),
+                new_cell(false),
+                new_cell(0u64),
+                new_map(),
+                new_map(),
+                new_map(),
+                new_map(),
+                new_map(),
+                new_map(),
+                new_map(),
+                new_map(),
+            ]),
         ]);
         let state = ChargedState::new(sv);
         let qctx = QueryContext::new(state, compact_runtime::ContractAddress::default());
