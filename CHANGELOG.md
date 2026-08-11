@@ -67,11 +67,8 @@ and the project adheres to [SemVer](https://semver.org/).
     (generated code is gated by `codegen-vc-check`, not by tests).
 
   **Deferred, deliberately:**
-  - `packages/registry/status-registry/src/revocation-registry.compact`
-    is **blocked on compiler gap G1** (MediaNoxLabs/compact#5, fix in
-    flight) and is left out, with a `TODO(#13/G1)` in
-    `crates/midnight-vc-runtime/src/contract/mod.rs` recording that it
-    joins `just codegen-vc` once G1 lands.
+  - (Resolved later in this same release: `revocation-registry.compact`
+    joined once G1 landed — see *Changed* below.)
   - `core/status/src/outcomes.ts` and `ports.ts` (verification outcome
     codes, reader/writer/verifier ports) are behavioural rather than
     plain data and belong with the status-verification slice.
