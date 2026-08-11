@@ -167,6 +167,18 @@ and the project adheres to [SemVer](https://semver.org/).
   UniFFI (one cdylib), future WASM as a single sibling leaf; current
   9 crates audited (all pass), #8 to absorb `midnight-did-indexer`.
 
+### Changed
+
+- compact pin bumped to the promoted stable `codegen-rust` head
+  (toolchain **0.31.111** = A29 chunked scaffold + A30 alignment-aware
+  decode + G1 trapping-arith projection). Verified: **zero** codegen
+  drift for `did.compact` — `generated.rs` and all 12 tracked `.zkir`
+  byte-identical.
+- **`revocation_registry` joins `midnight-vc-runtime`** (issue #13):
+  G1 unblocked `revocation-registry.compact`, which now emits a
+  4,065-line binding module with zero `unimplemented!()`. All four VC
+  core contracts are bound.
+
 ### Fixed
 
 - **`codegen-check` was half-vacuous**: `assets/keys/*.zkir` were never

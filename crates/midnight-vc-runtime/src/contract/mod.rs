@@ -27,18 +27,20 @@
 //! | [`credentials`] | `packages/core/primitives/credentials/src/credentials.compact` |
 //! | [`iso_registry`] | `packages/core/primitives/iso-registry/src/iso-registry.compact` |
 //! | [`same_holder`] | `packages/core/capabilities/same-holder/src/same-holder.compact` |
+//! | [`revocation_registry`] | `packages/registry/status-registry/src/revocation-registry.compact` |
 //!
 //! The modules are re-exported as modules rather than glob-re-exported:
 //! `same-holder.compact` `include`s `credentials.compact`, so its generated
 //! output redeclares every credentials type and a flat re-export would collide.
 //!
-//! TODO(#13/G1): `packages/registry/status-registry/src/revocation-registry.compact`
-//! is not generated here — it is blocked on compiler gap G1
-//! (MediaNoxLabs/compact#5, fix in flight). It joins this module, and
-//! `just codegen-vc`, once G1 lands.
+//! `revocation_registry` joined in the compact 0.31.111 pin: it was blocked
+//! on compiler gap G1 (struct-field projection in trapping-arithmetic
+//! operands, MediaNoxLabs/compact#5) until that fix promoted to the stable
+//! `codegen-rust` branch.
 
 #![allow(missing_docs)] // generated modules carry their own header docs
 
 pub mod credentials;
 pub mod iso_registry;
+pub mod revocation_registry;
 pub mod same_holder;

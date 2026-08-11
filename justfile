@@ -48,9 +48,6 @@ codegen-check: codegen
 # (paths confirmed against each package's package.json `compact` script). Unlike
 # did.compact these contracts export only `pure circuit`s, so compactc emits no
 # zkir/prover/verifier artifacts and there is nothing to copy into `assets/`.
-#
-# `revocation-registry.compact` is deliberately absent: it is blocked on
-# compiler gap G1 (MediaNoxLabs/compact#5). See src/contract/mod.rs.
 codegen-vc:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -62,6 +59,7 @@ codegen-vc:
         "credentials:$vc/core/primitives/credentials/src/credentials.compact"
         "iso_registry:$vc/core/primitives/iso-registry/src/iso-registry.compact"
         "same_holder:$vc/core/capabilities/same-holder/src/same-holder.compact"
+        "revocation_registry:$vc/registry/status-registry/src/revocation-registry.compact"
     )
     for entry in "${contracts[@]}"; do
         module="${entry%%:*}"
@@ -119,7 +117,7 @@ coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-di
 # `contract/{credentials,iso_registry,same_holder}\.rs` files are the VC ones.
 # Generated code is gated by `codegen-check` / `codegen-vc-check`, not by tests;
 # every hand-written line in those crates stays in scope.
-coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/iso_registry\.rs|contract/same_holder\.rs|src/main\.rs|src/bin/'
+coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/iso_registry\.rs|contract/same_holder\.rs|contract/revocation_registry\.rs|src/main\.rs|src/bin/'
 
 # HTML coverage report for humans.
 coverage:

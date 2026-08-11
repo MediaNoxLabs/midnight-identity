@@ -89,11 +89,14 @@ pub fn decode_ledger_snapshot(state: &ChargedState<DefaultDB>) -> Result<DidLedg
     let view = ledger(state);
     let chunks = StateChunks::from_state(state)?;
 
-    // NOTE: not `view.id()`. The generated accessor decodes the cell via
-    // `decode_via_field_repr::<ContractAddress>` ([u8;32] FIELD_SIZE = 2),
-    // but a Bytes<32> cell is alignment-encoded as ONE 32-byte atom, so
-    // that accessor can never succeed against a real cell. Read the raw
-    // bytes directly. (Codegen follow-up tracked on the compact PR.)
+    // NOTE: not `view.id()`. compact 0.31.110 (A30) made
+    // `decode_via_field_repr` alignment-aware, which fixed the accessor for
+    // VM-produced reads — but a `Bytes<32>` cell whose value is all-zero
+    // normalizes to an EMPTY atom, and the empty-atom rule yields zero Frs
+    // where `[u8;32]::from_field_repr` demands 2. Verified against both a
+    // locally built cell and real deserialized chain state (alignment says
+    // `b32`, atoms say `[0]`); tracked as MediaNoxLabs/compact#15. Reading
+    // the raw cell bytes is correct for every value, zero or not.
     let id_hex = hex::encode(chunks.raw_bytes_cell(0, 3, "id")?);
     let controller_public_key_hex = jubjub_x_hex(
         &view
