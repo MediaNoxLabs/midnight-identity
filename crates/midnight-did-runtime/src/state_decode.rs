@@ -89,15 +89,15 @@ pub fn decode_ledger_snapshot(state: &ChargedState<DefaultDB>) -> Result<DidLedg
     let view = ledger(state);
     let chunks = StateChunks::from_state(state)?;
 
-    // NOTE: not `view.id()`. compact 0.31.110 (A30) made
-    // `decode_via_field_repr` alignment-aware, which fixed the accessor for
-    // VM-produced reads — but a `Bytes<32>` cell whose value is all-zero
-    // normalizes to an EMPTY atom, and the empty-atom rule yields zero Frs
-    // where `[u8;32]::from_field_repr` demands 2. Verified against both a
-    // locally built cell and real deserialized chain state (alignment says
-    // `b32`, atoms say `[0]`); tracked as MediaNoxLabs/compact#15. Reading
-    // the raw cell bytes is correct for every value, zero or not.
-    let id_hex = hex::encode(chunks.raw_bytes_cell(0, 3, "id")?);
+    // Through the generated accessor: A30 (compact 0.31.110) made
+    // `decode_via_field_repr` alignment-aware, including normalize-stripped
+    // all-zero Bytes<32> cells (re-padded from the alignment's declared
+    // length). An earlier failure here was a stale pre-A30 `compact-runtime`
+    // rlib — the path dep keeps version 0.16.100 across pin bumps and
+    // nix-store epoch mtimes defeat cargo's fingerprinting, so `cargo clean
+    // -p compact-runtime` is required after compact pin syncs
+    // (MediaNoxLabs/compact#15 has the full diagnosis).
+    let id_hex = hex::encode(view.id().map_err(|e| decode_err("id", &e))?.bytes);
     let controller_public_key_hex = jubjub_x_hex(
         &view
             .controller_public_key()
@@ -140,10 +140,10 @@ pub fn snapshot_from_bytes(bytes: &[u8]) -> Result<DidLedgerSnapshot, BackendErr
 // Collection walking
 // ─────────────────────────────────────────────────────────────────────
 
-/// Borrows of the two outer-array chunks (`[0]` = fields 0–3,
-/// `[1]` = fields 4–18).
+/// Borrow of the `[1]` chunk (fields 4–18) of the outer state array.
+/// `[0]` (fields 0–3) is validated for shape but read only through the
+/// generated accessors.
 struct StateChunks<'a> {
-    chunk0: &'a compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
     chunk1: &'a compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
 }
 
@@ -170,22 +170,10 @@ impl<'a> StateChunks<'a> {
                 ))),
             }
         };
-        Ok(Self {
-            chunk0: chunk(0)?,
-            chunk1: chunk(1)?,
-        })
-    }
-
-    /// Raw byte payload of a `Cell` at `[chunk][slot]`.
-    fn raw_bytes_cell(&self, chunk: usize, slot: usize, field: &str) -> Result<Vec<u8>, BackendError> {
-        let arr = if chunk == 0 { self.chunk0 } else { self.chunk1 };
-        let sv = arr
-            .get(slot)
-            .ok_or_else(|| BackendError::Decode(format!("missing ledger slot [{chunk}][{slot}] ({field})")))?;
-        let av = cell_value(sv, field)?;
-        aligned_bytes(&av)
-            .map(<[u8]>::to_vec)
-            .ok_or_else(|| BackendError::Decode(format!("field {field}: cell has no byte payload")))
+        // Validate [0]'s shape here so a malformed chunk-0 fails with a
+        // layout error rather than deep inside a generated accessor.
+        let _chunk0 = chunk(0)?;
+        Ok(Self { chunk1: chunk(1)? })
     }
 }
 
@@ -690,11 +678,18 @@ mod tests {
 
     #[test]
     fn missing_ledger_slot_is_rejected() {
-        // Drop the id cell ([0][3]) — the first raw read in decode order.
+        // Drop the id cell ([0][3]) — read through the generated accessor,
+        // whose VM read program surfaces the truncation as an out-of-bounds
+        // idx error wrapped in our Decode variant.
         let state = chain_state_with(|chunk0, _| {
             chunk0.truncate(3);
         });
-        assert_decode_err(decode_ledger_snapshot(&state), "missing ledger slot [0][3] (id)");
+        assert_decode_err(decode_ledger_snapshot(&state), "ledger field id");
+        // Collection slots still fail with the layout-error spelling.
+        let state = chain_state_with(|_, chunk1| {
+            chunk1.truncate(slot::SERVICES);
+        });
+        assert_decode_err(decode_ledger_snapshot(&state), "missing ledger slot [1][14] (services)");
     }
 
     #[test]

@@ -178,6 +178,16 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Fixed
 
+- **`ledger().id()` accessor adopted; raw-bytes workaround retired.**
+  The "A31" all-zero `Bytes<32>` decode failure turned out not to exist
+  at the pinned compiler: it was a **stale pre-A30 `compact-runtime`
+  rlib** — the path dep keeps version 0.16.100 across compact pin bumps
+  and nix-store epoch mtimes defeat cargo's fingerprinting, so the
+  content swap went unnoticed in BOTH build trees (`target/` and
+  `target/llvm-cov-target/`). Diagnosis: MediaNoxLabs/compact#15.
+  Operational rule: run `cargo clean -p compact-runtime` (in both
+  target dirs) after every compact pin sync.
+
 - **`codegen-check` was half-vacuous**: `assets/keys/*.zkir` were never
   tracked (and not gitignored), so the gate's artifact diff compared
   nothing and always passed. The 12 `.zkir` circuit artifacts are now
