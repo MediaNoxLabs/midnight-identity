@@ -1,7 +1,7 @@
 { ... }:
 {
   perSystem =
-    { pkgs, midnightDidRsLib, midnightLedgerSrc, midnightZkSrc, compactRuntimeRsSrc, compactRuntimeRsMacrosSrc, compactPkg, ... }:
+    { pkgs, midnightDidRsLib, midnightLedgerSrc, midnightZkSrc, compactRuntimeRsSrc, compactRuntimeRsMacrosSrc, factoryComponentsSrc, compactPkg, ... }:
     let
       inherit (midnightDidRsLib.rustTools) rust;
     in
@@ -76,6 +76,16 @@
             ln -s "$TARGET" "$LINK"
             echo "Linked $LINK -> $TARGET"
           fi
+
+          # Mount patextreme/ptah's source-only factory-components library at
+          # .ptah/libs. Its native components/ and std/ layout is preserved,
+          # so workflows can require ../../libs/components/<name>/component.
+          if [ -e "$ROOT_DIR/.ptah/libs" ] && [ ! -L "$ROOT_DIR/.ptah/libs" ]; then
+            echo "not replacing .ptah/libs: exists and is not a symlink — move it aside and re-enter" >&2
+            exit 1
+          fi
+          mkdir -p "$ROOT_DIR/.ptah"
+          ln -sfn "${factoryComponentsSrc}" "$ROOT_DIR/.ptah/libs"
 
           echo "Entered midnight-identity devshell. Run 'just --list' for available commands."
         '';

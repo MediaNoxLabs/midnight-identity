@@ -26,6 +26,12 @@
     compact = {
       url = "github:MediaNoxLabs/compact/codegen-rust";
     };
+    # Source-only input: the shared ptah workflow library is mounted under
+    # .ptah/libs by the devshell.
+    ptah = {
+      url = "github:patextreme/ptah";
+      flake = false;
+    };
   };
 
   outputs =
