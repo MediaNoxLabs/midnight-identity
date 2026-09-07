@@ -1,0 +1,24 @@
+# ptah agent registry (project layer).
+#
+# Discovery: ptah looks for .ptah/config.toml in the directory it runs
+# in and every parent directory, and also reads the user layer
+# ($XDG_CONFIG_HOME/ptah/config.toml or ~/.config/ptah/config.toml).
+# When both layers define the same agent name the project entry wins,
+# wholesale; agents defined in only one layer pass through.
+#
+# Fields per agent:
+#   command  required — the executable to spawn
+#   args     optional — argv after the command (default: none)
+#   env      optional — extra environment for the child; `${VAR}`
+#            interpolates from ptah's environment at resolve time
+#            (unset becomes empty) and values merge over the inherited
+#            environment.
+#
+# Example — uncomment and edit:
+#
+# [agents.claude]
+# command = "npx"
+# args = ["-y", "@agentclientprotocol/claude-agent-acp@latest"]
+#
+# [agents.claude.env]
+# ANTHROPIC_API_KEY = "${ANTHROPIC_API_KEY}"
