@@ -26,8 +26,10 @@
     compact = {
       url = "github:MediaNoxLabs/compact/codegen-rust";
     };
-    # Source-only input: the shared ptah workflow library is mounted under
-    # .ptah/libs by the devshell.
+    # Source-only input: the shared ptah workflow library, mounted under
+    # .ptah/libs by the opt-in `devShells.ptah` shell (`nix develop .#ptah`).
+    # The default devshell — and therefore every CI job — never evaluates
+    # this input.
     ptah = {
       url = "github:patextreme/ptah";
       flake = false;
