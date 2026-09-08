@@ -48,22 +48,33 @@ codegen-check: codegen
 # (paths confirmed against each package's package.json `compact` script). Unlike
 # did.compact these contracts export only `pure circuit`s, so compactc emits no
 # zkir/prover/verifier artifacts and there is nothing to copy into `assets/`.
+#
+# Entries split across two crates (ADR 0009): the four core-contract modules
+# land in midnight-vc-runtime; the credential-family prototypes (whose entire
+# compile closure — entry file, family subfiles, and the whole core
+# `packages/core/primitives/credentials` subtree — is byte-identical between
+# the vendored pin `a9f1d451` and lace-id-portal's `b68ae4af` upstream tree)
+# land in midnight-vc-families.
 codegen-vc:
     #!/usr/bin/env bash
     set -euo pipefail
     git submodule update --init third_party/midnight-verifiable-credentials
-    mkdir -p target-gen crates/midnight-vc-runtime/src/contract
+    mkdir -p target-gen crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract
     vc=third_party/midnight-verifiable-credentials/packages
-    # "<module>:<entry point>" — module name is the Rust file under src/contract/.
+    # "<module>:<crate>:<entry point>" — module name is the Rust file under the
+    # crate's src/contract/.
     contracts=(
-        "credentials:$vc/core/primitives/credentials/src/credentials.compact"
-        "iso_registry:$vc/core/primitives/iso-registry/src/iso-registry.compact"
-        "same_holder:$vc/core/capabilities/same-holder/src/same-holder.compact"
-        "revocation_registry:$vc/registry/status-registry/src/revocation-registry.compact"
+        "credentials:midnight-vc-runtime:$vc/core/primitives/credentials/src/credentials.compact"
+        "iso_registry:midnight-vc-runtime:$vc/core/primitives/iso-registry/src/iso-registry.compact"
+        "same_holder:midnight-vc-runtime:$vc/core/capabilities/same-holder/src/same-holder.compact"
+        "revocation_registry:midnight-vc-runtime:$vc/registry/status-registry/src/revocation-registry.compact"
+        "digital_passport:midnight-vc-families:$vc/prototypes/credential-families/digital-passport/src/digital-passport-credential.compact"
     )
     for entry in "${contracts[@]}"; do
         module="${entry%%:*}"
-        entry_point="${entry#*:}"
+        rest="${entry#*:}"
+        crate="${rest%%:*}"
+        entry_point="${rest#*:}"
         out="target-gen/vc-${module}-out"
         rm -rf "$out"
         compactc --rust --skip-ts "$entry_point" "$out"
@@ -75,25 +86,36 @@ codegen-vc:
             echo "//! Source: \`${entry_point#third_party/midnight-verifiable-credentials/}\`"
             echo "//! in the pinned \`third_party/midnight-verifiable-credentials\` submodule."
             cat "$out/contract/lib.rs"
-        } > "crates/midnight-vc-runtime/src/contract/${module}.rs"
+        } > "crates/${crate}/src/contract/${module}.rs"
     done
-    cargo fmt -p midnight-vc-runtime
+    cargo fmt -p midnight-vc-runtime -p midnight-vc-families
 
 # Verify re-running the VC codegen produces no diff (regression signal for CI).
 codegen-vc-check: codegen-vc
-    git diff --exit-code -- crates/midnight-vc-runtime/src/contract
+    git diff --exit-code -- crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract
 
 # Our first-party workspace crates. Bare `cargo fmt/clippy/nextest` also
 # sweep the path-mounted third_party crates (cargo absorbs them as
 # workspace members), and we don't gate vendored code — so every recipe
 # scopes to this list, mirroring CI.
-crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr -p midnight-vc-domain -p midnight-vc-runtime"
+crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-runtime"
+
+# The credential-families crate exposes its bindings only under per-family
+# cargo features (`default = []`), so gates that must compile them run this
+# scoped second pass. It is a SEPARATE invocation on purpose: cargo feature
+# flags apply to every package in one command, so folding `--all-features`
+# into {{crate_flags}} would flip other crates' feature-dependent behavior
+# (e.g. midnight-did-uniffi's). `cargo fmt` needs no such pass — it takes no
+# feature flags and formats cfg'd-out code anyway.
+families_flags := "-p midnight-vc-families --all-features"
 
 build:
     cargo build --all-targets {{crate_flags}}
+    cargo build --all-targets {{families_flags}}
 
 test:
     cargo nextest run {{crate_flags}}
+    cargo nextest run {{families_flags}}
 
 fmt:
     cargo fmt {{crate_flags}}
@@ -105,6 +127,7 @@ fmt-check:
 
 lint:
     cargo clippy --all-targets {{crate_flags}} -- -D warnings
+    cargo clippy --all-targets {{families_flags}} -- -D warnings
 
 # Line-coverage floor enforced by `coverage-gate` (and CI). Raise it as
 # coverage improves; never lower it to admit a regression.
@@ -112,12 +135,14 @@ coverage_floor := "87"
 
 # Coverage scope: every first-party crate; excludes the codegen artifact
 # (gated by codegen-check, not tests) and service/demo bin entrypoints.
-coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-vc-domain -p midnight-vc-runtime"
-# `contract/generated\.rs` is the DID codegen artifact; the three
-# `contract/{credentials,iso_registry,same_holder}\.rs` files are the VC ones.
-# Generated code is gated by `codegen-check` / `codegen-vc-check`, not by tests;
-# every hand-written line in those crates stays in scope.
-coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/iso_registry\.rs|contract/same_holder\.rs|contract/revocation_registry\.rs|src/main\.rs|src/bin/'
+coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-runtime"
+# `contract/generated\.rs` is the DID codegen artifact; the four
+# `contract/{credentials,iso_registry,same_holder,revocation_registry}\.rs`
+# files are the VC core ones, and `contract/digital_passport\.rs` is the
+# credential-family one. Generated code is gated by `codegen-check` /
+# `codegen-vc-check`, not by tests; every hand-written line in those crates
+# stays in scope.
+coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/iso_registry\.rs|contract/same_holder\.rs|contract/revocation_registry\.rs|contract/digital_passport\.rs|src/main\.rs|src/bin/'
 
 # HTML coverage report for humans.
 coverage:

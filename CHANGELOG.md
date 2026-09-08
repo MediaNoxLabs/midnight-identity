@@ -14,6 +14,34 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Added
 
+- **Credential-family crate `midnight-vc-families`** — the home of the
+  Rust bindings for the Midnight VC **credential-family** prototype
+  contracts, landing with the **digital-passport** family (ADR 0009
+  split rule 2: families are pinned by external consumers and track
+  upstream family releases — a different lifecycle from the core
+  contracts in `midnight-vc-runtime`). One cargo feature per family,
+  `default = []`, so every consumer's opt-in is explicit; onboarding a
+  further family (`birth`, `birth-secret`) is purely additive — a new
+  feature, module, and codegen entry point. `publish = false` per
+  `doc/publishing.md` (git-dep consumption while `compact-runtime` /
+  `midnight-ledger` stay unpublished).
+  - The digital-passport binding is generated from the *existing*
+    vendored submodule pin (`a9f1d451`): the family's entire compile
+    closure (entry file, family subfiles, the whole
+    `packages/core/primitives/credentials` subtree) is byte-identical
+    to lace-id-portal's upstream tree (`b68ae4af`), so the generated
+    surface matches what lace-id consumes today. `just codegen-vc`
+    gains the fifth entry point;
+    `codegen-vc-check` now gates both crates' generated paths.
+  - First circuit tests in the VC layer: invariant-style smoke tests
+    (deterministic fixture ported from the vendored
+    `src/testing/credential-fixtures.ts` — no golden vectors) proving
+    the generated claim-root and commitment circuits compute:
+    deterministic, 32-byte, alteration-sensitive outputs.
+  - Gate wiring: justfile `families_flags` scoped `--all-features`
+    passes (fmt/clippy/test/build), coverage scope + exclusion, CI
+    path filters and per-crate steps. No wasm32 gate (compact-runtime
+    closure, ADR 0006).
 - **VC core crates, slice 1 (issue #13)** — the Verifiable Credentials
   track starts. Split per ADR 0009's "by spec boundary, not per
   credential family" directive: one credential-model crate and one

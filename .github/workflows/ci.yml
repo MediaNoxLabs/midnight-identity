@@ -15,6 +15,9 @@ name: CI
 # depend on halo2 / arkworks crates that do not compile to wasm. They ARE
 # exercised by the codegen-check / codegen-vc-check jobs below (regenerate
 # the bindings under the flake-pinned compactc and assert no drift).
+# `midnight-vc-families` is also a codegen target (same compact-runtime
+# closure, same wasm exclusion) but carries the family smoke tests, so it
+# gets its own --all-features test step in the test job.
 #
 # Every job runs under `nix develop`. The devshell's shellHook
 # materialises path-mounted third_party crates (midnight-ledger,
@@ -31,7 +34,8 @@ name: CI
 #                    `coverage_floor`) over every first-party crate.
 #   - codegen-check: regen generated.rs against flake-pinned compactc,
 #                    assert no drift.
-#   - codegen-vc-check: same, for the three VC contract binding modules.
+#   - codegen-vc-check: same, for the VC core + credential-family binding
+#                    modules (including midnight-vc-families).
 
 on:
   pull_request:
@@ -42,6 +46,7 @@ on:
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
       - "crates/midnight-vc-domain/**"
+      - "crates/midnight-vc-families/**"
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
@@ -63,6 +68,7 @@ on:
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
       - "crates/midnight-vc-domain/**"
+      - "crates/midnight-vc-families/**"
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
@@ -124,12 +130,13 @@ jobs:
       - name: Check formatting (DID gated set + VC crates)
         run: |
           nix develop --command bash -c '
-            cargo fmt -p midnight-did-domain --check &&
-            cargo fmt -p midnight-did-method --check &&
-            cargo fmt -p midnight-did-api    --check &&
-            cargo fmt -p midnight-did        --check &&
-            cargo fmt -p midnight-vc-domain  --check &&
-            cargo fmt -p midnight-vc-runtime --check
+            cargo fmt -p midnight-did-domain   --check &&
+            cargo fmt -p midnight-did-method   --check &&
+            cargo fmt -p midnight-did-api      --check &&
+            cargo fmt -p midnight-did          --check &&
+            cargo fmt -p midnight-vc-domain    --check &&
+            cargo fmt -p midnight-vc-families  --check &&
+            cargo fmt -p midnight-vc-runtime   --check
           '
 
       - name: Run Clippy on midnight-did-domain
@@ -151,6 +158,12 @@ jobs:
       # so this lints the hand-written lib.rs / contract/mod.rs surface.
       - name: Run Clippy on midnight-vc-runtime
         run: nix develop --command cargo clippy -p midnight-vc-runtime --all-targets -- -D warnings
+
+      # Same surface for the families crate, plus the feature-gated generated
+      # bindings and their smoke tests (--all-features: `default = []` there).
+      # Kept as its own step so --all-features never touches other crates.
+      - name: Run Clippy on midnight-vc-families
+        run: nix develop --command cargo clippy -p midnight-vc-families --all-features --all-targets -- -D warnings
 
   # Test matrix on Linux + macOS.
   test:
@@ -203,6 +216,12 @@ jobs:
           nix develop --command cargo test --locked \
             -p midnight-did-domain -p midnight-did-method -p midnight-did-api \
             -p midnight-vc-domain
+
+      # The credential-families smoke tests (deterministic fixtures ported
+      # from the vendored submodule) live behind the family feature; run them
+      # in their own invocation so --all-features stays scoped to this crate.
+      - name: Run tests (vc-families, all features)
+        run: nix develop --command cargo test --locked -p midnight-vc-families --all-features
 
   # Build the wasm-clean crates against wasm32-unknown-unknown.
   wasm-build:
@@ -334,8 +353,9 @@ jobs:
       - name: Run codegen and assert no drift
         run: nix develop --command just codegen-check
 
-  # Same gate for the VC contracts (issue #13): regenerate the three
-  # credentials / iso-registry / same-holder binding modules from the pinned
+  # Same gate for the VC contracts (issue #13): regenerate the four
+  # core binding modules plus the digital-passport family binding (in
+  # `midnight-vc-families`) from the pinned
   # `third_party/midnight-verifiable-credentials` submodule and assert no drift
   # against the committed files.
   #

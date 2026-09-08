@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 | `midnight-did-uniffi` | `publish = false` | FFI artifact, shipped as bindings not a crate |
 | `midnight-vc-domain` | **publishable now** | none — zero `midnight-*` deps |
 | `midnight-vc-runtime` | `publish = false` | `compact-runtime` + `midnight-ledger` unpublished; generated-code artifact |
+| `midnight-vc-families` | `publish = false` | `compact-runtime` + `midnight-ledger` unpublished; generated-code artifact (git-dep consumption until then) |
 
 **Why blocked:** crates.io rejects path-only dependencies. The
 workspace path-mounts `third_party/midnight-ledger/*` and

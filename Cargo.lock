@@ -2672,6 +2672,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-vc-families"
+version = "0.5.0"
+dependencies = [
+ "compact-runtime",
+ "midnight-base-crypto",
+ "midnight-onchain-runtime",
+ "midnight-serialize",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "midnight-vc-runtime"
 version = "0.5.0"
 dependencies = [
