@@ -616,6 +616,22 @@
         "type": "github"
       }
     },
+    "ptah": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788675350,
+        "narHash": "sha256-1ucaUNmdWbXZH3JYwm0EvVzX7aMK83Qv3QPBfd01uD4=",
+        "owner": "patextreme",
+        "repo": "ptah",
+        "rev": "1380e62a784e894c78a4270186d8d8a9213e4e35",
+        "type": "github"
+      },
+      "original": {
+        "owner": "patextreme",
+        "repo": "ptah",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "compact": "compact",
@@ -623,6 +639,7 @@
         "midnight-ledger": "midnight-ledger",
         "midnight-zk": "midnight-zk",
         "nixpkgs": "nixpkgs_14",
+        "ptah": "ptah",
         "rust-overlay": "rust-overlay"
       }
     },

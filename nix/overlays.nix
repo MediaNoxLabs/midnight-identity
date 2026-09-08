@@ -10,6 +10,7 @@
         midnightZkSrc              = midnightDidRsLib.sources.midnight-zk;
         compactRuntimeRsSrc        = "${inputs.compact}/runtime-rs";
         compactRuntimeRsMacrosSrc  = "${inputs.compact}/runtime-rs-macros";
+        factoryComponentsSrc       = "${inputs.ptah}/factory-components";
       };
     };
 }

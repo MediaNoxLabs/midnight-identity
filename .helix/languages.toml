@@ -1,0 +1,14 @@
+# Project-local Helix configuration for ptah Luau scripts.
+# The generated definitions expose the ptah API and sandboxed standard library.
+# Refresh them after upgrading ptah with: ptah types > .ptah/ptah.d.luau
+
+[language-server.luau]
+command = "luau-lsp"
+args = [
+  "lsp",
+  "--definitions=.ptah/ptah.d.luau",
+]
+
+# Keep ptah scripts on luau-lsp's standard platform, not Roblox.
+[language-server.luau.config.luau-lsp.platform]
+type = "standard"
