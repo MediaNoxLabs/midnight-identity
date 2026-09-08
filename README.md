@@ -24,7 +24,8 @@ in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues)
 **The Verifiable Credentials track has started** (issue #13): the
 credential model and the generated bindings for the Midnight VC
 Compact contracts now ship as `midnight-vc-domain` and
-`midnight-vc-runtime`.
+`midnight-vc-runtime`, with the credential-family prototype bindings
+(digital passport today) in `midnight-vc-families`.
 
 ## What's here
 
@@ -41,6 +42,7 @@ Compact contracts now ship as `midnight-vc-domain` and
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
 | `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
 | `midnight-vc-runtime` | `compactc --rust` codegen target for the VC contracts (credentials / iso-registry / same-holder bindings) | no (`publish = false`)² |
+| `midnight-vc-families` | `compactc --rust` codegen target for the credential-family prototype contracts (digital passport today; one cargo feature per family) | no (`publish = false`)² |
 
 ¹ crates.io publication is blocked until the upstream `midnight-ledger`
 crates and `compact-runtime` are published; consume via git until then.
