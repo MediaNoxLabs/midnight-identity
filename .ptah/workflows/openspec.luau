@@ -29,7 +29,7 @@ local prr = prReview.new({
 })
 
 -- WORKFLOW
-local changeName = "pr-review-instruction-contract"
+local changeName = "add-midnight-vc-families"
 
 opsx:groom(changeName)
 opsx:implement(changeName)
@@ -37,8 +37,28 @@ opsx:verify(changeName)
 
 local session = piAgent:session({
 	id = "committer",
-	resultSchema = { prUrl = { type = "string" } }
+	resultSchema = {
+		type = "object",
+		properties = { prUrl = { type = "string" } },
+		required = { "prUrl" },
+	},
 })
 session:prompt("Commit the changes and push to remote. Exclude changes in .ptah directory.")
-local result = session:prompt("Create a PR in draft state. Then pass the url back to the ptah via result submit tool")
-prr:review(result.result.prUrl :: string )
+
+-- Typed results degrade to nil by design; retry the PR-creation turn
+-- instead of passing a nil URL into the review loop.
+local prUrl: string? = nil
+for attempt = 1, 3 do
+	local result = session:prompt(
+		("Create a PR in draft state. Then pass the url back to ptah via the result submit tool as the `prUrl` field (attempt %d of 3)."):format(attempt)
+	)
+	if result.result ~= nil and result.result.prUrl ~= nil then
+		prUrl = result.result.prUrl
+		break
+	end
+	ptah.log("committer did not submit prUrl; retrying")
+end
+if prUrl == nil then
+	error("committer never submitted prUrl; aborting before pr-review", 0)
+end
+prr:review(prUrl)
