@@ -10,7 +10,7 @@
 - [ ] Description explains the what and the why
 - [ ] Tests added/updated for behavior changes
 - [ ] `nix develop -c just ci` passes locally
-- [ ] Commits are DCO signed-off (`git commit -s`) and GPG-signed (`-S`)
+- [ ] Commits are DCO signed-off (`git commit -s`) and signed (`-S`, GPG or SSH)
 - [ ] `CHANGELOG.md` updated under `[Unreleased]` (user-visible changes)
 - [ ] Docs/README updated where behavior or interfaces changed
 - [ ] No new TODOs without a tracking issue

@@ -88,10 +88,12 @@ regenerated `generated.rs` + keys in the same PR.
 - **Do not force-push** to a PR branch under review — reviewers lose
   their place. Push fixup commits and let the maintainer squash on
   merge.
-- **Every commit must be GPG-signed and DCO-signed-off.** This matches
+- **Every commit must be signed and DCO-signed-off.** This matches
   the policy of the upstream
   [`midnightntwrk/midnight-did`](https://github.com/midnightntwrk/midnight-did/blob/main/CONTRIBUTING.md)
-  repo and is enforced by CI.
+  repo. GPG and SSH signatures (`gpg.format = ssh`) are both
+  acceptable — what matters is that GitHub shows the commit as
+  *Verified*.
 
   The canonical incantation:
 
@@ -99,8 +101,8 @@ regenerated `generated.rs` + keys in the same PR.
   git commit -S -s -m "feat: short summary"
   ```
 
-  `-S` attaches a GPG signature; `-s` adds the
-  `Signed-off-by: Name <email>` trailer that asserts the
+  `-S` attaches a signature (GPG or SSH, per your git config); `-s`
+  adds the `Signed-off-by: Name <email>` trailer that asserts the
   [Developer Certificate of Origin](https://developercertificate.org/).
   Don't add the trailer manually — `-s` does it for you and a duplicate
   trailer will be flagged by review.
@@ -111,8 +113,10 @@ regenerated `generated.rs` + keys in the same PR.
   git log --format="%h %G? %s" -1
   ```
 
-  `G` is good, `B` is bad, `N` is missing. Amend immediately if you
-  see anything other than `G`.
+  `G` is good, `B` is bad, `N` is missing. Verifying SSH signatures
+  locally additionally needs a `gpg.ssh.allowedSignersFile`; without
+  one, rely on the *Verified* badge on GitHub. Amend immediately if
+  the signature is missing or bad.
 
 ---
 
