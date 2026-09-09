@@ -619,11 +619,11 @@
     "ptah": {
       "flake": false,
       "locked": {
-        "lastModified": 1788675350,
-        "narHash": "sha256-1ucaUNmdWbXZH3JYwm0EvVzX7aMK83Qv3QPBfd01uD4=",
+        "lastModified": 1788932080,
+        "narHash": "sha256-Symu0N+ms6bUfrsTifR9qVwVWpUkKJC/5Yl8kgr2Jmw=",
         "owner": "patextreme",
         "repo": "ptah",
-        "rev": "1380e62a784e894c78a4270186d8d8a9213e4e35",
+        "rev": "87454e19ca900ab59606aa53f8be4b1b38df68e3",
         "type": "github"
       },
       "original": {
