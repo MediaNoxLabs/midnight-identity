@@ -1,0 +1,53 @@
+[package]
+name                   = "midnight-vc-families"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+description            = "Codegen target for Midnight Verifiable Credentials credential families — Rust bindings emitted from the family prototype contracts (digital-passport today)."
+
+# `publish = false` per doc/publishing.md: like `midnight-vc-runtime`, this
+# crate depends on `midnight-compact-runtime` (path-mounted from third_party/compact/
+# runtime-rs by the devshell) and, transitively, the unpublished
+# midnight-ledger stack. crates.io rejects path-only dependencies, so
+# publishing is blocked until those upstreams publish; consumers use a git
+# dependency on this repository.
+publish = false
+
+[lib]
+name = "midnight_vc_families"
+path = "src/lib.rs"
+
+[features]
+# One feature per credential family, `default = []`: the family surfaces are
+# prototype-grade and churn upstream, so every consumer opts in explicitly
+# (design D2). Features are strictly additive — enabling a family never
+# changes another enabled family's surface.
+default = [  ]
+
+# The digital-passport family binding (types + `pure_circuits`) under
+# `contract::digital_passport`.
+digital-passport = [  ]
+
+[dependencies]
+# The runtime the generated circuits call into. `path =
+# "third_party/compact/runtime-rs"` (declared at the workspace root) is
+# materialised by `nix develop`'s shellHook from the codegen-rust compact flake
+# input, alongside its sibling `runtime-rs-macros` crate.
+midnight-compact-runtime = { workspace = true }
+
+# midnight-ledger crates the generated code needs at link time (transitively via
+# midnight-compact-runtime). Declared explicitly as an early-failure tripwire so a
+# missing third_party/midnight-ledger symlink fails with a clear error instead
+# of a link-time mystery — mirroring midnight-vc-runtime's rationale.
+midnight-base-crypto     = { workspace = true }
+midnight-onchain-runtime = { workspace = true }
+midnight-serialize       = { workspace = true }
+
+[dev-dependencies]
+# SHA-256 for the deterministic test fixtures ported from the standalone
+# family repo's `src/testing/credential-fixtures.ts` (openings are
+# sha256("opening:<field>") there); no golden outputs are frozen.
+sha2 = "0.10"

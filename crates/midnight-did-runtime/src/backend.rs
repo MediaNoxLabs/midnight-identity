@@ -30,9 +30,9 @@ use std::sync::Mutex;
 use async_trait::async_trait;
 // Re-export the upstream raw-state types under the backend module so
 // downstream consumers (api-layer tests, future custom backends) can
-// implement `Backend` without taking a direct `compact-runtime` dep.
-pub use compact_runtime::{ChargedState as RawChargedState, DefaultDB as RawDb};
-use compact_runtime::{ChargedState, DefaultDB, empty_charged_state};
+// implement `Backend` without taking a direct `midnight-compact-runtime` dep.
+pub use midnight_compact_runtime::{ChargedState as RawChargedState, DefaultDB as RawDb};
+use midnight_compact_runtime::{ChargedState, DefaultDB, empty_charged_state};
 
 use crate::contract_call::{DidContractCall, DidLedgerSnapshot};
 

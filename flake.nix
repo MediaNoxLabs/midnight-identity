@@ -24,7 +24,17 @@
       flake = false;
     };
     compact = {
-      url = "github:MediaNoxLabs/compact/codegen-rust";
+      # MediaNoxLabs/compact#70 — dogfood enclave + two Rust-codegen fixes
+      # (ternary sub-expressions, mixed-width operands). Experimental branch.
+      url = "github:MediaNoxLabs/compact/feature/add-digital-passport-dogfood-fixture";
+    };
+    # Source-only input: the shared ptah workflow library, mounted under
+    # .ptah/libs by the opt-in `devShells.ptah` shell (`nix develop .#ptah`).
+    # The default devshell — and therefore every CI job — never evaluates
+    # this input.
+    ptah = {
+      url = "github:patextreme/ptah";
+      flake = false;
     };
   };
 

@@ -1,12 +1,90 @@
 { ... }:
 {
   perSystem =
-    { pkgs, midnightDidRsLib, midnightLedgerSrc, midnightZkSrc, compactRuntimeRsSrc, compactRuntimeRsMacrosSrc, compactPkg, ... }:
+    { pkgs, midnightDidRsLib, midnightLedgerSrc, midnightZkSrc, compactRuntimeRsSrc, compactRuntimeRsMacrosSrc, factoryComponentsSrc, compactPkg, ... }:
     let
       inherit (midnightDidRsLib.rustTools) rust;
-    in
-    {
-      devShells.default = pkgs.mkShell {
+
+      # Materialise the third_party/ subtree symlinks shared by every shell.
+      thirdPartyMountsHook = ''
+        export ROOT_DIR=$(${pkgs.git}/bin/git rev-parse --show-toplevel)
+        cd "$ROOT_DIR"
+
+        # Materialize third_party/midnight-ledger as a symlink to the nix-store path.
+        TARGET="${midnightLedgerSrc}"
+        LINK="$ROOT_DIR/third_party/midnight-ledger"
+        mkdir -p "$ROOT_DIR/third_party"
+        if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
+          :
+        else
+          rm -rf "$LINK"
+          ln -s "$TARGET" "$LINK"
+          echo "Linked $LINK -> $TARGET"
+        fi
+
+        # Materialize third_party/midnight-zk as a symlink to the nix-store path.
+        # Provides the patched `midnight-proofs` crate referenced by
+        # [patch.crates-io] in the root Cargo.toml. See ADR 0006.
+        TARGET="${midnightZkSrc}"
+        LINK="$ROOT_DIR/third_party/midnight-zk"
+        if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
+          :
+        else
+          rm -rf "$LINK"
+          ln -s "$TARGET" "$LINK"
+          echo "Linked $LINK -> $TARGET"
+        fi
+
+        # Materialise compact's runtime-rs + runtime-rs-macros subtrees inside
+        # third_party/compact/, mirroring the in-repo layout so that the
+        # relative path `../runtime-rs-macros` (in compact-runtime's Cargo.toml)
+        # and `../runtime-rs` (in runtime-rs-macros' dev-deps) both resolve
+        # correctly without aliasing.
+        mkdir -p "$ROOT_DIR/third_party/compact"
+
+        TARGET="${compactRuntimeRsSrc}"
+        LINK="$ROOT_DIR/third_party/compact/runtime-rs"
+        if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
+          :
+        else
+          rm -rf "$LINK"
+          ln -s "$TARGET" "$LINK"
+          echo "Linked $LINK -> $TARGET"
+        fi
+
+        TARGET="${compactRuntimeRsMacrosSrc}"
+        LINK="$ROOT_DIR/third_party/compact/runtime-rs-macros"
+        if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
+          :
+        else
+          rm -rf "$LINK"
+          ln -s "$TARGET" "$LINK"
+          echo "Linked $LINK -> $TARGET"
+        fi
+      '';
+
+      # Mount patextreme/ptah's source-only factory-components library at
+      # .ptah/libs. Its native components/ and std/ layout is preserved,
+      # so workflows can require ../../libs/components/<name>/component.
+      # Wired only into devShells.ptah below: the default shell — and
+      # therefore every CI job, which enters via bare `nix develop` —
+      # never evaluates the `ptah` flake input (the string interpolation
+      # stays unforced).
+      ptahLibsMountHook = ''
+        if [ -e "$ROOT_DIR/.ptah/libs" ] && [ ! -L "$ROOT_DIR/.ptah/libs" ]; then
+          echo "not replacing .ptah/libs: exists and is not a symlink — move it aside and re-enter" >&2
+          exit 1
+        fi
+        mkdir -p "$ROOT_DIR/.ptah"
+        ln -sfn "${factoryComponentsSrc}" "$ROOT_DIR/.ptah/libs"
+        echo "Mounted .ptah/libs -> ${factoryComponentsSrc}"
+      '';
+
+      enterMessage = ''
+        echo "Entered midnight-identity devshell. Run 'just --list' for available commands."
+      '';
+
+      defaultShell = pkgs.mkShell {
         packages = [ compactPkg ] ++ (with pkgs; [
           rust
           just
@@ -21,68 +99,22 @@
           pi-coding-agent
         ]);
 
-        shellHook = ''
-          export ROOT_DIR=$(${pkgs.git}/bin/git rev-parse --show-toplevel)
-          cd "$ROOT_DIR"
-
-          # Materialize third_party/midnight-ledger as a symlink to the nix-store path.
-          TARGET="${midnightLedgerSrc}"
-          LINK="$ROOT_DIR/third_party/midnight-ledger"
-          mkdir -p "$ROOT_DIR/third_party"
-          if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
-            :
-          else
-            rm -rf "$LINK"
-            ln -s "$TARGET" "$LINK"
-            echo "Linked $LINK -> $TARGET"
-          fi
-
-          # Materialize third_party/midnight-zk as a symlink to the nix-store path.
-          # Provides the patched `midnight-proofs` crate referenced by
-          # [patch.crates-io] in the root Cargo.toml. See ADR 0006.
-          TARGET="${midnightZkSrc}"
-          LINK="$ROOT_DIR/third_party/midnight-zk"
-          if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
-            :
-          else
-            rm -rf "$LINK"
-            ln -s "$TARGET" "$LINK"
-            echo "Linked $LINK -> $TARGET"
-          fi
-
-          # Materialise compact's runtime-rs + runtime-rs-macros subtrees inside
-          # third_party/compact/, mirroring the in-repo layout so that the
-          # relative path `../runtime-rs-macros` (in compact-runtime's Cargo.toml)
-          # and `../runtime-rs` (in runtime-rs-macros' dev-deps) both resolve
-          # correctly without aliasing.
-          mkdir -p "$ROOT_DIR/third_party/compact"
-
-          TARGET="${compactRuntimeRsSrc}"
-          LINK="$ROOT_DIR/third_party/compact/runtime-rs"
-          if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
-            :
-          else
-            rm -rf "$LINK"
-            ln -s "$TARGET" "$LINK"
-            echo "Linked $LINK -> $TARGET"
-          fi
-
-          TARGET="${compactRuntimeRsMacrosSrc}"
-          LINK="$ROOT_DIR/third_party/compact/runtime-rs-macros"
-          if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
-            :
-          else
-            rm -rf "$LINK"
-            ln -s "$TARGET" "$LINK"
-            echo "Linked $LINK -> $TARGET"
-          fi
-
-          echo "Entered midnight-identity devshell. Run 'just --list' for available commands."
-        '';
+        shellHook = thirdPartyMountsHook + enterMessage;
 
         env = {
           RUST_LOG = "info";
         };
+      };
+    in
+    {
+      devShells.default = defaultShell;
+
+      # Opt-in shell for ptah workflow development (`nix develop .#ptah`):
+      # the default shell plus the .ptah/libs factory-components mount.
+      # Everything CI runs stays on devShells.default, so the personal-repo
+      # `ptah` input is only ever fetched/evaluated on explicit opt-in.
+      devShells.ptah = defaultShell.overrideAttrs {
+        shellHook = thirdPartyMountsHook + ptahLibsMountHook + enterMessage;
       };
     };
 }

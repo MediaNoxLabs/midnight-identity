@@ -24,7 +24,8 @@ in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues)
 **The Verifiable Credentials track has started** (issue #13): the
 credential model and the generated bindings for the Midnight VC
 Compact contracts now ship as `midnight-vc-domain` and
-`midnight-vc-runtime`.
+`midnight-vc-runtime`, with the credential-family prototype bindings
+(digital passport today) in `midnight-vc-families`.
 
 ## What's here
 
@@ -41,9 +42,10 @@ Compact contracts now ship as `midnight-vc-domain` and
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
 | `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
 | `midnight-vc-runtime` | `compactc --rust` codegen target for the VC contracts (credentials / iso-registry / same-holder bindings) | no (`publish = false`)² |
+| `midnight-vc-families` | `compactc --rust` codegen target for the credential-family prototype contracts (digital passport today; one cargo feature per family) | no (`publish = false`)² |
 
 ¹ crates.io publication is blocked until the upstream `midnight-ledger`
-crates and `compact-runtime` are published; consume via git until then.
+crates and `midnight-compact-runtime` are published; consume via git until then.
 See the publishing issue in the backlog.
 
 ² same upstream blocker, and it is a generated-code artifact rather
@@ -106,7 +108,7 @@ use midnight_did_runtime::{
     backend::RecordingBackend,
     contract_call::DidLedgerSnapshot,
 };
-use compact_runtime::ContractAddress;
+use midnight_compact_runtime::ContractAddress;
 
 let snapshot = DidLedgerSnapshot::default(); // or a real fixture
 let addr = ContractAddress::default();
@@ -169,8 +171,10 @@ flake-pinned compactc.
 ## Related repositories
 
 - [MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact) —
-  Compact compiler fork carrying the `--rust` codegen backend
-  (`codegen-rust` branch) and `compact-runtime`.
+  Compact compiler fork carrying the `--rust` codegen backend and
+  `midnight-compact-runtime`. Pinned to the `codegen-rust`-based
+  `feature/add-digital-passport-dogfood-fixture` branch
+  (MediaNoxLabs/compact#70) — compactc 0.31.119.
 - [midnightntwrk/midnight-did](https://github.com/midnightntwrk/midnight-did)
   — TypeScript reference implementation + the `did.compact` contract
   (vendored here as a submodule).
@@ -178,3 +182,11 @@ flake-pinned compactc.
   — TS resolver service; the model for the planned Rust resolver.
 - [midnightntwrk/midnight-verifiable-credentials](https://github.com/midnightntwrk/midnight-verifiable-credentials)
   — Compact-first VC stack; the model for the planned shared SSI crates.
+  Reset to core-only on 2026-09-08 (`754b2af`); our submodule pins the
+  pre-reset snapshot `a9f1d451` for the four core-contract modules.
+- [midnightntwrk/midnight-verifiable-credential-digital-passport](https://github.com/midnightntwrk/midnight-verifiable-credential-digital-passport)
+  — Standalone digital-passport credential family (the monorepo reset's
+  graduated home for it); the source of the `midnight-vc-families`
+  digital-passport binding (vendored as a submodule, pinned to
+  `v0.1.0-rc1`, core staged from the published
+  `@midnight-ntwrk/credential-compact` package at codegen time).

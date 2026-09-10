@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-vc-domain", "crates/midnight-vc-runtime" ]
+members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-runtime" ]
 
 [workspace.package]
 version      = "0.5.0"
@@ -24,11 +24,12 @@ midnight-zkir             = { path = "third_party/midnight-ledger/zkir" }
 midnight-zswap            = { path = "third_party/midnight-ledger/zswap" }
 # compact's runtime helper crate (path-mounted by devshell into third_party/compact/runtime-rs).
 # The sibling `third_party/compact/runtime-rs-macros` is materialised by the same
-# devshell hook because compact-runtime's manifest references it via the relative
+# devshell hook because the runtime crate's manifest references it via the relative
 # path `../runtime-rs-macros`. Mirroring compact's in-repo layout (runtime-rs +
 # runtime-rs-macros as siblings) keeps cargo's relative-path resolution working
-# without alias symlinks.
-compact-runtime = { path = "third_party/compact/runtime-rs" }
+# without alias symlinks. Upstream renamed the package compact-runtime →
+# midnight-compact-runtime (compact 0.31.116, codegen-rust); the dep key matches.
+midnight-compact-runtime = { path = "third_party/compact/runtime-rs" }
 # common
 serde      = { version = "1", features = [ "derive" ] }
 serde_json = "1"
@@ -37,8 +38,8 @@ hex        = "0.4"
 # `version = "=0.5.0"` is required for `cargo publish` to accept midnight-did-api's
 # manifest — crates.io rejects path-only dependencies. The `=` pin keeps the two
 # crates lock-stepped: bumping midnight-did-api to 0.1.1 must also bump
-# midnight-did-domain to 0.1.1. Same pattern as compact-runtime + compact-runtime-macros
-# in the codegen-rust toolchain.
+# midnight-did-domain to 0.1.1. Same pattern as midnight-compact-runtime +
+# midnight-compact-runtime-macros in the codegen-rust toolchain.
 midnight-did-domain = { path = "crates/midnight-did-domain", version = "=0.5.0" }
 # method crate — Midnight method profile + LedgerToDomain mapper + network mapping.
 midnight-did-method = { path = "crates/midnight-did-method", version = "=0.5.0" }
@@ -54,6 +55,9 @@ midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 # `vc-runtime` is the codegen target and stays unpublished.
 midnight-vc-domain  = { path = "crates/midnight-vc-domain", version = "=0.5.0" }
 midnight-vc-runtime = { path = "crates/midnight-vc-runtime" }
+# families crate — codegen target for the per-family VC prototype contracts
+# (digital-passport today); unpublished like vc-runtime, same blockers.
+midnight-vc-families = { path = "crates/midnight-vc-families" }
 
 # ---- Patch crates.io's `midnight-proofs` with the local fork ----
 #

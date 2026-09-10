@@ -15,6 +15,9 @@ name: CI
 # depend on halo2 / arkworks crates that do not compile to wasm. They ARE
 # exercised by the codegen-check / codegen-vc-check jobs below (regenerate
 # the bindings under the flake-pinned compactc and assert no drift).
+# `midnight-vc-families` is also a codegen target (same midnight-compact-runtime
+# closure, same wasm exclusion) but carries the family smoke tests, so it
+# gets its own --all-features test step in the test job.
 #
 # Every job runs under `nix develop`. The devshell's shellHook
 # materialises path-mounted third_party crates (midnight-ledger,
@@ -31,7 +34,8 @@ name: CI
 #                    `coverage_floor`) over every first-party crate.
 #   - codegen-check: regen generated.rs against flake-pinned compactc,
 #                    assert no drift.
-#   - codegen-vc-check: same, for the three VC contract binding modules.
+#   - codegen-vc-check: same, for the VC core + credential-family binding
+#                    modules (including midnight-vc-families).
 
 on:
   pull_request:
@@ -42,9 +46,11 @@ on:
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
       - "crates/midnight-vc-domain/**"
+      - "crates/midnight-vc-families/**"
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
+      - "third_party/midnight-verifiable-credential-digital-passport/**"
       - "flake.nix"
       - "flake.lock"
       - "justfile"
@@ -63,9 +69,11 @@ on:
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
       - "crates/midnight-vc-domain/**"
+      - "crates/midnight-vc-families/**"
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
+      - "third_party/midnight-verifiable-credential-digital-passport/**"
       - "flake.nix"
       - "flake.lock"
       - "justfile"
@@ -107,9 +115,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
-
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -124,12 +129,13 @@ jobs:
       - name: Check formatting (DID gated set + VC crates)
         run: |
           nix develop --command bash -c '
-            cargo fmt -p midnight-did-domain --check &&
-            cargo fmt -p midnight-did-method --check &&
-            cargo fmt -p midnight-did-api    --check &&
-            cargo fmt -p midnight-did        --check &&
-            cargo fmt -p midnight-vc-domain  --check &&
-            cargo fmt -p midnight-vc-runtime --check
+            cargo fmt -p midnight-did-domain   --check &&
+            cargo fmt -p midnight-did-method   --check &&
+            cargo fmt -p midnight-did-api      --check &&
+            cargo fmt -p midnight-did          --check &&
+            cargo fmt -p midnight-vc-domain    --check &&
+            cargo fmt -p midnight-vc-families  --check &&
+            cargo fmt -p midnight-vc-runtime   --check
           '
 
       - name: Run Clippy on midnight-did-domain
@@ -151,6 +157,12 @@ jobs:
       # so this lints the hand-written lib.rs / contract/mod.rs surface.
       - name: Run Clippy on midnight-vc-runtime
         run: nix develop --command cargo clippy -p midnight-vc-runtime --all-targets -- -D warnings
+
+      # Same surface for the families crate, plus the feature-gated generated
+      # bindings and their smoke tests (--all-features: `default = []` there).
+      # Kept as its own step so --all-features never touches other crates.
+      - name: Run Clippy on midnight-vc-families
+        run: nix develop --command cargo clippy -p midnight-vc-families --all-features --all-targets -- -D warnings
 
   # Test matrix on Linux + macOS.
   test:
@@ -175,9 +187,6 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -204,6 +213,12 @@ jobs:
             -p midnight-did-domain -p midnight-did-method -p midnight-did-api \
             -p midnight-vc-domain
 
+      # The credential-families smoke tests (deterministic fixtures ported
+      # from the vendored submodule) live behind the family feature; run them
+      # in their own invocation so --all-features stays scoped to this crate.
+      - name: Run tests (vc-families, all features)
+        run: nix develop --command cargo test --locked -p midnight-vc-families --all-features
+
   # Build the wasm-clean crates against wasm32-unknown-unknown.
   wasm-build:
     name: WASM target build
@@ -221,9 +236,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
-
       - name: Cache Cargo registry and wasm target
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -237,7 +249,7 @@ jobs:
             ${{ runner.os }}-wasm-
 
       # Only midnight-did-domain is wasm-clean today.
-      #   - method     -> midnight-base-crypto + compact-runtime (blst)
+      #   - method     -> midnight-base-crypto + midnight-compact-runtime (blst)
       #   - api        -> midnight-did-runtime  (blst via halo2)
       #   - umbrella   -> transitively depends on api/runtime
       # All three drag the `blst` C bindings into the wasm32 build, and
@@ -273,9 +285,6 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -328,19 +337,20 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
-
       - name: Run codegen and assert no drift
         run: nix develop --command just codegen-check
 
-  # Same gate for the VC contracts (issue #13): regenerate the three
-  # credentials / iso-registry / same-holder binding modules from the pinned
-  # `third_party/midnight-verifiable-credentials` submodule and assert no drift
-  # against the committed files.
+  # Same gate for the VC contracts (issue #13): regenerate the four
+  # core binding modules plus the digital-passport family binding (in
+  # `midnight-vc-families`) from the pinned sources — the four core modules
+  # from the frozen `third_party/midnight-verifiable-credentials` snapshot,
+  # the family from the standalone
+  # `third_party/midnight-verifiable-credential-digital-passport` repo with
+  # its `credential-compact` core fetched inside `just codegen-vc` — and
+  # assert no drift against the committed files.
   #
-  # `midnightntwrk/midnight-verifiable-credentials` is public, so the submodule
-  # fetches with the default GITHUB_TOKEN — no extra credentials needed.
+  # Both submodules are public, so they fetch with the default GITHUB_TOKEN —
+  # no extra credentials needed.
   codegen-vc-check:
     name: Codegen regen check (VC contracts -> vc-runtime bindings)
     needs: pre-check
@@ -357,9 +367,6 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Run VC codegen and assert no drift
         run: nix develop --command just codegen-vc-check

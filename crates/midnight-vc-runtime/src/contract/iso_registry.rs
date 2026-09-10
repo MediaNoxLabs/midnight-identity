@@ -32,9 +32,9 @@
 
 use std::marker::PhantomData;
 
-use compact_runtime::*;
+use midnight_compact_runtime::*;
 
-compact_runtime::check_runtime_version!("0.16.100");
+midnight_compact_runtime::check_runtime_version!("0.16.100");
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct CountryCode {
@@ -67,14 +67,14 @@ impl FromFieldRepr for CountryCode {
         Some(CountryCode { value })
     }
 }
-impl From<CountryCode> for compact_runtime::Value {
-    fn from(s: CountryCode) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.value));
-        compact_runtime::Value::concat(_v.iter())
+impl From<CountryCode> for midnight_compact_runtime::Value {
+    fn from(s: CountryCode) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.value));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for CountryCode {
+impl midnight_compact_runtime::BinaryHashRepr for CountryCode {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.value.binary_repr(writer);
     }
@@ -114,14 +114,14 @@ impl FromFieldRepr for CurrencyCode {
         Some(CurrencyCode { value })
     }
 }
-impl From<CurrencyCode> for compact_runtime::Value {
-    fn from(s: CurrencyCode) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.value));
-        compact_runtime::Value::concat(_v.iter())
+impl From<CurrencyCode> for midnight_compact_runtime::Value {
+    fn from(s: CurrencyCode) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.value));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for CurrencyCode {
+impl midnight_compact_runtime::BinaryHashRepr for CurrencyCode {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.value.binary_repr(writer);
     }
@@ -161,14 +161,14 @@ impl FromFieldRepr for LanguageCode {
         Some(LanguageCode { value })
     }
 }
-impl From<LanguageCode> for compact_runtime::Value {
-    fn from(s: LanguageCode) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.value));
-        compact_runtime::Value::concat(_v.iter())
+impl From<LanguageCode> for midnight_compact_runtime::Value {
+    fn from(s: LanguageCode) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.value));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for LanguageCode {
+impl midnight_compact_runtime::BinaryHashRepr for LanguageCode {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.value.binary_repr(writer);
     }
@@ -213,15 +213,15 @@ impl FromFieldRepr for RegionCode {
         Some(RegionCode { country, subdivision })
     }
 }
-impl From<RegionCode> for compact_runtime::Value {
-    fn from(s: RegionCode) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.country));
-        _v.push(compact_runtime::Value::from(s.subdivision));
-        compact_runtime::Value::concat(_v.iter())
+impl From<RegionCode> for midnight_compact_runtime::Value {
+    fn from(s: RegionCode) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.country));
+        _v.push(midnight_compact_runtime::Value::from(s.subdivision));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for RegionCode {
+impl midnight_compact_runtime::BinaryHashRepr for RegionCode {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.country.binary_repr(writer);
         self.subdivision.binary_repr(writer);
@@ -262,14 +262,14 @@ impl FromFieldRepr for GenderCode {
         Some(GenderCode { value })
     }
 }
-impl From<GenderCode> for compact_runtime::Value {
-    fn from(s: GenderCode) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.value));
-        compact_runtime::Value::concat(_v.iter())
+impl From<GenderCode> for midnight_compact_runtime::Value {
+    fn from(s: GenderCode) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.value));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for GenderCode {
+impl midnight_compact_runtime::BinaryHashRepr for GenderCode {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.value.binary_repr(writer);
     }
@@ -303,7 +303,7 @@ where
     pub fn initial_state(&self, ctx: ConstructorContext<PS>) -> Result<ConstructorResult<PS>, CompactError> {
         let sv = new_array(vec![]);
         let state = ChargedState::new(sv);
-        let qctx = QueryContext::new(state, compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(state, midnight_compact_runtime::ContractAddress::default());
         Ok(ConstructorResult {
             current_contract_state: qctx.state,
             current_private_state: ctx.initial_private_state,

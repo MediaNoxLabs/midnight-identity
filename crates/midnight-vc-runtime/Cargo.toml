@@ -9,7 +9,7 @@ repository.workspace   = true
 description            = "Codegen target for Midnight Verifiable Credentials — Rust bindings emitted from credentials.compact, iso-registry.compact and same-holder.compact."
 
 # `publish = false` per doc/publishing.md: this crate depends on
-# `compact-runtime` (path-mounted from third_party/compact/runtime-rs by the
+# `midnight-compact-runtime` (path-mounted from third_party/compact/runtime-rs by the
 # devshell) and, transitively, the unpublished midnight-ledger stack. crates.io
 # rejects path-only dependencies, so publishing is blocked until those upstreams
 # publish — the same blocker `midnight-did-runtime` carries.
@@ -24,10 +24,10 @@ path = "src/lib.rs"
 # "third_party/compact/runtime-rs"` (declared at the workspace root) is
 # materialised by `nix develop`'s shellHook from the codegen-rust compact flake
 # input, alongside its sibling `runtime-rs-macros` crate.
-compact-runtime = { workspace = true }
+midnight-compact-runtime = { workspace = true }
 
 # midnight-ledger crates the generated code needs at link time (transitively via
-# compact-runtime). Declared explicitly as an early-failure tripwire so a
+# midnight-compact-runtime). Declared explicitly as an early-failure tripwire so a
 # missing third_party/midnight-ledger symlink fails with a clear error instead
 # of a link-time mystery — mirroring midnight-did-runtime's rationale.
 midnight-base-crypto     = { workspace = true }

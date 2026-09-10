@@ -29,7 +29,7 @@ const SAMPLE: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 fn parses_contract_addresses_and_builds_did_strings() {
     let address = parse_contract_address(SAMPLE).unwrap();
     // v0.2.0: ContractAddress is now the upstream
-    // `compact_runtime::ContractAddress(pub HashOutput)` — its hex
+    // `midnight_compact_runtime::ContractAddress(pub HashOutput)` — its hex
     // rendering goes through HashOutputExt::to_hex.
     assert_eq!(address.to_hex(), SAMPLE);
     let did = create_midnight_did_string(&address.to_hex(), MidnightNetwork::DevNet);

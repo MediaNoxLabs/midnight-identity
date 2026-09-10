@@ -30,9 +30,11 @@ The layering direction is: **nix provides pi, pi reads the repo policy.**
    human-only merges.
 
 Everything pi writes locally (`.pi/git/`, `.pi/npm/`, `.pi/harness/`)
-is git-ignored; only `settings.json` and `.devloops` are tracked, and
-both are CODEOWNERS-gated — review changes to them like executable
-tooling.
+is git-ignored; the tracked files under `.pi` are `settings.json`
+(CODEOWNERS-gated) and the skill packs in `.pi/skills/` (currently
+the OpenSpec change-workflow skills). Together with `.devloops`, they
+are repo-owned tooling — review changes to them like executable
+code.
 
 ## Commands
 

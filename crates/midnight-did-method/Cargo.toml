@@ -28,11 +28,11 @@ midnight-did-domain = { workspace = true }
 # at the method layer lets us drop the local String-typed shadow
 # newtypes and inherit the full derive stack (FieldRepr, FromFieldRepr,
 # BinaryHashRepr, serde, Zeroize, constant-time eq).
-midnight-base-crypto = { workspace = true }
-compact-runtime      = { workspace = true }
-serde                = { workspace = true }
-serde_json           = { workspace = true }
-sha2                 = "0.10"
-thiserror            = "2"
-hex                  = { workspace = true }
-blake2               = "0.10"
+midnight-base-crypto     = { workspace = true }
+midnight-compact-runtime = { workspace = true }
+serde                    = { workspace = true }
+serde_json               = { workspace = true }
+sha2                     = "0.10"
+thiserror                = "2"
+hex                      = { workspace = true }
+blake2                   = "0.10"
