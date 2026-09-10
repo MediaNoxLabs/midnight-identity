@@ -11,25 +11,25 @@ SPDX-License-Identifier: Apache-2.0
 | Crate | crates.io status | Blocker |
 |---|---|---|
 | `midnight-did-domain` | **publishable now** | none — zero `midnight-*` deps |
-| `midnight-did-method` | blocked | `midnight-base-crypto`, `compact-runtime` unpublished |
-| `midnight-did-runtime` | blocked | `midnight-ledger` crates, `compact-runtime` unpublished |
+| `midnight-did-method` | blocked | `midnight-base-crypto`, `midnight-compact-runtime` unpublished |
+| `midnight-did-runtime` | blocked | `midnight-ledger` crates, `midnight-compact-runtime` unpublished |
 | `midnight-did-api` | blocked | transitively via method + runtime |
 | `midnight-did` (umbrella) | blocked | transitively |
 | `midnight-did-cli` | `publish = false` | reference demo, not a library |
 | `midnight-did-uniffi` | `publish = false` | FFI artifact, shipped as bindings not a crate |
 | `midnight-vc-domain` | **publishable now** | none — zero `midnight-*` deps |
-| `midnight-vc-runtime` | `publish = false` | `compact-runtime` + `midnight-ledger` unpublished; generated-code artifact |
-| `midnight-vc-families` | `publish = false` | `compact-runtime` + `midnight-ledger` unpublished; generated-code artifact (git-dep consumption until then) |
+| `midnight-vc-runtime` | `publish = false` | `midnight-compact-runtime` + `midnight-ledger` unpublished; generated-code artifact |
+| `midnight-vc-families` | `publish = false` | `midnight-compact-runtime` + `midnight-ledger` unpublished; generated-code artifact (git-dep consumption until then) |
 
 **Why blocked:** crates.io rejects path-only dependencies. The
 workspace path-mounts `third_party/midnight-ledger/*` and
 `third_party/compact/runtime-rs` via the devshell; none of those crates
 exist on crates.io (verified 2026-08-07). Until the Midnight Foundation
-publishes `midnight-ledger`, and `compact-runtime` is published from
+publishes `midnight-ledger`, and `midnight-compact-runtime` is published from
 [MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact),
 consumers use **git dependencies** on this repo.
 
-**Decision (2026-08-07):** `compact-runtime` stays in the compact repo
+**Decision (2026-08-07):** `midnight-compact-runtime` stays in the compact repo
 (codegen ↔ runtime co-evolve; compact's byte-parity CI compiles
 generated fixtures against it — moving it here would invert the repo
 dependency). When publishing unblocks, it publishes *from* the compact

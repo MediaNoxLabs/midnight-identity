@@ -7,7 +7,7 @@
 #
 # Publishable set (dependency order). Today only midnight-did-domain can
 # reach crates.io — every other crate depends on the unpublished
-# midnight-ledger crates and/or compact-runtime (path deps). When those
+# midnight-ledger crates and/or midnight-compact-runtime (path deps). When those
 # publish upstream, extend PUBLISH_CRATES below in dependency order:
 #   midnight-did-domain -> midnight-did-method -> midnight-did-runtime
 #   -> midnight-did-api -> midnight-did

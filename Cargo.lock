@@ -683,32 +683,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compact-runtime"
-version = "0.16.100"
-dependencies = [
- "compact-runtime-macros",
- "midnight-base-crypto",
- "midnight-coin-structure",
- "midnight-onchain-runtime",
- "midnight-onchain-state",
- "midnight-onchain-vm",
- "midnight-serialize",
- "midnight-storage",
- "midnight-transient-crypto",
- "midnight-zswap",
-]
-
-[[package]]
-name = "compact-runtime-macros"
-version = "0.16.100"
-dependencies = [
- "compact-runtime",
- "proc-macro2",
- "quote 1.0.45",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "console"
 version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2225,6 +2199,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-compact-runtime"
+version = "0.16.100"
+dependencies = [
+ "midnight-base-crypto",
+ "midnight-coin-structure",
+ "midnight-compact-runtime-macros",
+ "midnight-onchain-runtime",
+ "midnight-onchain-state",
+ "midnight-onchain-vm",
+ "midnight-serialize",
+ "midnight-storage",
+ "midnight-transient-crypto",
+ "midnight-zswap",
+]
+
+[[package]]
+name = "midnight-compact-runtime-macros"
+version = "0.16.100"
+dependencies = [
+ "midnight-compact-runtime",
+ "proc-macro2",
+ "quote 1.0.45",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "midnight-curves"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2338,9 +2338,9 @@ name = "midnight-did-method"
 version = "0.5.0"
 dependencies = [
  "blake2",
- "compact-runtime",
  "hex",
  "midnight-base-crypto",
+ "midnight-compact-runtime",
  "midnight-did-domain",
  "serde",
  "serde_json",
@@ -2375,9 +2375,9 @@ version = "0.5.0"
 dependencies = [
  "async-trait",
  "blake2",
- "compact-runtime",
  "hex",
  "midnight-base-crypto",
+ "midnight-compact-runtime",
  "midnight-did-domain",
  "midnight-did-method",
  "midnight-onchain-runtime",
@@ -2675,8 +2675,8 @@ dependencies = [
 name = "midnight-vc-families"
 version = "0.5.0"
 dependencies = [
- "compact-runtime",
  "midnight-base-crypto",
+ "midnight-compact-runtime",
  "midnight-onchain-runtime",
  "midnight-serialize",
  "sha2 0.10.9",
@@ -2686,8 +2686,8 @@ dependencies = [
 name = "midnight-vc-runtime"
 version = "0.5.0"
 dependencies = [
- "compact-runtime",
  "midnight-base-crypto",
+ "midnight-compact-runtime",
  "midnight-onchain-runtime",
  "midnight-serialize",
 ]

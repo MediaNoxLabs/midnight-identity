@@ -9,7 +9,7 @@ repository.workspace   = true
 description            = "Codegen target for Midnight Verifiable Credentials credential families — Rust bindings emitted from the family prototype contracts (digital-passport today)."
 
 # `publish = false` per doc/publishing.md: like `midnight-vc-runtime`, this
-# crate depends on `compact-runtime` (path-mounted from third_party/compact/
+# crate depends on `midnight-compact-runtime` (path-mounted from third_party/compact/
 # runtime-rs by the devshell) and, transitively, the unpublished
 # midnight-ledger stack. crates.io rejects path-only dependencies, so
 # publishing is blocked until those upstreams publish; consumers use a git
@@ -36,10 +36,10 @@ digital-passport = [  ]
 # "third_party/compact/runtime-rs"` (declared at the workspace root) is
 # materialised by `nix develop`'s shellHook from the codegen-rust compact flake
 # input, alongside its sibling `runtime-rs-macros` crate.
-compact-runtime = { workspace = true }
+midnight-compact-runtime = { workspace = true }
 
 # midnight-ledger crates the generated code needs at link time (transitively via
-# compact-runtime). Declared explicitly as an early-failure tripwire so a
+# midnight-compact-runtime). Declared explicitly as an early-failure tripwire so a
 # missing third_party/midnight-ledger symlink fails with a clear error instead
 # of a link-time mystery — mirroring midnight-vc-runtime's rationale.
 midnight-base-crypto     = { workspace = true }

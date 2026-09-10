@@ -45,7 +45,7 @@ Compact contracts now ship as `midnight-vc-domain` and
 | `midnight-vc-families` | `compactc --rust` codegen target for the credential-family prototype contracts (digital passport today; one cargo feature per family) | no (`publish = false`)² |
 
 ¹ crates.io publication is blocked until the upstream `midnight-ledger`
-crates and `compact-runtime` are published; consume via git until then.
+crates and `midnight-compact-runtime` are published; consume via git until then.
 See the publishing issue in the backlog.
 
 ² same upstream blocker, and it is a generated-code artifact rather
@@ -108,7 +108,7 @@ use midnight_did_runtime::{
     backend::RecordingBackend,
     contract_call::DidLedgerSnapshot,
 };
-use compact_runtime::ContractAddress;
+use midnight_compact_runtime::ContractAddress;
 
 let snapshot = DidLedgerSnapshot::default(); // or a real fixture
 let addr = ContractAddress::default();
@@ -171,8 +171,10 @@ flake-pinned compactc.
 ## Related repositories
 
 - [MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact) —
-  Compact compiler fork carrying the `--rust` codegen backend
-  (`codegen-rust` branch) and `compact-runtime`.
+  Compact compiler fork carrying the `--rust` codegen backend and
+  `midnight-compact-runtime`. Pinned to the `codegen-rust`-based
+  `feature/add-digital-passport-dogfood-fixture` branch
+  (MediaNoxLabs/compact#70) — compactc 0.31.119.
 - [midnightntwrk/midnight-did](https://github.com/midnightntwrk/midnight-did)
   — TypeScript reference implementation + the `did.compact` contract
   (vendored here as a submodule).

@@ -29,7 +29,7 @@
 //! crate — see [`contract`] for the per-family registry.
 //!
 //! Like [`midnight_vc_runtime`], the crate is a codegen target: it drags in
-//! `compact-runtime` → halo2 / arkworks, which do not build for
+//! `midnight-compact-runtime` → halo2 / arkworks, which do not build for
 //! `wasm32-unknown-unknown` (ADR 0006), and it is `publish = false` while
 //! those upstreams stay unpublished (see `doc/publishing.md` — consumers use
 //! a git dependency on this repository).

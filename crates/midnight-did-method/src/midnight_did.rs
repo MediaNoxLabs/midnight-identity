@@ -26,7 +26,7 @@
 //! off-chain state hash. These two types are now re-exported from the
 //! upstream Midnight ledger libraries:
 //!
-//! - [`ContractAddress`] = [`compact_runtime::ContractAddress`] (which is
+//! - [`ContractAddress`] = [`midnight_compact_runtime::ContractAddress`] (which is
 //!   `midnight_coin_structure::contract::ContractAddress(pub HashOutput)`)
 //! - [`OffchainStateHashHex`] = [`midnight_base_crypto::hash::HashOutput`]
 //!
@@ -40,8 +40,8 @@
 //! identifiers are always embedded inside the `did:midnight:net:<hex>`
 //! string form, never serialised as a bare `ContractAddress` JSON field.
 
-pub use compact_runtime::ContractAddress;
 pub use midnight_base_crypto::hash::HashOutput as OffchainStateHashHex;
+pub use midnight_compact_runtime::ContractAddress;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -102,7 +102,7 @@ impl MidnightNetwork {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MidnightSubjectId {
     /// Contract address (`did:midnight:devnet:<addr>`). Backed by the
-    /// upstream [`compact_runtime::ContractAddress`] which is in turn a
+    /// upstream [`midnight_compact_runtime::ContractAddress`] which is in turn a
     /// `(pub HashOutput)` newtype — full ledger-trait stack derived
     /// upstream.
     Contract(ContractAddress),

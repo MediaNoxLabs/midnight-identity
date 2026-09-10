@@ -33,7 +33,7 @@
 //! followed by the unpadded base64url encoding. The chunks themselves come
 //! from `CompactType::toValue` over the structured state described in
 //! [`OffchainMidnightDidState`]; that piece of the serializer is currently
-//! deferred to the runtime-rs crate (it requires the compact-runtime
+//! deferred to the runtime-rs crate (it requires the midnight-compact-runtime
 //! type-descriptor machinery). The MOD1 frame, the JWK ↔ key-kind mapping,
 //! and the state-hash derivation are fully implemented here.
 
@@ -350,10 +350,10 @@ pub fn compact_value_from_bytes(bytes: &[u8]) -> Result<Vec<Vec<u8>>, OffchainEr
 // State <-> chunks
 // ---------------------------------------------------------------------------
 
-/// Trait that abstracts over a compact-runtime style serializer. The TS
+/// Trait that abstracts over a midnight-compact-runtime style serializer. The TS
 /// port flattens the state via `CompactType::toValue` then frames each
 /// `Uint8Array` chunk inside the MOD1 envelope. Because this crate does
-/// not depend on compact-runtime, the chunk-level serializer is provided
+/// not depend on midnight-compact-runtime, the chunk-level serializer is provided
 /// by the runtime crate (`midnight-did`) via this trait.
 ///
 /// The MOD1 frame itself, the JWK ↔ key-kind tables, the state hash, and
@@ -689,7 +689,7 @@ pub fn create_offchain_midnight_did_document_metadata(
 
 /// Reference [`CompactValueCodec`] that fails at runtime. Provided so this
 /// crate compiles standalone (`midnight-did-domain` deliberately does not
-/// depend on compact-runtime); production callers should plug in a real
+/// depend on midnight-compact-runtime); production callers should plug in a real
 /// codec backed by the runtime's `CompactType*` descriptors.
 ///
 /// Encoders/decoders accept any `C: CompactValueCodec` so callers can pass

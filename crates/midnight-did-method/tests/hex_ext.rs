@@ -20,8 +20,8 @@
 //! for logs) with the full 64-character hex round-trip the Midnight
 //! DID document wire format uses.
 
-use compact_runtime::ContractAddress;
 use midnight_base_crypto::hash::HashOutput;
+use midnight_compact_runtime::ContractAddress;
 use midnight_did_method::hex_ext::{HashOutputExt, ParseHexError};
 
 const ZERO_HEX: &str = "0000000000000000000000000000000000000000000000000000000000000000";

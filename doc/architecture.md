@@ -121,7 +121,7 @@ crate where the wire types live — see §4.6 below.
 
 **`midnight-did-domain`** is pure-data Rust plus serde, hex, and the
 ported MOD1 frame encoder. It has **no** dependency on any
-`midnight-*` ledger crate, `compact-runtime`, or the wallet SDK. This
+`midnight-*` ledger crate, `midnight-compact-runtime`, or the wallet SDK. This
 buys it three properties: it compiles to wasm without ceremony, it
 compiles in milliseconds, and it is unaffected by the upstream halo2
 skew that historically blocked the runtime crate.
@@ -273,7 +273,7 @@ The R1 type-safety sweep (ADR 0007) progressively eliminated
 ### 4.2 Pure-data crate is dep-free of `midnight-*`
 
 `midnight-did-domain` deliberately has zero `midnight-*`,
-`compact-runtime`, or wallet dependencies. The MOD1 offchain frame
+`midnight-compact-runtime`, or wallet dependencies. The MOD1 offchain frame
 encoder needs to call into the upstream Compact value serializer
 (used by `persistentHash` to compute the state hash); rather than
 adding the dep, the encoder accepts a
@@ -306,7 +306,7 @@ by a 32-byte blake2s state hash computed by hashing the
 Compact-value-serialized form. The
 [`CompactValueCodec`](../crates/midnight-did-method/src/offchain.rs)
 trait lives in `midnight-did-method`; the value serializer is
-injected so the domain crate stays free of any `compact-runtime` dep.
+injected so the domain crate stays free of any `midnight-compact-runtime` dep.
 Tests use a `Vec<u8>`-based golden-vector codec.
 
 ### 4.5 Private state behind a `PrivateStateStore` trait
@@ -338,7 +338,7 @@ the runtime crate. R2-2 moved that surface — `Contract<B>`, `Backend`,
 `midnight-did-runtime` where the wire types live. The api crate now
 imports them.
 
-This adds a transitive dep from api → runtime → `compact-runtime` +
+This adds a transitive dep from api → runtime → `midnight-compact-runtime` +
 `midnight-ledger`. The resolver path (which stops at
 `midnight-did-method`) is unaffected; the wasm gate (which builds
 domain + api) tracks whether runtime stays wasm-clean. As of v0.4.1

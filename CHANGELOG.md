@@ -23,7 +23,7 @@ and the project adheres to [SemVer](https://semver.org/).
   `default = []`, so every consumer's opt-in is explicit; onboarding a
   further family (`birth`, `birth-secret`) is purely additive — a new
   feature, module, and codegen entry point. `publish = false` per
-  `doc/publishing.md` (git-dep consumption while `compact-runtime` /
+  `doc/publishing.md` (git-dep consumption while `midnight-compact-runtime` /
   `midnight-ledger` stay unpublished).
   - The digital-passport binding is generated from the *existing*
     vendored submodule pin (`a9f1d451`): the family's entire compile
@@ -40,7 +40,7 @@ and the project adheres to [SemVer](https://semver.org/).
     deterministic, 32-byte, alteration-sensitive outputs.
   - Gate wiring: justfile `families_flags` scoped `--all-features`
     passes (fmt/clippy/test/build), coverage scope + exclusion, CI
-    path filters and per-crate steps. No wasm32 gate (compact-runtime
+    path filters and per-crate steps. No wasm32 gate (midnight-compact-runtime
     closure, ADR 0006).
 - **VC core crates, slice 1 (issue #13)** — the Verifiable Credentials
   track starts. Split per ADR 0009's "by spec boundary, not per
@@ -65,7 +65,7 @@ and the project adheres to [SemVer](https://semver.org/).
     kebab-case enum literals, absent-not-null optionals); 72 tests,
     **100% line coverage**.
   - New crate **`midnight-vc-runtime`** (ADR 0009 rule 1 — drags
-    `compact-runtime` → halo2/arkworks, so it cannot join the wasm
+    `midnight-compact-runtime` → halo2/arkworks, so it cannot join the wasm
     gate): the `compactc --rust --skip-ts` codegen target for the three
     VC contracts the codegen survey confirmed compile TODO-free —
     `core/primitives/credentials/src/credentials.compact` (the VC/VP
@@ -194,6 +194,21 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **compact pin bumped to MediaNoxLabs/compact#70**
+  (`feature/add-digital-passport-dogfood-fixture`, toolchain **0.31.119**
+  over the promoted `codegen-rust` base). Upstream renamed the runtime
+  package **`compact-runtime` → `midnight-compact-runtime`** (same
+  version 0.16.100, identical dep graph — a pure rename in `Cargo.lock`);
+  the workspace dep key, four member manifests, and all
+  `compact_runtime::` references in hand-written code now match. All six
+  codegen artifacts regenerated (`generated.rs` + five VC bindings;
+  rename + emitter refinements), and all 12 tracked `.zkir` circuit
+  artifacts are **byte-identical** — no circuit-lowering drift. The
+  rename also retires the stale-rlib hazard from the 0.31.111 bump
+  below: the path dep is a new package name, so cargo can never
+  fingerprint-swap it silently. Gates: build, lint, fmt-check,
+  **576/576 tests**, `--locked` test, coverage-gate 89.33% (floor 87).
+
 - compact pin bumped to the promoted stable `codegen-rust` head
   (toolchain **0.31.111** = A29 chunked scaffold + A30 alignment-aware
   decode + G1 trapping-arith projection). Verified: **zero** codegen
@@ -213,8 +228,8 @@ and the project adheres to [SemVer](https://semver.org/).
   and nix-store epoch mtimes defeat cargo's fingerprinting, so the
   content swap went unnoticed in BOTH build trees (`target/` and
   `target/llvm-cov-target/`). Diagnosis: MediaNoxLabs/compact#15.
-  Operational rule: run `cargo clean -p compact-runtime` (in both
-  target dirs) after every compact pin sync.
+  Operational rule: run `cargo clean -p midnight-compact-runtime` (in
+  both target dirs) after every compact pin sync.
 
 - **`codegen-check` was half-vacuous**: `assets/keys/*.zkir` were never
   tracked (and not gitignored), so the gate's artifact diff compared

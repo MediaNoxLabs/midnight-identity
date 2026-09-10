@@ -15,7 +15,7 @@ name: CI
 # depend on halo2 / arkworks crates that do not compile to wasm. They ARE
 # exercised by the codegen-check / codegen-vc-check jobs below (regenerate
 # the bindings under the flake-pinned compactc and assert no drift).
-# `midnight-vc-families` is also a codegen target (same compact-runtime
+# `midnight-vc-families` is also a codegen target (same midnight-compact-runtime
 # closure, same wasm exclusion) but carries the family smoke tests, so it
 # gets its own --all-features test step in the test job.
 #
@@ -247,7 +247,7 @@ jobs:
             ${{ runner.os }}-wasm-
 
       # Only midnight-did-domain is wasm-clean today.
-      #   - method     -> midnight-base-crypto + compact-runtime (blst)
+      #   - method     -> midnight-base-crypto + midnight-compact-runtime (blst)
       #   - api        -> midnight-did-runtime  (blst via halo2)
       #   - umbrella   -> transitively depends on api/runtime
       # All three drag the `blst` C bindings into the wasm32 build, and

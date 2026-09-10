@@ -34,8 +34,8 @@
 //! assert_eq!(h.to_hex(), s);
 //! ```
 
-use compact_runtime::ContractAddress;
 use midnight_base_crypto::hash::HashOutput;
+use midnight_compact_runtime::ContractAddress;
 
 /// Errors returned by [`HashOutputExt::from_hex`].
 ///
