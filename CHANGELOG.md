@@ -194,6 +194,42 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **digital-passport family re-tracked to the standalone
+  `midnight-verifiable-credential-digital-passport` repository** (new
+  submodule `third_party/midnight-verifiable-credential-digital-passport`,
+  `branch = main`, pinned to tag `v0.1.0-rc1` / `bf2b608`). Upstream
+  reset the `midnight-verifiable-credentials` monorepo (`754b2af`,
+  PR #551, 2026-09-08, ADR-0016 "core-only specification") and deleted
+  the whole `packages/prototypes/` family tree plus
+  `packages/core/primitives/credentials` — the pin the family binding
+  was generated from is now a dead pre-reset snapshot, and the
+  standalone repo is the family's graduated home. It has already
+  diverged semantically: the age predicate is reworked around a
+  `DigitalPassportCivilDate` witness decomposition verified by exact
+  calendar reconstruction, and the request format is pinned to
+  `version: 1`. The standalone repo consumes its generic VC/VP core
+  from the published npm package
+  `@midnight-ntwrk/credential-compact@0.1.0-rc3`; `just codegen-vc`
+  now fetches that tarball (sha256-pinned in the justfile, cached under
+  `target-gen/`, verified against the registry's own integrity data)
+  and stages `dist/credentials.compact` + `dist/credentials/` into the
+  submodule's gitignored `core-compact-staging/`, mirroring upstream's
+  `stage-core-compact.mjs` — local and CI run the identical path. The
+  regenerated binding's header records its provenance (entry point,
+  source tag, core package version). The four `midnight-vc-runtime`
+  core modules stay on the frozen monorepo pin `a9f1d451` — re-sourcing
+  them is a recorded follow-up. Surface churn is accepted with no
+  compatibility shims (the crate is feature-gated, `publish = false`,
+  and consumerless): new `DigitalPassportCivilDate` +
+  `assertValidDigitalPassportAgePredicate`, request-version pinning,
+  and rc3-based core redeclarations that drop the monorepo pin's
+  status-attestation circuits. Smoke tests are ported to the standalone
+  repo's `./testing` fixtures and extended with the civil-date
+  witness-verification scenario (valid decomposition accepted; corrupted
+  quotient field and mismatched day number rejected). CI path filters
+  cover the new submodule; `submodules: recursive` already fetches it,
+  so no new job.
+
 - **compact pin bumped to MediaNoxLabs/compact#70**
   (`feature/add-digital-passport-dogfood-fixture`, toolchain **0.31.119**
   over the promoted `codegen-rust` base). Upstream renamed the runtime

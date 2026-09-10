@@ -50,6 +50,7 @@ on:
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
+      - "third_party/midnight-verifiable-credential-digital-passport/**"
       - "flake.nix"
       - "flake.lock"
       - "justfile"
@@ -72,6 +73,7 @@ on:
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
+      - "third_party/midnight-verifiable-credential-digital-passport/**"
       - "flake.nix"
       - "flake.lock"
       - "justfile"
@@ -340,12 +342,15 @@ jobs:
 
   # Same gate for the VC contracts (issue #13): regenerate the four
   # core binding modules plus the digital-passport family binding (in
-  # `midnight-vc-families`) from the pinned
-  # `third_party/midnight-verifiable-credentials` submodule and assert no drift
-  # against the committed files.
+  # `midnight-vc-families`) from the pinned sources — the four core modules
+  # from the frozen `third_party/midnight-verifiable-credentials` snapshot,
+  # the family from the standalone
+  # `third_party/midnight-verifiable-credential-digital-passport` repo with
+  # its `credential-compact` core fetched inside `just codegen-vc` — and
+  # assert no drift against the committed files.
   #
-  # `midnightntwrk/midnight-verifiable-credentials` is public, so the submodule
-  # fetches with the default GITHUB_TOKEN — no extra credentials needed.
+  # Both submodules are public, so they fetch with the default GITHUB_TOKEN —
+  # no extra credentials needed.
   codegen-vc-check:
     name: Codegen regen check (VC contracts -> vc-runtime bindings)
     needs: pre-check

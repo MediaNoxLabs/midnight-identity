@@ -47,7 +47,7 @@ midnight-onchain-runtime = { workspace = true }
 midnight-serialize       = { workspace = true }
 
 [dev-dependencies]
-# SHA-256 for the deterministic test fixtures ported from the vendored
-# submodule's `src/testing/credential-fixtures.ts` (openings are
+# SHA-256 for the deterministic test fixtures ported from the standalone
+# family repo's `src/testing/credential-fixtures.ts` (openings are
 # sha256("opening:<field>") there); no golden outputs are frozen.
 sha2 = "0.10"

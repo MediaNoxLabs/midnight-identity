@@ -1,7 +1,9 @@
 //! GENERATED — do not edit; run `just codegen-vc`.
 //!
-//! Source: `packages/prototypes/credential-families/digital-passport/src/digital-passport-credential.compact`
-//! in the pinned `third_party/midnight-verifiable-credentials` submodule.
+//! Family source: `midnight-verifiable-credential-digital-passport/packages/midnight-verifiable-credential-digital-passport/src/digital-passport-credential.compact` at tag `v0.1.0-rc1`
+//! in the pinned `third_party/midnight-verifiable-credential-digital-passport` submodule;
+//! core contract `@midnight-ntwrk/credential-compact@0.1.0-rc3` (npm),
+//! staged into the family repo's `core-compact-staging/` by this recipe.
 // This file is part of Compact.
 // Copyright (C) 2026 Midnight Foundation
 // SPDX-License-Identifier: Apache-2.0
@@ -2757,6 +2759,129 @@ impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportVerificationRes
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct DigitalPassportCivilDate {
+    pub year: u32,
+    pub month: u32,
+    pub day: u32,
+    pub yearAdjustedQuotient4: u32,
+    pub yearAdjustedQuotient100: u32,
+    pub yearAdjustedQuotient400: u32,
+    pub marchBasedMonthDayOffset: u32,
+}
+impl Aligned for DigitalPassportCivilDate {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<u32 as Aligned>::alignment(),
+            &<u32 as Aligned>::alignment(),
+            &<u32 as Aligned>::alignment(),
+            &<u32 as Aligned>::alignment(),
+            &<u32 as Aligned>::alignment(),
+            &<u32 as Aligned>::alignment(),
+            &<u32 as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for DigitalPassportCivilDate {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.year.field_repr(writer);
+        self.month.field_repr(writer);
+        self.day.field_repr(writer);
+        self.yearAdjustedQuotient4.field_repr(writer);
+        self.yearAdjustedQuotient100.field_repr(writer);
+        self.yearAdjustedQuotient400.field_repr(writer);
+        self.marchBasedMonthDayOffset.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.year.field_size()
+            + self.month.field_size()
+            + self.day.field_size()
+            + self.yearAdjustedQuotient4.field_size()
+            + self.yearAdjustedQuotient100.field_size()
+            + self.yearAdjustedQuotient400.field_size()
+            + self.marchBasedMonthDayOffset.field_size()
+    }
+}
+impl FromFieldRepr for DigitalPassportCivilDate {
+    const FIELD_SIZE: usize = <u32 as FromFieldRepr>::FIELD_SIZE
+        + <u32 as FromFieldRepr>::FIELD_SIZE
+        + <u32 as FromFieldRepr>::FIELD_SIZE
+        + <u32 as FromFieldRepr>::FIELD_SIZE
+        + <u32 as FromFieldRepr>::FIELD_SIZE
+        + <u32 as FromFieldRepr>::FIELD_SIZE
+        + <u32 as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let year =
+            <u32 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u32 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u32 as FromFieldRepr>::FIELD_SIZE;
+        let month =
+            <u32 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u32 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u32 as FromFieldRepr>::FIELD_SIZE;
+        let day =
+            <u32 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u32 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u32 as FromFieldRepr>::FIELD_SIZE;
+        let yearAdjustedQuotient4 =
+            <u32 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u32 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u32 as FromFieldRepr>::FIELD_SIZE;
+        let yearAdjustedQuotient100 =
+            <u32 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u32 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u32 as FromFieldRepr>::FIELD_SIZE;
+        let yearAdjustedQuotient400 =
+            <u32 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u32 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u32 as FromFieldRepr>::FIELD_SIZE;
+        let marchBasedMonthDayOffset =
+            <u32 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u32 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u32 as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(DigitalPassportCivilDate {
+            year,
+            month,
+            day,
+            yearAdjustedQuotient4,
+            yearAdjustedQuotient100,
+            yearAdjustedQuotient400,
+            marchBasedMonthDayOffset,
+        })
+    }
+}
+impl From<DigitalPassportCivilDate> for midnight_compact_runtime::Value {
+    fn from(s: DigitalPassportCivilDate) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.year));
+        _v.push(midnight_compact_runtime::Value::from(s.month));
+        _v.push(midnight_compact_runtime::Value::from(s.day));
+        _v.push(midnight_compact_runtime::Value::from(s.yearAdjustedQuotient4));
+        _v.push(midnight_compact_runtime::Value::from(s.yearAdjustedQuotient100));
+        _v.push(midnight_compact_runtime::Value::from(s.yearAdjustedQuotient400));
+        _v.push(midnight_compact_runtime::Value::from(s.marchBasedMonthDayOffset));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportCivilDate {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.year.binary_repr(writer);
+        self.month.binary_repr(writer);
+        self.day.binary_repr(writer);
+        self.yearAdjustedQuotient4.binary_repr(writer);
+        self.yearAdjustedQuotient100.binary_repr(writer);
+        self.yearAdjustedQuotient400.binary_repr(writer);
+        self.marchBasedMonthDayOffset.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.year.binary_len()
+            + self.month.binary_len()
+            + self.day.binary_len()
+            + self.yearAdjustedQuotient4.binary_len()
+            + self.yearAdjustedQuotient100.binary_len()
+            + self.yearAdjustedQuotient400.binary_len()
+            + self.marchBasedMonthDayOffset.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct OfferMessage {
     pub envelope: ProtocolMessageEnvelope,
     pub schema: SchemaRef,
@@ -3889,13 +4014,6 @@ pub mod pure_circuits {
         ])
     }
 
-    pub fn status_attestation_context_tag() -> Result<[u8; 32], CompactError> {
-        Ok([
-            109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 115, 116, 97, 116, 117, 115, 45, 97, 116, 116,
-            101, 115, 116, 97, 116, 105, 111, 110, 0, 0,
-        ])
-    }
-
     pub(crate) fn proof_payload_root_for_context(
         body_root: [u8; 32],
         context_tag: [u8; 32],
@@ -4004,33 +4122,6 @@ pub mod pure_circuits {
         Ok(pure_circuits::assert_valid_proof_for_context(
             body_root,
             pure_circuits::presentation_context_tag()?,
-            proof.clone(),
-        )?)
-    }
-
-    pub fn status_attestation_proof_payload_root(body_root: [u8; 32], proof: Proof) -> Result<[u8; 32], CompactError> {
-        Ok(pure_circuits::proof_payload_root_for_context(
-            body_root,
-            pure_circuits::status_attestation_context_tag()?,
-            proof.clone(),
-        )?)
-    }
-
-    pub fn status_attestation_proof_challenge(body_root: [u8; 32], proof: Proof) -> Result<Fr, CompactError> {
-        Ok(pure_circuits::proof_challenge_for_context(
-            body_root,
-            pure_circuits::status_attestation_context_tag()?,
-            proof.clone(),
-        )?)
-    }
-
-    pub fn assert_valid_status_attestation_context_proof(
-        body_root: [u8; 32],
-        proof: Proof,
-    ) -> Result<(), CompactError> {
-        Ok(pure_circuits::assert_valid_proof_for_context(
-            body_root,
-            pure_circuits::status_attestation_context_tag()?,
             proof.clone(),
         )?)
     }
@@ -4908,6 +4999,7 @@ pub mod pure_circuits {
             "Digital-passport schema identifier mismatch"
         );
         compact_assert!((schema.majorVersion == 1), "Digital-passport major version mismatch");
+        compact_assert!((schema.minorVersion == 0), "Digital-passport minor version mismatch");
         Ok(())
     }
 
@@ -4940,7 +5032,7 @@ pub mod pure_circuits {
         request: RequestMessage,
     ) -> Result<DigitalPassportPresentationRequest, CompactError> {
         Ok(DigitalPassportPresentationRequest {
-            version: request.envelope.version,
+            version: 1,
             schema: request.schema,
             issuerVerificationMethodRef: request.issuerVerificationMethodRef,
             requireFirstNameDisclosure: request.body.requireFirstNameDisclosure,
@@ -5097,12 +5189,181 @@ pub mod pure_circuits {
         })
     }
 
+    pub(crate) fn assert_civil_date_matches_epoch_days(
+        date: DigitalPassportCivilDate,
+        epoch_days: u32,
+    ) -> Result<(), CompactError> {
+        let t = date.year;
+        compact_assert!((t >= 1970), "Civil date year must be at least 1970");
+        let t_0 = date.month;
+        compact_assert!((t_0 >= 1), "Civil date month must be at least 1");
+        let t_1 = date.month;
+        compact_assert!((t_1 <= 12), "Civil date month must be at most 12");
+        let t_2 = date.day;
+        compact_assert!((t_2 >= 1), "Civil date day must be at least 1");
+        let year_adjusted = if {
+            let t_3 = date.month;
+            (t_3 <= 2)
+        } {
+            {
+                let t_3 = date.year;
+                {
+                    compact_assert!((t_3 >= 1), "result of subtraction would be negative");
+                    ((t_3) as u32).wrapping_sub((1) as u32)
+                }
+            }
+        } else {
+            date.year
+        };
+        let t_3 = ((date.yearAdjustedQuotient4) as u64).wrapping_mul((4) as u64);
+        compact_assert!(
+            ((t_3 <= ((year_adjusted) as u64))
+                && (((year_adjusted) as u64)
+                    < ((((date.yearAdjustedQuotient4) as u64).wrapping_mul((4) as u64)) as u64)
+                        .wrapping_add((4) as u64))),
+            "Civil date quotient for 4 is invalid"
+        );
+        let t_4 = ((date.yearAdjustedQuotient100) as u64).wrapping_mul((100) as u64);
+        compact_assert!(
+            ((t_4 <= ((year_adjusted) as u64))
+                && (((year_adjusted) as u64)
+                    < ((((date.yearAdjustedQuotient100) as u64).wrapping_mul((100) as u64)) as u64)
+                        .wrapping_add((100) as u64))),
+            "Civil date quotient for 100 is invalid"
+        );
+        let t_5 = ((date.yearAdjustedQuotient400) as u64).wrapping_mul((400) as u64);
+        compact_assert!(
+            ((t_5 <= ((year_adjusted) as u64))
+                && (((year_adjusted) as u64)
+                    < ((((date.yearAdjustedQuotient400) as u64).wrapping_mul((400) as u64)) as u64)
+                        .wrapping_add((400) as u64))),
+            "Civil date quotient for 400 is invalid"
+        );
+        let remainder4 = {
+            let t_6 = ((date.yearAdjustedQuotient4) as u64).wrapping_mul((4) as u64);
+            {
+                compact_assert!(
+                    (((year_adjusted) as u64) >= t_6),
+                    "result of subtraction would be negative"
+                );
+                ((year_adjusted) as u32).wrapping_sub((t_6) as u32)
+            }
+        };
+        let remainder100 = {
+            let t_6 = ((date.yearAdjustedQuotient100) as u64).wrapping_mul((100) as u64);
+            {
+                compact_assert!(
+                    (((year_adjusted) as u64) >= t_6),
+                    "result of subtraction would be negative"
+                );
+                ((year_adjusted) as u32).wrapping_sub((t_6) as u32)
+            }
+        };
+        let remainder400 = {
+            let t_6 = ((date.yearAdjustedQuotient400) as u64).wrapping_mul((400) as u64);
+            {
+                compact_assert!(
+                    (((year_adjusted) as u64) >= t_6),
+                    "result of subtraction would be negative"
+                );
+                ((year_adjusted) as u32).wrapping_sub((t_6) as u32)
+            }
+        };
+        let is_leap = if {
+            let t_6 = date.month;
+            (t_6 >= 3)
+        } {
+            (((remainder4 == 0) && (remainder100 != 0)) || (remainder400 == 0))
+        } else {
+            (((remainder4 == 3) && (remainder100 != 99)) || (remainder400 == 399))
+        };
+        let shifted_month = if {
+            let t_6 = date.month;
+            (t_6 >= 3)
+        } {
+            (({
+                let t_6 = date.month;
+                {
+                    compact_assert!((t_6 >= 3), "result of subtraction would be negative");
+                    ((t_6) as u32).wrapping_sub((3) as u32)
+                }
+            }) as u64)
+        } else {
+            ((date.month) as u64).wrapping_add((9) as u64)
+        };
+        let month_numerator = ((((153) as u64).wrapping_mul((shifted_month) as u64)) as u64).wrapping_add((2) as u64);
+        let t_6 = ((date.marchBasedMonthDayOffset) as u64).wrapping_mul((5) as u64);
+        compact_assert!(
+            ((t_6 <= month_numerator)
+                && (month_numerator
+                    < ((((date.marchBasedMonthDayOffset) as u64).wrapping_mul((5) as u64)) as u64)
+                        .wrapping_add((5) as u64))),
+            "Civil date month day offset is invalid"
+        );
+        if (((((((date.month == 1) || (date.month == 3)) || (date.month == 5)) || (date.month == 7))
+            || (date.month == 8))
+            || (date.month == 10))
+            || (date.month == 12))
+        {
+            let t_7 = date.day;
+            compact_assert!((t_7 <= 31), "Civil date day exceeds the 31-day month length");
+        } else {
+            if (date.month == 2) {
+                compact_assert!(
+                    if is_leap {
+                        {
+                            let t_7 = date.day;
+                            (t_7 <= 29)
+                        }
+                    } else {
+                        {
+                            let t_7 = date.day;
+                            (t_7 <= 28)
+                        }
+                    },
+                    "Civil date day exceeds the February month length"
+                );
+            } else {
+                let t_7 = date.day;
+                compact_assert!((t_7 <= 30), "Civil date day exceeds the 30-day month length");
+            }
+        }
+        let t_7 = {
+            let t_8 = (((((({
+                let t_8 = ((((365) as u64).wrapping_mul((year_adjusted) as u64)) as u64)
+                    .wrapping_add((date.yearAdjustedQuotient4) as u64);
+                {
+                    let t_9 = date.yearAdjustedQuotient100;
+                    {
+                        compact_assert!((t_8 >= ((t_9) as u64)), "result of subtraction would be negative");
+                        ((t_8) as u64).wrapping_sub((t_9) as u64)
+                    }
+                }
+            }) as u64)
+                .wrapping_add((date.yearAdjustedQuotient400) as u64)) as u64)
+                .wrapping_add((date.marchBasedMonthDayOffset) as u64)) as u64)
+                .wrapping_add((date.day) as u64);
+            {
+                compact_assert!((t_8 >= 1), "result of subtraction would be negative");
+                ((t_8) as u64).wrapping_sub((1) as u64)
+            }
+        };
+        compact_assert!((t_7 >= 719468), "result of subtraction would be negative");
+        compact_assert!(
+            (((epoch_days) as u64) == ((t_7) as u64).wrapping_sub((719468) as u64)),
+            "Civil date does not match the day number"
+        );
+        Ok(())
+    }
+
     pub fn assert_valid_digital_passport_age_predicate(
         credential: Credential,
         presentation: Presentation,
         current_day: u32,
         date_of_birth_days: u32,
         date_of_birth_opening: [u8; 32],
+        current_date: DigitalPassportCivilDate,
+        date_of_birth_date: DigitalPassportCivilDate,
     ) -> Result<(), CompactError> {
         compact_assert!(
             presentation.disclosed.proveAgeOverThreshold,
@@ -5117,15 +5378,36 @@ pub mod pure_circuits {
             (current_day >= date_of_birth_days),
             "Current day must not precede the date-of-birth witness"
         );
-        let t = {
-            compact_assert!(
-                (current_day >= date_of_birth_days),
-                "result of subtraction would be negative"
-            );
-            ((current_day) as u32).wrapping_sub((date_of_birth_days) as u32)
+        pure_circuits::assert_civil_date_matches_epoch_days(current_date.clone(), current_day)?;
+        pure_circuits::assert_civil_date_matches_epoch_days(date_of_birth_date.clone(), date_of_birth_days)?;
+        let before_birthday_this_year = ({
+            let t = current_date.month;
+            (t < date_of_birth_date.month)
+        } || ((current_date.month == date_of_birth_date.month) && {
+            let t = current_date.day;
+            (t < date_of_birth_date.day)
+        }));
+        let age_in_years = {
+            let t = {
+                let t = current_date.year;
+                {
+                    let t_0 = date_of_birth_date.year;
+                    {
+                        compact_assert!((t >= t_0), "result of subtraction would be negative");
+                        ((t) as u32).wrapping_sub((t_0) as u32)
+                    }
+                }
+            };
+            {
+                let t_0 = if before_birthday_this_year { 1 } else { 0 };
+                {
+                    compact_assert!((t >= ((t_0) as u32)), "result of subtraction would be negative");
+                    ((t) as u32).wrapping_sub((t_0) as u32)
+                }
+            }
         };
         compact_assert!(
-            (t >= ((presentation.disclosed.ageThresholdYears) as u32).wrapping_mul((365) as u32)),
+            (age_in_years >= ((presentation.disclosed.ageThresholdYears) as u32)),
             "Age predicate does not satisfy the requested threshold"
         );
         Ok(())

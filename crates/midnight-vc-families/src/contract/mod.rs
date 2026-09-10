@@ -18,19 +18,21 @@
 //! One module per family entry point, emitted by the flake-pinned
 //! `compactc --rust --skip-ts` and gated behind the family's cargo feature.
 //! **Do not edit these files by hand** — run `just codegen-vc` after moving
-//! the `third_party/midnight-verifiable-credentials` pin or bumping the
-//! compact flake input, and `just codegen-vc-check` to assert the committed
-//! output is reproducible.
+//! a `third_party` family pin, bumping the compact flake input, or bumping
+//! the pinned `@midnight-ntwrk/credential-compact` core package, and `just
+//! codegen-vc-check` to assert the committed output is reproducible.
 //!
-//! | module | feature | entry point (in the vendored submodule) |
+//! | module | feature | entry point |
 //! |---|---|---|
-//! | `digital_passport` | `digital-passport` | `packages/prototypes/credential-families/digital-passport/src/digital-passport-credential.compact` |
+//! | `digital_passport` | `digital-passport` | standalone repo `midnight-verifiable-credential-digital-passport` (tag `v0.1.0-rc1`): `packages/midnight-verifiable-credential-digital-passport/src/digital-passport-credential.compact` |
 //!
 //! The modules are re-exported as modules rather than glob-re-exported:
-//! each family entry point `include`s `credentials.compact`, so its
-//! generated output redeclares every core credentials type and a flat
-//! re-export would collide (same rationale as `midnight-vc-runtime`'s
-//! registry). Consumers must not mix types across family modules.
+//! each family entry point includes the VC core contract
+//! (`credentials.compact` — staged from the pinned npm core package for the
+//! digital-passport family), so its generated output redeclares every core
+//! credentials type and a flat re-export would collide (same rationale as
+//! `midnight-vc-runtime`'s registry). Consumers must not mix types across
+//! family modules.
 //!
 //! Onboarding a further family is purely additive: a new cargo feature, a
 //! new `#[cfg(feature)]`-gated module line here, and a new entry in the

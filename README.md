@@ -182,3 +182,11 @@ flake-pinned compactc.
   — TS resolver service; the model for the planned Rust resolver.
 - [midnightntwrk/midnight-verifiable-credentials](https://github.com/midnightntwrk/midnight-verifiable-credentials)
   — Compact-first VC stack; the model for the planned shared SSI crates.
+  Reset to core-only on 2026-09-08 (`754b2af`); our submodule pins the
+  pre-reset snapshot `a9f1d451` for the four core-contract modules.
+- [midnightntwrk/midnight-verifiable-credential-digital-passport](https://github.com/midnightntwrk/midnight-verifiable-credential-digital-passport)
+  — Standalone digital-passport credential family (the monorepo reset's
+  graduated home for it); the source of the `midnight-vc-families`
+  digital-passport binding (vendored as a submodule, pinned to
+  `v0.1.0-rc1`, core staged from the published
+  `@midnight-ntwrk/credential-compact` package at codegen time).

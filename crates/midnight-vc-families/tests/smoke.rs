@@ -15,17 +15,20 @@
 
 //! Invariant-style smoke tests for the generated digital-passport circuits.
 //!
-//! Ported from upstream's `src/test/claim-root.test.ts` (same deterministic
-//! fixture): the circuits *compute* — outputs are deterministic, of the
-//! documented `Bytes<32>` length, and sensitive to altered inputs. No golden
-//! outputs are frozen; codegen drift is the codegen gate's job.
+//! Ported from the standalone family repository's `src/test/claim-root.test.ts`
+//! and `src/test/age-predicate.test.ts` (same deterministic fixtures): the
+//! circuits *compute* — outputs are deterministic, of the documented
+//! `Bytes<32>` length, and sensitive to altered inputs — and the age
+//! predicate's witness-verification accepts only exact calendar
+//! decompositions. No golden outputs are frozen; codegen drift is the
+//! codegen gate's job.
 
 #![cfg(feature = "digital-passport")]
 
 mod support;
 
 use midnight_vc_families::contract::digital_passport::pure_circuits;
-use support::create_digital_passport_fixture;
+use support::{civil_date_from_epoch_days, create_digital_passport_fixture, epoch_days_from_civil};
 
 /// Claim root: deterministic, 32 bytes, and a different root when any one
 /// commitment changes (upstream: "commits each claim field through a
@@ -114,5 +117,89 @@ fn document_number_null_commitment_is_a_deterministic_sentinel() {
     assert_ne!(
         null1, fixture.claim_commitments.documentNumberCommitment,
         "the sentinel must not collide with a real document-number commitment"
+    );
+}
+
+/// Age-predicate witness verification: the caller-supplied civil-date
+/// decomposition of each day number is verified inside
+/// `assertValidDigitalPassportAgePredicate` — every quotient field pinned by
+/// a range check, the day number re-derived by exact reconstruction. A valid
+/// decomposition is accepted; a corrupted quotient field and a decomposition
+/// of a mismatched day number are both rejected (upstream:
+/// age-predicate.test.ts, "rejects a civil-date decomposition that does not
+/// reconstruct the day number").
+#[test]
+fn age_predicate_witness_verification_rejects_forged_civil_dates() {
+    let fixture = create_digital_passport_fixture();
+    let current_date = civil_date_from_epoch_days(fixture.current_day);
+    let date_of_birth_date = civil_date_from_epoch_days(fixture.claim_values.dateOfBirthDays);
+
+    // Precondition, pinning the ported decomposition pair against each
+    // other (upstream asserts its calendar inputs the same way): each
+    // witness must be the civil date of exactly its day number.
+    assert_eq!(
+        epoch_days_from_civil(
+            i64::from(current_date.year),
+            i64::from(current_date.month),
+            i64::from(current_date.day),
+        ),
+        i64::from(fixture.current_day)
+    );
+    assert_eq!(
+        epoch_days_from_civil(
+            i64::from(date_of_birth_date.year),
+            i64::from(date_of_birth_date.month),
+            i64::from(date_of_birth_date.day),
+        ),
+        i64::from(fixture.claim_values.dateOfBirthDays)
+    );
+
+    // Valid decomposition of both day numbers: accepted.
+    pure_circuits::assert_valid_digital_passport_age_predicate(
+        fixture.credential.clone(),
+        fixture.presentation.clone(),
+        fixture.current_day,
+        fixture.claim_values.dateOfBirthDays,
+        fixture.openings.dateOfBirthOpening,
+        current_date.clone(),
+        date_of_birth_date.clone(),
+    )
+    .expect("valid civil-date witnesses are accepted");
+
+    // Corrupted quotient field: breaks the range check that pins
+    // floor(yearAdjusted / 4).
+    let mut forged_quotient = current_date.clone();
+    forged_quotient.yearAdjustedQuotient4 += 1;
+    let err = pure_circuits::assert_valid_digital_passport_age_predicate(
+        fixture.credential.clone(),
+        fixture.presentation.clone(),
+        fixture.current_day,
+        fixture.claim_values.dateOfBirthDays,
+        fixture.openings.dateOfBirthOpening,
+        forged_quotient,
+        date_of_birth_date.clone(),
+    )
+    .expect_err("a forged quotient field must be rejected");
+    assert!(
+        err.to_string().contains("Civil date quotient for 4 is invalid"),
+        "unexpected error: {err}"
+    );
+
+    // Mismatched day number: a *valid* decomposition of the wrong day fails
+    // the exact-reconstruction check.
+    let mismatched = civil_date_from_epoch_days(fixture.current_day + 1);
+    let err = pure_circuits::assert_valid_digital_passport_age_predicate(
+        fixture.credential.clone(),
+        fixture.presentation.clone(),
+        fixture.current_day,
+        fixture.claim_values.dateOfBirthDays,
+        fixture.openings.dateOfBirthOpening,
+        mismatched,
+        date_of_birth_date,
+    )
+    .expect_err("a decomposition of a mismatched day number must be rejected");
+    assert!(
+        err.to_string().contains("Civil date does not match the day number"),
+        "unexpected error: {err}"
     );
 }

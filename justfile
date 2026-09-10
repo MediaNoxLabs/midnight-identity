@@ -42,25 +42,70 @@ codegen:
 codegen-check: codegen
     git diff --exit-code -- crates/midnight-did-runtime/src/contract crates/midnight-did-runtime/assets/keys
 
-# Re-generate the VC Rust bindings from the vendored Midnight VC contracts.
+# Re-generate the VC Rust bindings from the pinned VC contract sources.
 #
-# Same compiler and flags as `codegen`, one invocation per contract entry point
-# (paths confirmed against each package's package.json `compact` script). Unlike
-# did.compact these contracts export only `pure circuit`s, so compactc emits no
-# zkir/prover/verifier artifacts and there is nothing to copy into `assets/`.
+# Same compiler and flags as `codegen`, one invocation per contract entry point.
+# Unlike did.compact these contracts export only `pure circuit`s, so compactc
+# emits no zkir/prover/verifier artifacts and there is nothing to copy into
+# `assets/`.
 #
-# Entries split across two crates (ADR 0009): the four core-contract modules
-# land in midnight-vc-runtime; the credential-family prototypes (whose entire
-# compile closure — entry file, family subfiles, and the whole core
-# `packages/core/primitives/credentials` subtree — is byte-identical between
-# the vendored pin `a9f1d451` and lace-id-portal's `b68ae4af` upstream tree)
-# land in midnight-vc-families.
+# Entries split across two crates (ADR 0009). The four core-contract modules
+# land in midnight-vc-runtime from the frozen monorepo pin
+# `third_party/midnight-verifiable-credentials` (`a9f1d451`) — an immutable
+# snapshot since upstream reset the repo (`754b2af`, PR #551) and deleted the
+# family/core trees; re-sourcing them is a recorded follow-up, not urgent.
+# The digital-passport family tracks the standalone family repository
+# `third_party/midnight-verifiable-credential-digital-passport` (tag
+# `v0.1.0-rc1`), which consumes the generic VC/VP core from the published npm
+# package `@midnight-ntwrk/credential-compact`: its entry file's
+# `include "../core-compact-staging/credentials"` targets a gitignored,
+# build-time-staged copy, so this recipe fetches the pinned core tarball and
+# stages it first (mirroring upstream's `scripts/stage-core-compact.mjs`:
+# `.compact` files only, staging regenerated from scratch every run).
+
+# Core package pin for the digital-passport family's VC/VP core contract.
+# sha256 verified against the npm registry's own integrity data (sha512 +
+# shasum of the fetched tarball) on 2026-09-10; npm tarballs are immutable
+# per version, so this pin only changes on an intentional version bump.
+vc_core_version := "0.1.0-rc3"
+vc_core_sha256 := "1066ac930221526fcf23608982285db659006a9be7f7b695e2bfe2820c856997"
+
 codegen-vc:
     #!/usr/bin/env bash
     set -euo pipefail
-    git submodule update --init third_party/midnight-verifiable-credentials
+    git submodule update --init third_party/midnight-verifiable-credentials \
+        third_party/midnight-verifiable-credential-digital-passport
     mkdir -p target-gen crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract
     vc=third_party/midnight-verifiable-credentials/packages
+    passport=third_party/midnight-verifiable-credential-digital-passport/packages/midnight-verifiable-credential-digital-passport
+
+    # --- Core staging (digital-passport only) ------------------------------
+    # Fetch the pinned core tarball (cached under target-gen/; repeat runs are
+    # offline), verify it against the sha256 pin (fail loudly on mismatch),
+    # extract, and stage `dist/credentials.compact` + `dist/credentials/`
+    # into the family repo's gitignored `core-compact-staging/`. Without
+    # staging, the entry file's core include dangles.
+    core_pkg="@midnight-ntwrk/credential-compact"
+    core_ver="{{vc_core_version}}"
+    core_tgz="target-gen/${core_pkg##*/}-${core_ver}.tgz"
+    core_dir="target-gen/${core_pkg##*/}-${core_ver}"
+    if [ ! -f "$core_tgz" ]; then
+        curl -sfL --output "$core_tgz" \
+            "https://registry.npmjs.org/${core_pkg}/-/${core_pkg##*/}-${core_ver}.tgz"
+    fi
+    echo "{{vc_core_sha256}}  $core_tgz" | sha256sum --check --strict
+    if [ ! -d "$core_dir/package/dist" ]; then
+        rm -rf "$core_dir"
+        mkdir -p "$core_dir"
+        tar -xzf "$core_tgz" -C "$core_dir"
+    fi
+    staging="$passport/core-compact-staging"
+    rm -rf "$staging"
+    mkdir -p "$staging/credentials"
+    cp "$core_dir/package/dist/credentials.compact" "$staging/credentials.compact"
+    find "$core_dir/package/dist/credentials" -type f -name '*.compact' \
+        -exec cp {} "$staging/credentials/" \;
+
     # "<module>:<crate>:<entry point>" — module name is the Rust file under the
     # crate's src/contract/.
     contracts=(
@@ -68,7 +113,7 @@ codegen-vc:
         "iso_registry:midnight-vc-runtime:$vc/core/primitives/iso-registry/src/iso-registry.compact"
         "same_holder:midnight-vc-runtime:$vc/core/capabilities/same-holder/src/same-holder.compact"
         "revocation_registry:midnight-vc-runtime:$vc/registry/status-registry/src/revocation-registry.compact"
-        "digital_passport:midnight-vc-families:$vc/prototypes/credential-families/digital-passport/src/digital-passport-credential.compact"
+        "digital_passport:midnight-vc-families:$passport/src/digital-passport-credential.compact"
     )
     for entry in "${contracts[@]}"; do
         module="${entry%%:*}"
@@ -80,11 +125,21 @@ codegen-vc:
         compactc --rust --skip-ts "$entry_point" "$out"
         # Header is prepended by this recipe (never hand-edited into the
         # generated file) so it survives every regeneration byte-identically.
+        # The family module records its full provenance chain: entry point,
+        # standalone source tag, and the core package version it compiles
+        # against (spec: vc-families generated-surface fidelity).
         {
             echo "//! GENERATED — do not edit; run \`just codegen-vc\`."
             echo "//!"
-            echo "//! Source: \`${entry_point#third_party/midnight-verifiable-credentials/}\`"
-            echo "//! in the pinned \`third_party/midnight-verifiable-credentials\` submodule."
+            if [ "$module" = "digital_passport" ]; then
+                echo "//! Family source: \`${entry_point#third_party/}\` at tag \`v0.1.0-rc1\`"
+                echo "//! in the pinned \`third_party/midnight-verifiable-credential-digital-passport\` submodule;"
+                echo "//! core contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm),"
+                echo "//! staged into the family repo's \`core-compact-staging/\` by this recipe."
+            else
+                echo "//! Source: \`${entry_point#third_party/midnight-verifiable-credentials/}\`"
+                echo "//! in the pinned \`third_party/midnight-verifiable-credentials\` submodule."
+            fi
             cat "$out/contract/lib.rs"
         } > "crates/${crate}/src/contract/${module}.rs"
     done
