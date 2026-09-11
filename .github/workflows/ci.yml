@@ -111,23 +111,34 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
-            # crates.io returns 403 when a runner opens too many parallel
-            # connections. Nix fetches every crate tarball as its own
-            # fixed-output derivation, so the cargo-side retry/caching
-            # settings never applied to them. Keep the fan-out small.
+            # crates.io returns 403 when too many tarballs are fetched at
+            # once. Nix materialises every crate as its own fixed-output
+            # derivation, and max-jobs is what bounds how many of those run
+            # concurrently - NOT max-substitution-jobs, which only governs
+            # binary-cache substitution, and NOT download-attempts, which
+            # likewise applies to substituters rather than to the curl that
+            # fetchurl runs inside the builder.
+            max-jobs = 2
             http-connections = 8
-            max-substitution-jobs = 4
-            # Retry rather than abort when a fetch is throttled.
-            download-attempts = 10
             connect-timeout = 20
             stalled-download-timeout = 600
-            # A throttled binary cache must not fail the build - build from
-            # source instead. This is the setting that turns the Magic Nix
-            # Cache being rate-limited into "slower" rather than "red".
             fallback = true
+            # The flake declares cache.iog.io under nixConfig, but nix ignores
+            # flake nixConfig unless the config is explicitly accepted, so in
+            # CI that substituter was almost certainly never used and every
+            # derivation came from cache.nixos.org or was rebuilt. Declaring
+            # it here applies unconditionally.
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+
+      - name: Show effective nix config
+        run: |
+          echo "--- /etc/nix/nix.conf ---"; cat /etc/nix/nix.conf || true
+          echo "--- nix show-config (subset) ---"
+          nix config show 2>/dev/null | grep -E '^(max-jobs|http-connections|substituters|fallback)' || true
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -200,20 +211,25 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
-            # crates.io returns 403 when a runner opens too many parallel
-            # connections. Nix fetches every crate tarball as its own
-            # fixed-output derivation, so the cargo-side retry/caching
-            # settings never applied to them. Keep the fan-out small.
+            # crates.io returns 403 when too many tarballs are fetched at
+            # once. Nix materialises every crate as its own fixed-output
+            # derivation, and max-jobs is what bounds how many of those run
+            # concurrently - NOT max-substitution-jobs, which only governs
+            # binary-cache substitution, and NOT download-attempts, which
+            # likewise applies to substituters rather than to the curl that
+            # fetchurl runs inside the builder.
+            max-jobs = 2
             http-connections = 8
-            max-substitution-jobs = 4
-            # Retry rather than abort when a fetch is throttled.
-            download-attempts = 10
             connect-timeout = 20
             stalled-download-timeout = 600
-            # A throttled binary cache must not fail the build - build from
-            # source instead. This is the setting that turns the Magic Nix
-            # Cache being rate-limited into "slower" rather than "red".
             fallback = true
+            # The flake declares cache.iog.io under nixConfig, but nix ignores
+            # flake nixConfig unless the config is explicitly accepted, so in
+            # CI that substituter was almost certainly never used and every
+            # derivation came from cache.nixos.org or was rebuilt. Declaring
+            # it here applies unconditionally.
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -261,20 +277,25 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
-            # crates.io returns 403 when a runner opens too many parallel
-            # connections. Nix fetches every crate tarball as its own
-            # fixed-output derivation, so the cargo-side retry/caching
-            # settings never applied to them. Keep the fan-out small.
+            # crates.io returns 403 when too many tarballs are fetched at
+            # once. Nix materialises every crate as its own fixed-output
+            # derivation, and max-jobs is what bounds how many of those run
+            # concurrently - NOT max-substitution-jobs, which only governs
+            # binary-cache substitution, and NOT download-attempts, which
+            # likewise applies to substituters rather than to the curl that
+            # fetchurl runs inside the builder.
+            max-jobs = 2
             http-connections = 8
-            max-substitution-jobs = 4
-            # Retry rather than abort when a fetch is throttled.
-            download-attempts = 10
             connect-timeout = 20
             stalled-download-timeout = 600
-            # A throttled binary cache must not fail the build - build from
-            # source instead. This is the setting that turns the Magic Nix
-            # Cache being rate-limited into "slower" rather than "red".
             fallback = true
+            # The flake declares cache.iog.io under nixConfig, but nix ignores
+            # flake nixConfig unless the config is explicitly accepted, so in
+            # CI that substituter was almost certainly never used and every
+            # derivation came from cache.nixos.org or was rebuilt. Declaring
+            # it here applies unconditionally.
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -330,20 +351,25 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
-            # crates.io returns 403 when a runner opens too many parallel
-            # connections. Nix fetches every crate tarball as its own
-            # fixed-output derivation, so the cargo-side retry/caching
-            # settings never applied to them. Keep the fan-out small.
+            # crates.io returns 403 when too many tarballs are fetched at
+            # once. Nix materialises every crate as its own fixed-output
+            # derivation, and max-jobs is what bounds how many of those run
+            # concurrently - NOT max-substitution-jobs, which only governs
+            # binary-cache substitution, and NOT download-attempts, which
+            # likewise applies to substituters rather than to the curl that
+            # fetchurl runs inside the builder.
+            max-jobs = 2
             http-connections = 8
-            max-substitution-jobs = 4
-            # Retry rather than abort when a fetch is throttled.
-            download-attempts = 10
             connect-timeout = 20
             stalled-download-timeout = 600
-            # A throttled binary cache must not fail the build - build from
-            # source instead. This is the setting that turns the Magic Nix
-            # Cache being rate-limited into "slower" rather than "red".
             fallback = true
+            # The flake declares cache.iog.io under nixConfig, but nix ignores
+            # flake nixConfig unless the config is explicitly accepted, so in
+            # CI that substituter was almost certainly never used and every
+            # derivation came from cache.nixos.org or was rebuilt. Declaring
+            # it here applies unconditionally.
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -400,20 +426,25 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
-            # crates.io returns 403 when a runner opens too many parallel
-            # connections. Nix fetches every crate tarball as its own
-            # fixed-output derivation, so the cargo-side retry/caching
-            # settings never applied to them. Keep the fan-out small.
+            # crates.io returns 403 when too many tarballs are fetched at
+            # once. Nix materialises every crate as its own fixed-output
+            # derivation, and max-jobs is what bounds how many of those run
+            # concurrently - NOT max-substitution-jobs, which only governs
+            # binary-cache substitution, and NOT download-attempts, which
+            # likewise applies to substituters rather than to the curl that
+            # fetchurl runs inside the builder.
+            max-jobs = 2
             http-connections = 8
-            max-substitution-jobs = 4
-            # Retry rather than abort when a fetch is throttled.
-            download-attempts = 10
             connect-timeout = 20
             stalled-download-timeout = 600
-            # A throttled binary cache must not fail the build - build from
-            # source instead. This is the setting that turns the Magic Nix
-            # Cache being rate-limited into "slower" rather than "red".
             fallback = true
+            # The flake declares cache.iog.io under nixConfig, but nix ignores
+            # flake nixConfig unless the config is explicitly accepted, so in
+            # CI that substituter was almost certainly never used and every
+            # derivation came from cache.nixos.org or was rebuilt. Declaring
+            # it here applies unconditionally.
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -446,20 +477,25 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
-            # crates.io returns 403 when a runner opens too many parallel
-            # connections. Nix fetches every crate tarball as its own
-            # fixed-output derivation, so the cargo-side retry/caching
-            # settings never applied to them. Keep the fan-out small.
+            # crates.io returns 403 when too many tarballs are fetched at
+            # once. Nix materialises every crate as its own fixed-output
+            # derivation, and max-jobs is what bounds how many of those run
+            # concurrently - NOT max-substitution-jobs, which only governs
+            # binary-cache substitution, and NOT download-attempts, which
+            # likewise applies to substituters rather than to the curl that
+            # fetchurl runs inside the builder.
+            max-jobs = 2
             http-connections = 8
-            max-substitution-jobs = 4
-            # Retry rather than abort when a fetch is throttled.
-            download-attempts = 10
             connect-timeout = 20
             stalled-download-timeout = 600
-            # A throttled binary cache must not fail the build - build from
-            # source instead. This is the setting that turns the Magic Nix
-            # Cache being rate-limited into "slower" rather than "red".
             fallback = true
+            # The flake declares cache.iog.io under nixConfig, but nix ignores
+            # flake nixConfig unless the config is explicitly accepted, so in
+            # CI that substituter was almost certainly never used and every
+            # derivation came from cache.nixos.org or was rebuilt. Declaring
+            # it here applies unconditionally.
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
