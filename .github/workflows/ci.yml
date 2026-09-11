@@ -134,11 +134,23 @@ jobs:
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
-      - name: Show effective nix config
+      - name: Warm the devshell (retry through crates.io rate limits)
         run: |
-          echo "--- /etc/nix/nix.conf ---"; cat /etc/nix/nix.conf || true
-          echo "--- nix show-config (subset) ---"
-          nix config show 2>/dev/null | grep -E '^(max-jobs|http-connections|substituters|fallback)' || true
+          # crates.io 403s when a runner fetches too many tarballs at once, and
+          # nix materialises every crate as its own derivation. Each attempt
+          # keeps whatever it already fetched in the local store, so retrying
+          # makes forward progress rather than starting over. Slower on a bad
+          # day, green instead of red.
+          for i in 1 2 3 4 5 6; do
+            if nix develop --command true; then
+              echo "devshell ready after attempt $i"
+              exit 0
+            fi
+            echo "::warning::devshell build attempt $i failed; retrying in 45s"
+            sleep 45
+          done
+          echo "::error::devshell failed to build after 6 attempts"
+          exit 1
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -234,6 +246,24 @@ jobs:
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
+      - name: Warm the devshell (retry through crates.io rate limits)
+        run: |
+          # crates.io 403s when a runner fetches too many tarballs at once, and
+          # nix materialises every crate as its own derivation. Each attempt
+          # keeps whatever it already fetched in the local store, so retrying
+          # makes forward progress rather than starting over. Slower on a bad
+          # day, green instead of red.
+          for i in 1 2 3 4 5 6; do
+            if nix develop --command true; then
+              echo "devshell ready after attempt $i"
+              exit 0
+            fi
+            echo "::warning::devshell build attempt $i failed; retrying in 45s"
+            sleep 45
+          done
+          echo "::error::devshell failed to build after 6 attempts"
+          exit 1
+
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -299,6 +329,24 @@ jobs:
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+
+      - name: Warm the devshell (retry through crates.io rate limits)
+        run: |
+          # crates.io 403s when a runner fetches too many tarballs at once, and
+          # nix materialises every crate as its own derivation. Each attempt
+          # keeps whatever it already fetched in the local store, so retrying
+          # makes forward progress rather than starting over. Slower on a bad
+          # day, green instead of red.
+          for i in 1 2 3 4 5 6; do
+            if nix develop --command true; then
+              echo "devshell ready after attempt $i"
+              exit 0
+            fi
+            echo "::warning::devshell build attempt $i failed; retrying in 45s"
+            sleep 45
+          done
+          echo "::error::devshell failed to build after 6 attempts"
+          exit 1
 
       - name: Cache Cargo registry and wasm target
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -373,6 +421,24 @@ jobs:
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+
+      - name: Warm the devshell (retry through crates.io rate limits)
+        run: |
+          # crates.io 403s when a runner fetches too many tarballs at once, and
+          # nix materialises every crate as its own derivation. Each attempt
+          # keeps whatever it already fetched in the local store, so retrying
+          # makes forward progress rather than starting over. Slower on a bad
+          # day, green instead of red.
+          for i in 1 2 3 4 5 6; do
+            if nix develop --command true; then
+              echo "devshell ready after attempt $i"
+              exit 0
+            fi
+            echo "::warning::devshell build attempt $i failed; retrying in 45s"
+            sleep 45
+          done
+          echo "::error::devshell failed to build after 6 attempts"
+          exit 1
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -449,6 +515,24 @@ jobs:
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
+      - name: Warm the devshell (retry through crates.io rate limits)
+        run: |
+          # crates.io 403s when a runner fetches too many tarballs at once, and
+          # nix materialises every crate as its own derivation. Each attempt
+          # keeps whatever it already fetched in the local store, so retrying
+          # makes forward progress rather than starting over. Slower on a bad
+          # day, green instead of red.
+          for i in 1 2 3 4 5 6; do
+            if nix develop --command true; then
+              echo "devshell ready after attempt $i"
+              exit 0
+            fi
+            echo "::warning::devshell build attempt $i failed; retrying in 45s"
+            sleep 45
+          done
+          echo "::error::devshell failed to build after 6 attempts"
+          exit 1
+
       - name: Run codegen and assert no drift
         run: nix develop --command just codegen-check
 
@@ -499,6 +583,24 @@ jobs:
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+
+      - name: Warm the devshell (retry through crates.io rate limits)
+        run: |
+          # crates.io 403s when a runner fetches too many tarballs at once, and
+          # nix materialises every crate as its own derivation. Each attempt
+          # keeps whatever it already fetched in the local store, so retrying
+          # makes forward progress rather than starting over. Slower on a bad
+          # day, green instead of red.
+          for i in 1 2 3 4 5 6; do
+            if nix develop --command true; then
+              echo "devshell ready after attempt $i"
+              exit 0
+            fi
+            echo "::warning::devshell build attempt $i failed; retrying in 45s"
+            sleep 45
+          done
+          echo "::error::devshell failed to build after 6 attempts"
+          exit 1
 
       - name: Run VC codegen and assert no drift
         run: nix develop --command just codegen-vc-check
