@@ -87,6 +87,9 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
+  # HTTP/2 multiplexing opens many concurrent streams to crates.io and is a
+  # common trigger for its rate limiter. Slower, far less likely to 403.
+  CARGO_HTTP_MULTIPLEXING: "false"
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
@@ -106,6 +109,22 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          extra-conf: |
+            # crates.io returns 403 when a runner opens too many parallel
+            # connections. Nix fetches every crate tarball as its own
+            # fixed-output derivation, so the cargo-side retry/caching
+            # settings never applied to them. Keep the fan-out small.
+            http-connections = 8
+            max-substitution-jobs = 4
+            # Retry rather than abort when a fetch is throttled.
+            download-attempts = 10
+            connect-timeout = 20
+            stalled-download-timeout = 600
+            # A throttled binary cache must not fail the build - build from
+            # source instead. This is the setting that turns the Magic Nix
+            # Cache being rate-limited into "slower" rather than "red".
+            fallback = true
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -160,6 +179,10 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
+      # The owner accepts longer CI in exchange for reliability. Running both
+      # runners at once doubles the concurrent load on crates.io and the
+      # Actions cache, which is what was producing 403s.
+      max-parallel: 1
       matrix:
         os:
           - ubuntu-latest
@@ -175,6 +198,22 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          extra-conf: |
+            # crates.io returns 403 when a runner opens too many parallel
+            # connections. Nix fetches every crate tarball as its own
+            # fixed-output derivation, so the cargo-side retry/caching
+            # settings never applied to them. Keep the fan-out small.
+            http-connections = 8
+            max-substitution-jobs = 4
+            # Retry rather than abort when a fetch is throttled.
+            download-attempts = 10
+            connect-timeout = 20
+            stalled-download-timeout = 600
+            # A throttled binary cache must not fail the build - build from
+            # source instead. This is the setting that turns the Magic Nix
+            # Cache being rate-limited into "slower" rather than "red".
+            fallback = true
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -220,6 +259,22 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          extra-conf: |
+            # crates.io returns 403 when a runner opens too many parallel
+            # connections. Nix fetches every crate tarball as its own
+            # fixed-output derivation, so the cargo-side retry/caching
+            # settings never applied to them. Keep the fan-out small.
+            http-connections = 8
+            max-substitution-jobs = 4
+            # Retry rather than abort when a fetch is throttled.
+            download-attempts = 10
+            connect-timeout = 20
+            stalled-download-timeout = 600
+            # A throttled binary cache must not fail the build - build from
+            # source instead. This is the setting that turns the Magic Nix
+            # Cache being rate-limited into "slower" rather than "red".
+            fallback = true
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -273,6 +328,22 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          extra-conf: |
+            # crates.io returns 403 when a runner opens too many parallel
+            # connections. Nix fetches every crate tarball as its own
+            # fixed-output derivation, so the cargo-side retry/caching
+            # settings never applied to them. Keep the fan-out small.
+            http-connections = 8
+            max-substitution-jobs = 4
+            # Retry rather than abort when a fetch is throttled.
+            download-attempts = 10
+            connect-timeout = 20
+            stalled-download-timeout = 600
+            # A throttled binary cache must not fail the build - build from
+            # source instead. This is the setting that turns the Magic Nix
+            # Cache being rate-limited into "slower" rather than "red".
+            fallback = true
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -327,6 +398,22 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          extra-conf: |
+            # crates.io returns 403 when a runner opens too many parallel
+            # connections. Nix fetches every crate tarball as its own
+            # fixed-output derivation, so the cargo-side retry/caching
+            # settings never applied to them. Keep the fan-out small.
+            http-connections = 8
+            max-substitution-jobs = 4
+            # Retry rather than abort when a fetch is throttled.
+            download-attempts = 10
+            connect-timeout = 20
+            stalled-download-timeout = 600
+            # A throttled binary cache must not fail the build - build from
+            # source instead. This is the setting that turns the Magic Nix
+            # Cache being rate-limited into "slower" rather than "red".
+            fallback = true
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
@@ -357,6 +444,22 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          extra-conf: |
+            # crates.io returns 403 when a runner opens too many parallel
+            # connections. Nix fetches every crate tarball as its own
+            # fixed-output derivation, so the cargo-side retry/caching
+            # settings never applied to them. Keep the fan-out small.
+            http-connections = 8
+            max-substitution-jobs = 4
+            # Retry rather than abort when a fetch is throttled.
+            download-attempts = 10
+            connect-timeout = 20
+            stalled-download-timeout = 600
+            # A throttled binary cache must not fail the build - build from
+            # source instead. This is the setting that turns the Magic Nix
+            # Cache being rate-limited into "slower" rather than "red".
+            fallback = true
 
       - name: Magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
