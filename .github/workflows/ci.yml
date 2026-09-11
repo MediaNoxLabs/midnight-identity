@@ -131,25 +131,37 @@ jobs:
             extra-substituters = https://cache.iog.io
             extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+      - name: Cache /nix/store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          # Fall back to any store for this OS. A partial hit still removes most
+          # of the crates.io fetching, which is what was producing 403s.
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: true
+          # GitHub gives a repo 10 GB of cache total, shared across Linux and
+          # macOS. Collect before saving so one OS cannot evict the other.
+          gc-max-store-size-linux: 4000000000
+          gc-max-store-size-macos: 3000000000
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
         run: |
-          # crates.io 403s when a runner fetches too many tarballs at once, and
-          # nix materialises every crate as its own derivation. Each attempt
-          # keeps whatever it already fetched in the local store, so retrying
-          # makes forward progress rather than starting over. Slower on a bad
-          # day, green instead of red.
-          for i in 1 2 3 4 5 6; do
+          # With /nix/store cached this is normally a no-op hit. It stays as a
+          # backstop for a cold or evicted cache, where crates.io can still 403
+          # on the volume of tarballs nix materialises. Each attempt keeps what
+          # it already fetched, so a retry makes forward progress.
+          for i in 1 2 3 4; do
             if nix develop --command true; then
               echo "devshell ready after attempt $i"
               exit 0
             fi
-            echo "::warning::devshell build attempt $i failed; retrying in 45s"
-            sleep 45
+            echo "::warning::devshell build attempt $i failed; retrying in 30s"
+            sleep 30
           done
-          echo "::error::devshell failed to build after 6 attempts"
+          echo "::error::devshell failed to build after 4 attempts"
           exit 1
 
       - name: Cache Cargo registry and git trees
@@ -243,25 +255,37 @@ jobs:
             extra-substituters = https://cache.iog.io
             extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+      - name: Cache /nix/store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          # Fall back to any store for this OS. A partial hit still removes most
+          # of the crates.io fetching, which is what was producing 403s.
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: false
+          # GitHub gives a repo 10 GB of cache total, shared across Linux and
+          # macOS. Collect before saving so one OS cannot evict the other.
+          gc-max-store-size-linux: 4000000000
+          gc-max-store-size-macos: 3000000000
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
         run: |
-          # crates.io 403s when a runner fetches too many tarballs at once, and
-          # nix materialises every crate as its own derivation. Each attempt
-          # keeps whatever it already fetched in the local store, so retrying
-          # makes forward progress rather than starting over. Slower on a bad
-          # day, green instead of red.
-          for i in 1 2 3 4 5 6; do
+          # With /nix/store cached this is normally a no-op hit. It stays as a
+          # backstop for a cold or evicted cache, where crates.io can still 403
+          # on the volume of tarballs nix materialises. Each attempt keeps what
+          # it already fetched, so a retry makes forward progress.
+          for i in 1 2 3 4; do
             if nix develop --command true; then
               echo "devshell ready after attempt $i"
               exit 0
             fi
-            echo "::warning::devshell build attempt $i failed; retrying in 45s"
-            sleep 45
+            echo "::warning::devshell build attempt $i failed; retrying in 30s"
+            sleep 30
           done
-          echo "::error::devshell failed to build after 6 attempts"
+          echo "::error::devshell failed to build after 4 attempts"
           exit 1
 
       - name: Cache Cargo registry and git trees
@@ -327,25 +351,37 @@ jobs:
             extra-substituters = https://cache.iog.io
             extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+      - name: Cache /nix/store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          # Fall back to any store for this OS. A partial hit still removes most
+          # of the crates.io fetching, which is what was producing 403s.
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: false
+          # GitHub gives a repo 10 GB of cache total, shared across Linux and
+          # macOS. Collect before saving so one OS cannot evict the other.
+          gc-max-store-size-linux: 4000000000
+          gc-max-store-size-macos: 3000000000
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
         run: |
-          # crates.io 403s when a runner fetches too many tarballs at once, and
-          # nix materialises every crate as its own derivation. Each attempt
-          # keeps whatever it already fetched in the local store, so retrying
-          # makes forward progress rather than starting over. Slower on a bad
-          # day, green instead of red.
-          for i in 1 2 3 4 5 6; do
+          # With /nix/store cached this is normally a no-op hit. It stays as a
+          # backstop for a cold or evicted cache, where crates.io can still 403
+          # on the volume of tarballs nix materialises. Each attempt keeps what
+          # it already fetched, so a retry makes forward progress.
+          for i in 1 2 3 4; do
             if nix develop --command true; then
               echo "devshell ready after attempt $i"
               exit 0
             fi
-            echo "::warning::devshell build attempt $i failed; retrying in 45s"
-            sleep 45
+            echo "::warning::devshell build attempt $i failed; retrying in 30s"
+            sleep 30
           done
-          echo "::error::devshell failed to build after 6 attempts"
+          echo "::error::devshell failed to build after 4 attempts"
           exit 1
 
       - name: Cache Cargo registry and wasm target
@@ -419,25 +455,37 @@ jobs:
             extra-substituters = https://cache.iog.io
             extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+      - name: Cache /nix/store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          # Fall back to any store for this OS. A partial hit still removes most
+          # of the crates.io fetching, which is what was producing 403s.
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: false
+          # GitHub gives a repo 10 GB of cache total, shared across Linux and
+          # macOS. Collect before saving so one OS cannot evict the other.
+          gc-max-store-size-linux: 4000000000
+          gc-max-store-size-macos: 3000000000
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
         run: |
-          # crates.io 403s when a runner fetches too many tarballs at once, and
-          # nix materialises every crate as its own derivation. Each attempt
-          # keeps whatever it already fetched in the local store, so retrying
-          # makes forward progress rather than starting over. Slower on a bad
-          # day, green instead of red.
-          for i in 1 2 3 4 5 6; do
+          # With /nix/store cached this is normally a no-op hit. It stays as a
+          # backstop for a cold or evicted cache, where crates.io can still 403
+          # on the volume of tarballs nix materialises. Each attempt keeps what
+          # it already fetched, so a retry makes forward progress.
+          for i in 1 2 3 4; do
             if nix develop --command true; then
               echo "devshell ready after attempt $i"
               exit 0
             fi
-            echo "::warning::devshell build attempt $i failed; retrying in 45s"
-            sleep 45
+            echo "::warning::devshell build attempt $i failed; retrying in 30s"
+            sleep 30
           done
-          echo "::error::devshell failed to build after 6 attempts"
+          echo "::error::devshell failed to build after 4 attempts"
           exit 1
 
       - name: Cache Cargo registry and git trees
@@ -512,25 +560,37 @@ jobs:
             extra-substituters = https://cache.iog.io
             extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+      - name: Cache /nix/store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          # Fall back to any store for this OS. A partial hit still removes most
+          # of the crates.io fetching, which is what was producing 403s.
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: false
+          # GitHub gives a repo 10 GB of cache total, shared across Linux and
+          # macOS. Collect before saving so one OS cannot evict the other.
+          gc-max-store-size-linux: 4000000000
+          gc-max-store-size-macos: 3000000000
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
         run: |
-          # crates.io 403s when a runner fetches too many tarballs at once, and
-          # nix materialises every crate as its own derivation. Each attempt
-          # keeps whatever it already fetched in the local store, so retrying
-          # makes forward progress rather than starting over. Slower on a bad
-          # day, green instead of red.
-          for i in 1 2 3 4 5 6; do
+          # With /nix/store cached this is normally a no-op hit. It stays as a
+          # backstop for a cold or evicted cache, where crates.io can still 403
+          # on the volume of tarballs nix materialises. Each attempt keeps what
+          # it already fetched, so a retry makes forward progress.
+          for i in 1 2 3 4; do
             if nix develop --command true; then
               echo "devshell ready after attempt $i"
               exit 0
             fi
-            echo "::warning::devshell build attempt $i failed; retrying in 45s"
-            sleep 45
+            echo "::warning::devshell build attempt $i failed; retrying in 30s"
+            sleep 30
           done
-          echo "::error::devshell failed to build after 6 attempts"
+          echo "::error::devshell failed to build after 4 attempts"
           exit 1
 
       - name: Run codegen and assert no drift
@@ -581,25 +641,37 @@ jobs:
             extra-substituters = https://cache.iog.io
             extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+      - name: Cache /nix/store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          # Fall back to any store for this OS. A partial hit still removes most
+          # of the crates.io fetching, which is what was producing 403s.
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: false
+          # GitHub gives a repo 10 GB of cache total, shared across Linux and
+          # macOS. Collect before saving so one OS cannot evict the other.
+          gc-max-store-size-linux: 4000000000
+          gc-max-store-size-macos: 3000000000
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
         run: |
-          # crates.io 403s when a runner fetches too many tarballs at once, and
-          # nix materialises every crate as its own derivation. Each attempt
-          # keeps whatever it already fetched in the local store, so retrying
-          # makes forward progress rather than starting over. Slower on a bad
-          # day, green instead of red.
-          for i in 1 2 3 4 5 6; do
+          # With /nix/store cached this is normally a no-op hit. It stays as a
+          # backstop for a cold or evicted cache, where crates.io can still 403
+          # on the volume of tarballs nix materialises. Each attempt keeps what
+          # it already fetched, so a retry makes forward progress.
+          for i in 1 2 3 4; do
             if nix develop --command true; then
               echo "devshell ready after attempt $i"
               exit 0
             fi
-            echo "::warning::devshell build attempt $i failed; retrying in 45s"
-            sleep 45
+            echo "::warning::devshell build attempt $i failed; retrying in 30s"
+            sleep 30
           done
-          echo "::error::devshell failed to build after 6 attempts"
+          echo "::error::devshell failed to build after 4 attempts"
           exit 1
 
       - name: Run VC codegen and assert no drift
