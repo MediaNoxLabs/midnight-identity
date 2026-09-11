@@ -148,6 +148,14 @@ jobs:
           purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
+        # Must not fail the job. The cache-nix-action post step is what saves
+        # /nix/store, and a failed step stops the job before any post step
+        # runs - so a hard failure here means the cache can never warm, and
+        # every run starts cold and fails the same way. Letting it fail soft
+        # keeps each attempt's fetched paths, so runs get progressively
+        # warmer. If the devshell really is unusable the real steps below
+        # fail, which is where a failure belongs.
+        continue-on-error: true
         run: |
           # With /nix/store cached this is normally a no-op hit. It stays as a
           # backstop for a cold or evicted cache, where crates.io can still 403
@@ -161,8 +169,7 @@ jobs:
             echo "::warning::devshell build attempt $i failed; retrying in 30s"
             sleep 30
           done
-          echo "::error::devshell failed to build after 4 attempts"
-          exit 1
+          echo "::warning::devshell not fully built after 4 attempts; continuing so the cache can still be saved"
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -272,6 +279,14 @@ jobs:
           purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
+        # Must not fail the job. The cache-nix-action post step is what saves
+        # /nix/store, and a failed step stops the job before any post step
+        # runs - so a hard failure here means the cache can never warm, and
+        # every run starts cold and fails the same way. Letting it fail soft
+        # keeps each attempt's fetched paths, so runs get progressively
+        # warmer. If the devshell really is unusable the real steps below
+        # fail, which is where a failure belongs.
+        continue-on-error: true
         run: |
           # With /nix/store cached this is normally a no-op hit. It stays as a
           # backstop for a cold or evicted cache, where crates.io can still 403
@@ -285,8 +300,7 @@ jobs:
             echo "::warning::devshell build attempt $i failed; retrying in 30s"
             sleep 30
           done
-          echo "::error::devshell failed to build after 4 attempts"
-          exit 1
+          echo "::warning::devshell not fully built after 4 attempts; continuing so the cache can still be saved"
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -368,6 +382,14 @@ jobs:
           purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
+        # Must not fail the job. The cache-nix-action post step is what saves
+        # /nix/store, and a failed step stops the job before any post step
+        # runs - so a hard failure here means the cache can never warm, and
+        # every run starts cold and fails the same way. Letting it fail soft
+        # keeps each attempt's fetched paths, so runs get progressively
+        # warmer. If the devshell really is unusable the real steps below
+        # fail, which is where a failure belongs.
+        continue-on-error: true
         run: |
           # With /nix/store cached this is normally a no-op hit. It stays as a
           # backstop for a cold or evicted cache, where crates.io can still 403
@@ -381,8 +403,7 @@ jobs:
             echo "::warning::devshell build attempt $i failed; retrying in 30s"
             sleep 30
           done
-          echo "::error::devshell failed to build after 4 attempts"
-          exit 1
+          echo "::warning::devshell not fully built after 4 attempts; continuing so the cache can still be saved"
 
       - name: Cache Cargo registry and wasm target
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -472,6 +493,14 @@ jobs:
           purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
+        # Must not fail the job. The cache-nix-action post step is what saves
+        # /nix/store, and a failed step stops the job before any post step
+        # runs - so a hard failure here means the cache can never warm, and
+        # every run starts cold and fails the same way. Letting it fail soft
+        # keeps each attempt's fetched paths, so runs get progressively
+        # warmer. If the devshell really is unusable the real steps below
+        # fail, which is where a failure belongs.
+        continue-on-error: true
         run: |
           # With /nix/store cached this is normally a no-op hit. It stays as a
           # backstop for a cold or evicted cache, where crates.io can still 403
@@ -485,8 +514,7 @@ jobs:
             echo "::warning::devshell build attempt $i failed; retrying in 30s"
             sleep 30
           done
-          echo "::error::devshell failed to build after 4 attempts"
-          exit 1
+          echo "::warning::devshell not fully built after 4 attempts; continuing so the cache can still be saved"
 
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -577,6 +605,14 @@ jobs:
           purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
+        # Must not fail the job. The cache-nix-action post step is what saves
+        # /nix/store, and a failed step stops the job before any post step
+        # runs - so a hard failure here means the cache can never warm, and
+        # every run starts cold and fails the same way. Letting it fail soft
+        # keeps each attempt's fetched paths, so runs get progressively
+        # warmer. If the devshell really is unusable the real steps below
+        # fail, which is where a failure belongs.
+        continue-on-error: true
         run: |
           # With /nix/store cached this is normally a no-op hit. It stays as a
           # backstop for a cold or evicted cache, where crates.io can still 403
@@ -590,8 +626,7 @@ jobs:
             echo "::warning::devshell build attempt $i failed; retrying in 30s"
             sleep 30
           done
-          echo "::error::devshell failed to build after 4 attempts"
-          exit 1
+          echo "::warning::devshell not fully built after 4 attempts; continuing so the cache can still be saved"
 
       - name: Run codegen and assert no drift
         run: nix develop --command just codegen-check
@@ -658,6 +693,14 @@ jobs:
           purge-created: 604800
 
       - name: Warm the devshell (retry through crates.io rate limits)
+        # Must not fail the job. The cache-nix-action post step is what saves
+        # /nix/store, and a failed step stops the job before any post step
+        # runs - so a hard failure here means the cache can never warm, and
+        # every run starts cold and fails the same way. Letting it fail soft
+        # keeps each attempt's fetched paths, so runs get progressively
+        # warmer. If the devshell really is unusable the real steps below
+        # fail, which is where a failure belongs.
+        continue-on-error: true
         run: |
           # With /nix/store cached this is normally a no-op hit. It stays as a
           # backstop for a cold or evicted cache, where crates.io can still 403
@@ -671,8 +714,7 @@ jobs:
             echo "::warning::devshell build attempt $i failed; retrying in 30s"
             sleep 30
           done
-          echo "::error::devshell failed to build after 4 attempts"
-          exit 1
+          echo "::warning::devshell not fully built after 4 attempts; continuing so the cache can still be saved"
 
       - name: Run VC codegen and assert no drift
         run: nix develop --command just codegen-vc-check
