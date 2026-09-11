@@ -79,7 +79,7 @@ midnight-vc-runtime = { path = "crates/midnight-vc-runtime" }
 # Pinning by rev keeps reproducibility independent of branch movement.
 # See `doc/adr/0006-runtime-crate-halo2-block.md` for the full story.
 [patch.crates-io]
-midnight-proofs = { git = "https://github.com/yshyn-iohk/midnight-zk.git", rev = "cf60e3ccb87f2de40b1307f7e78abdcb4c696c91" }
+midnight-proofs = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "cf60e3ccb87f2de40b1307f7e78abdcb4c696c91" }
 
 [profile.dev]
 debug = "limited"
