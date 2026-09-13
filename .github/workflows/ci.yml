@@ -95,8 +95,65 @@ env:
 
 jobs:
   # Fast pre-checks: formatting + lints. Linux only.
+  # A job whose only purpose is to populate the /nix/store cache, and which
+  # always succeeds so that its save step runs.
+  #
+  # cache-nix-action saves in a post step, and a post step is skipped when the
+  # job fails. Earlier attempts put the save inside pre-check, which fails
+  # whenever the devshell is incomplete - so the cache never populated, every
+  # run started cold, and the failure reproduced itself exactly. Isolating the
+  # save in a job that cannot fail breaks that loop: each run keeps whatever it
+  # fetched, and the next starts warmer.
+  warm-nix-cache:
+    name: Warm the Nix store cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          extra-conf: |
+            max-jobs = 2
+            http-connections = 8
+            connect-timeout = 20
+            stalled-download-timeout = 600
+            fallback = true
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+
+      - name: Cache /nix/store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: true
+          gc-max-store-size-linux: 4000000000
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 604800
+
+      # Never fails the job. A partial store is still worth saving, and whether
+      # the devshell is usable is decided by the jobs that actually use it.
+      - name: Build the devshell as far as it gets
+        continue-on-error: true
+        run: |
+          for i in 1 2 3 4; do
+            if nix develop --command true; then
+              echo "devshell ready after attempt $i"
+              exit 0
+            fi
+            echo "::warning::devshell build attempt $i failed; retrying in 30s"
+            sleep 30
+          done
+          echo "::warning::devshell incomplete; saving the partial store anyway"
+
   pre-check:
     name: Format + Clippy
+    needs: warm-nix-cache
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -138,7 +195,7 @@ jobs:
           # Fall back to any store for this OS. A partial hit still removes most
           # of the crates.io fetching, which is what was producing 403s.
           restore-prefixes-first-match: nix-${{ runner.os }}-
-          save: true
+          save: false
           # GitHub gives a repo 10 GB of cache total, shared across Linux and
           # macOS. Collect before saving so one OS cannot evict the other.
           gc-max-store-size-linux: 4000000000
