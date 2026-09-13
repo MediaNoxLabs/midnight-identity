@@ -138,18 +138,40 @@ jobs:
 
       # Never fails the job. A partial store is still worth saving, and whether
       # the devshell is usable is decided by the jobs that actually use it.
+      #
+      # `-L` prints builder logs. Without it a failed fetch reports only
+      # "builder failed with exit code 1" and the actual cause — a crates.io
+      # 403, a hash mismatch, a timeout — is invisible, which is how three
+      # earlier iterations of this workflow ended up aimed at the wrong layer.
       - name: Build the devshell as far as it gets
         continue-on-error: true
         run: |
           for i in 1 2 3 4; do
-            if nix develop --command true; then
+            if nix develop -L --command true; then
               echo "devshell ready after attempt $i"
-              exit 0
+              break
             fi
             echo "::warning::devshell build attempt $i failed; retrying in 30s"
             sleep 30
           done
-          echo "::warning::devshell incomplete; saving the partial store anyway"
+
+      # Without this the cache save fails outright and nothing is ever cached.
+      #
+      # `cache-nix-action` tars /nix/store as the runner user. Nix leaves
+      # per-path build locks at `/nix/store/<hash>-<name>.lock`, owned by root
+      # and unreadable to that user, so tar exits 2 and the action reports
+      # "Could not save the new cache" — as a *warning*, after which the run
+      # carries on looking healthy. Every subsequent run then starts from a
+      # cold store and re-fetches every crate tarball from crates.io, which is
+      # what produces the 403s this workflow was written to avoid.
+      #
+      # The locks are transient build artefacts, not store paths: nothing
+      # references them once the build that took them has finished, and this
+      # step runs after the only build in the job. `-maxdepth 1` keeps the
+      # deletion to those top-level lock files and away from store contents.
+      - name: Remove nix build locks so the cache save can read the store
+        if: always()
+        run: sudo find /nix/store -maxdepth 1 -name '*.lock' -delete || true
 
   pre-check:
     name: Format + Clippy
