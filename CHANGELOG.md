@@ -14,6 +14,13 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Added
 
+- **Passport Vault source ownership, slice 1 (issue #47)** — new
+  `midnight-passport-vault-source` crate with the byte-identical reviewed Ledger
+  8 Compact source, Apache-2.0 provenance, compatibility manifest, and circuit
+  baselines. The package has no runtime dependencies; generated Rust, ZKIR,
+  parameters, and proving keys remain a separate heavy artifact boundary per
+  ADR 0010.
+
 - **VC core crates, slice 1 (issue #13)** — the Verifiable Credentials
   track starts. Split per ADR 0009's "by spec boundary, not per
   credential family" directive: one credential-model crate and one

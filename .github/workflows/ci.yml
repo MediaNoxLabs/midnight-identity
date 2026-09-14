@@ -42,6 +42,7 @@ on:
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
       - "crates/midnight-vc-domain/**"
+      - "crates/midnight-passport-vault-source/**"
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
@@ -63,6 +64,7 @@ on:
       - "crates/midnight-did/**"
       - "crates/midnight-did-runtime/src/contract/**"
       - "crates/midnight-vc-domain/**"
+      - "crates/midnight-passport-vault-source/**"
       - "crates/midnight-vc-runtime/**"
       - "third_party/midnight-did/**"
       - "third_party/midnight-verifiable-credentials/**"
@@ -129,6 +131,7 @@ jobs:
             cargo fmt -p midnight-did-api    --check &&
             cargo fmt -p midnight-did        --check &&
             cargo fmt -p midnight-vc-domain  --check &&
+            cargo fmt -p midnight-passport-vault-source --check &&
             cargo fmt -p midnight-vc-runtime --check
           '
 
@@ -146,6 +149,9 @@ jobs:
 
       - name: Run Clippy on midnight-vc-domain
         run: nix develop --command cargo clippy -p midnight-vc-domain --all-targets -- -D warnings
+
+      - name: Run Clippy on Passport Vault source package
+        run: nix develop --command cargo clippy -p midnight-passport-vault-source --all-targets -- -D warnings
 
       # The generated binding modules carry compactc's own #![allow(clippy::all)],
       # so this lints the hand-written lib.rs / contract/mod.rs surface.
@@ -198,11 +204,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-target-did-
 
-      - name: Run tests (domain + method + api + vc-domain)
+      - name: Run tests (domain + method + api + vc-domain + source packages)
         run: |
           nix develop --command cargo test --locked \
             -p midnight-did-domain -p midnight-did-method -p midnight-did-api \
-            -p midnight-vc-domain
+            -p midnight-vc-domain -p midnight-passport-vault-source
 
   # Build the wasm-clean crates against wasm32-unknown-unknown.
   wasm-build:
@@ -236,7 +242,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-wasm-
 
-      # Only midnight-did-domain is wasm-clean today.
+      # Only runtime-independent packages are built for wasm here.
       #   - method     -> midnight-base-crypto + compact-runtime (blst)
       #   - api        -> midnight-did-runtime  (blst via halo2)
       #   - umbrella   -> transitively depends on api/runtime
@@ -246,10 +252,11 @@ jobs:
       # is a re-architecting task (feature-gate the crypto deps behind
       # a non-wasm cfg or expose the domain-shape mapping via a smaller
       # runtime-agnostic surface).
-      - name: Build wasm32-unknown-unknown (domain)
+      - name: Build wasm32-unknown-unknown (domain and source packages)
         run: |
           nix develop --command cargo build --target wasm32-unknown-unknown \
             -p midnight-did-domain \
+            -p midnight-passport-vault-source \
             --locked
 
   # Line-coverage gate over every first-party crate (cargo-llvm-cov via
