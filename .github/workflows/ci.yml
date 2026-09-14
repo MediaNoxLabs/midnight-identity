@@ -16,11 +16,12 @@ name: CI
 # exercised by the codegen-check / codegen-vc-check jobs below (regenerate
 # the bindings under the flake-pinned compactc and assert no drift).
 #
-# Every job runs under `nix develop`. The devshell's shellHook
+# Ordinary gates run under the light `nix develop .#rust` shell. Its shellHook
 # materialises path-mounted third_party crates (midnight-ledger,
 # midnight-zk, compact/runtime-rs, compact/runtime-rs-macros) that the
 # workspace Cargo.toml references — without them, bare `cargo` fails at
-# `cargo metadata`.
+# `cargo metadata`. Only codegen drift jobs enter the default shell, whose
+# package closure also contains the pinned `compactc` toolchain.
 #
 # Seven jobs:
 #   - pre-check:    cargo fmt --check + clippy -D warnings on Linux.
@@ -107,9 +108,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
-
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -123,7 +121,7 @@ jobs:
 
       - name: Check formatting (DID gated set + VC crates)
         run: |
-          nix develop --command bash -c '
+          nix develop .#rust --command bash -c '
             cargo fmt -p midnight-did-domain --check &&
             cargo fmt -p midnight-did-method --check &&
             cargo fmt -p midnight-did-api    --check &&
@@ -133,24 +131,24 @@ jobs:
           '
 
       - name: Run Clippy on midnight-did-domain
-        run: nix develop --command cargo clippy -p midnight-did-domain --all-targets -- -D warnings
+        run: nix develop .#rust --command cargo clippy -p midnight-did-domain --all-targets -- -D warnings
 
       - name: Run Clippy on midnight-did-method
-        run: nix develop --command cargo clippy -p midnight-did-method --all-targets -- -D warnings
+        run: nix develop .#rust --command cargo clippy -p midnight-did-method --all-targets -- -D warnings
 
       - name: Run Clippy on midnight-did-api
-        run: nix develop --command cargo clippy -p midnight-did-api --all-targets -- -D warnings
+        run: nix develop .#rust --command cargo clippy -p midnight-did-api --all-targets -- -D warnings
 
       - name: Run Clippy on midnight-did (umbrella)
-        run: nix develop --command cargo clippy -p midnight-did --all-targets -- -D warnings
+        run: nix develop .#rust --command cargo clippy -p midnight-did --all-targets -- -D warnings
 
       - name: Run Clippy on midnight-vc-domain
-        run: nix develop --command cargo clippy -p midnight-vc-domain --all-targets -- -D warnings
+        run: nix develop .#rust --command cargo clippy -p midnight-vc-domain --all-targets -- -D warnings
 
       # The generated binding modules carry compactc's own #![allow(clippy::all)],
       # so this lints the hand-written lib.rs / contract/mod.rs surface.
       - name: Run Clippy on midnight-vc-runtime
-        run: nix develop --command cargo clippy -p midnight-vc-runtime --all-targets -- -D warnings
+        run: nix develop .#rust --command cargo clippy -p midnight-vc-runtime --all-targets -- -D warnings
 
   # Test matrix on Linux + macOS.
   test:
@@ -176,9 +174,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
-
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -200,7 +195,7 @@ jobs:
 
       - name: Run tests (domain + method + api + vc-domain)
         run: |
-          nix develop --command cargo test --locked \
+          nix develop .#rust --command cargo test --locked \
             -p midnight-did-domain -p midnight-did-method -p midnight-did-api \
             -p midnight-vc-domain
 
@@ -220,9 +215,6 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
 
       - name: Cache Cargo registry and wasm target
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -248,7 +240,7 @@ jobs:
       # runtime-agnostic surface).
       - name: Build wasm32-unknown-unknown (domain)
         run: |
-          nix develop --command cargo build --target wasm32-unknown-unknown \
+          nix develop .#rust --command cargo build --target wasm32-unknown-unknown \
             -p midnight-did-domain \
             --locked
 
@@ -274,9 +266,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
-
       - name: Cache Cargo registry and git trees
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -289,14 +278,14 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Enforce coverage floor
-        run: nix develop --command just coverage-gate
+        run: nix develop .#rust --command just coverage-gate
 
       - name: Ratchet check (warn when the floor is stale)
-        run: nix develop --command just coverage-ratchet
+        run: nix develop .#rust --command just coverage-ratchet
 
       - name: Export LCOV report
         if: always()
-        run: nix develop --command just coverage-lcov
+        run: nix develop .#rust --command just coverage-lcov
 
       - name: Upload LCOV artifact
         if: always()

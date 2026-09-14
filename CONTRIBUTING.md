@@ -39,6 +39,12 @@ dev loop:
    direnv allow            # or: nix develop
    ```
 
+   For formatting, linting, tests, coverage, and WASM work that does not
+   invoke the Compact compiler, use `nix develop .#rust`. It keeps the same
+   pinned Rust tools and third-party source mounts without constructing the
+   heavy `compactc`/proving/Node closure. CI uses this light shell for those
+   gates and reserves the default shell and Magic Nix Cache for code generation.
+
 2. **Regenerate the contract crate** from `did.compact`:
 
    ```bash

@@ -135,6 +135,7 @@ Everything runs inside the nix devshell:
 
 ```bash
 nix develop            # toolchain + compactc + third_party mounts
+nix develop .#rust     # light Rust gates; no compactc/proving closure
 just --list            # available recipes
 just ci                # fmt-check + lint + build + test + coverage-gate
 just codegen-check     # regen generated.rs, assert no drift
@@ -150,11 +151,13 @@ the integration branch — PRs target `develop`.
 
 ## CI
 
-Every PR runs: fmt + clippy (`-D warnings`), tests on Linux + macOS,
+Every PR runs its ordinary Rust gates in the light `.#rust` shell:
+fmt + clippy (`-D warnings`), tests on Linux + macOS,
 a `wasm32-unknown-unknown` build of the wasm-clean `midnight-did-domain`
 crate, a line-coverage floor (cargo-llvm-cov) over every first-party
-crate, and the DID and VC codegen drift-checks against the
-flake-pinned compactc.
+crate, and the DID and VC codegen drift-checks in the full shell against
+the flake-pinned compactc. Magic Nix Cache is reserved for those heavy codegen
+jobs; light jobs use the public binary caches plus their explicit Cargo cache.
 
 ## Community
 
