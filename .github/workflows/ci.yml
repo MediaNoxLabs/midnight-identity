@@ -128,8 +128,21 @@ jobs:
       - name: Cache /nix/store
         uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
         with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
+          # The run id is in the key on purpose.
+          #
+          # GitHub Actions caches are immutable per key: when the primary key
+          # already exists, the save is skipped. With a key derived only from
+          # `flake.lock`/`Cargo.lock` — which do not change between runs — the
+          # first save wins permanently. That first save was *partial*, because
+          # the devshell build it came from had failed on a crates.io 403, so
+          # every later run restored a partial store, re-fetched the missing
+          # crates, hit 403 again, and could never save the result.
+          #
+          # A unique primary key means every run saves; the prefix restore
+          # below still picks up the most recent one, so each run starts from
+          # the furthest anyone has got. `purge` keeps the accumulation bounded.
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}-${{ github.run_id }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}-
           save: true
           gc-max-store-size-linux: 4000000000
           purge: true
