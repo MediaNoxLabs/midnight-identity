@@ -2,14 +2,14 @@
   description = "Midnight DID — native Rust implementation";
 
   nixConfig = {
-    extra-substituters     = [ "https://cache.iog.io" ];
+    extra-substituters = [ "https://cache.iog.io" ];
     extra-trusted-public-keys = [ "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=" ];
   };
 
   inputs = {
-    nixpkgs.url      = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    flake-parts.url  = "github:hercules-ci/flake-parts";
+    flake-parts.url = "github:hercules-ci/flake-parts";
     midnight-ledger = {
       url = "github:yshyn-iohk/midnight-ledger/dioxus-vc-demo";
       flake = false;
@@ -23,11 +23,7 @@
       url = "github:yshyn-iohk/midnight-zk/feat/v0.7-h-poly-streaming";
       flake = false;
     };
-    compact = {
-      # MediaNoxLabs/compact#70 — dogfood enclave + two Rust-codegen fixes
-      # (ternary sub-expressions, mixed-width operands). Experimental branch.
-      url = "github:MediaNoxLabs/compact/feature/add-digital-passport-dogfood-fixture";
-    };
+    compact.url = "github:MediaNoxLabs/compact/codegen-rust";
     # Source-only input: the shared ptah workflow library, mounted under
     # .ptah/libs by the opt-in `devShells.ptah` shell (`nix develop .#ptah`).
     # The default devshell — and therefore every CI job — never evaluates
@@ -39,7 +35,12 @@
   };
 
   outputs =
-    { nixpkgs, rust-overlay, flake-parts, ... }@inputs:
+    {
+      nixpkgs,
+      rust-overlay,
+      flake-parts,
+      ...
+    }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -63,12 +64,16 @@
             };
             midnightDidRsLib = {
               rustTools = import ./nix/rustTools.nix {
-                rust-bin     = (import nixpkgs { inherit system; overlays = [ (import rust-overlay) ]; }).rust-bin;
+                rust-bin =
+                  (import nixpkgs {
+                    inherit system;
+                    overlays = [ (import rust-overlay) ];
+                  }).rust-bin;
                 rust-overlay = rust-overlay;
               };
               sources = {
                 midnight-ledger = inputs.midnight-ledger;
-                midnight-zk     = inputs.midnight-zk;
+                midnight-zk = inputs.midnight-zk;
               };
             };
           };

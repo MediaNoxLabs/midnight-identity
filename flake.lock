@@ -34,16 +34,16 @@
         "zkir-wasm": "zkir-wasm"
       },
       "locked": {
-        "lastModified": 1789017508,
-        "narHash": "sha256-HVIIfDOERb0acgsvO3X4KFUk1DIY2k6+PXH4NsbIxNM=",
+        "lastModified": 1789385789,
+        "narHash": "sha256-ETZO1vks6cVhyzdDwJqELSoRld2Ff4nx+3468NDTeAU=",
         "owner": "MediaNoxLabs",
         "repo": "compact",
-        "rev": "e7297f33d9b0957010143a3594f84a70203edece",
+        "rev": "611a3dda0c512326a2c15a2e68ce20f8dcf58105",
         "type": "github"
       },
       "original": {
         "owner": "MediaNoxLabs",
-        "ref": "feature/add-digital-passport-dogfood-fixture",
+        "ref": "codegen-rust",
         "repo": "compact",
         "type": "github"
       }
