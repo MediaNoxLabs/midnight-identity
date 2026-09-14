@@ -2338,9 +2338,7 @@ name = "midnight-did-method"
 version = "0.5.0"
 dependencies = [
  "blake2",
- "compact-runtime",
  "hex",
- "midnight-base-crypto",
  "midnight-did-domain",
  "serde",
  "serde_json",

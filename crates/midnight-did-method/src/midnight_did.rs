@@ -19,33 +19,31 @@
 //! the on-chain variants and `did:midnight:offchain:<state_hash>[:<state>]`
 //! for the off-chain encoding. Validation rules match the TS source.
 //!
-//! ## v0.2.0 type change — drop String shadow primitives
+//! ## Runtime-independent identifier types
 //!
-//! [`ContractAddress`] used to be a local `pub struct
-//! ContractAddress(pub String)` wrapping 64-char hex; same for the
-//! off-chain state hash. These two types are now re-exported from the
-//! upstream Midnight ledger libraries:
-//!
-//! - [`ContractAddress`] = [`compact_runtime::ContractAddress`] (which is
-//!   `midnight_coin_structure::contract::ContractAddress(pub HashOutput)`)
-//! - [`OffchainStateHashHex`] = [`midnight_base_crypto::hash::HashOutput`]
-//!
-//! The in-memory representation is therefore a `[u8; 32]` rather than a
-//! 64-character `String`, inheriting all the upstream derives we need
-//! (`FieldRepr` / `FromFieldRepr` / `BinaryHashRepr` / `Serializable` /
-//! `Zeroize` / constant-time `eq`). Hex round-trips go through the
-//! [`crate::hex_ext::HashOutputExt`] extension trait.
+//! Contract addresses and off-chain state hashes are represented as distinct
+//! 32-byte method-layer values. Ledger-specific conversion belongs in runtime
+//! adapters, so parsing a DID does not compile Compact, Halo2, or ledger crates.
+//! Hex round-trips go through [`crate::hex_ext::HashOutputExt`].
 //!
 //! The JSON wire shape of the W3C DID Document is unaffected — DID
 //! identifiers are always embedded inside the `did:midnight:net:<hex>`
 //! string form, never serialised as a bare `ContractAddress` JSON field.
 
-pub use compact_runtime::ContractAddress;
-pub use midnight_base_crypto::hash::HashOutput as OffchainStateHashHex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::hex_ext::HashOutputExt;
+
+/// Runtime-independent 32-byte on-chain contract address.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ContractAddress(pub [u8; 32]);
+
+/// Runtime-independent 32-byte off-chain state hash.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct OffchainStateHashHex(pub [u8; 32]);
 
 /// Networks the Midnight method recognises.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -96,19 +94,14 @@ impl MidnightNetwork {
 }
 
 /// Subject id portion of a Midnight DID — either a contract address or an
-/// off-chain state hash. Both variants now hold the upstream-typed 32-byte
+/// off-chain state hash. Both variants hold a method-layer 32-byte
 /// representation; render via [`Self::to_hex`] when a 64-character hex
 /// string is needed (e.g. when re-assembling a `did:midnight:` URI).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MidnightSubjectId {
-    /// Contract address (`did:midnight:devnet:<addr>`). Backed by the
-    /// upstream [`compact_runtime::ContractAddress`] which is in turn a
-    /// `(pub HashOutput)` newtype — full ledger-trait stack derived
-    /// upstream.
+    /// Contract address (`did:midnight:devnet:<addr>`).
     Contract(ContractAddress),
-    /// Offchain state hash (`did:midnight:offchain:<hash>`). Backed by
-    /// the upstream [`midnight_base_crypto::hash::HashOutput`] — same
-    /// 32-byte storage, same trait stack.
+    /// Offchain state hash (`did:midnight:offchain:<hash>`).
     Offchain(OffchainStateHashHex),
 }
 
@@ -169,8 +162,7 @@ fn is_base64url_segment(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') && s.len() % 4 != 1
 }
 
-/// Validate a 32-byte hex contract address (case-insensitive) and lift
-/// it into the upstream [`ContractAddress`] type.
+/// Validate a 32-byte hex contract address (case-insensitive).
 ///
 /// Returns [`MidnightDidError::BadContractAddress`] on any hex error —
 /// wrong length, non-hex chars, or any failure in the underlying
@@ -182,13 +174,13 @@ pub fn parse_contract_address(input: &str) -> Result<ContractAddress, MidnightDi
     // Mixed-case allowed for contract addresses; lowercase before
     // handing to from_hex (the hex crate is case-insensitive but the
     // explicit normalisation here documents the intent and matches
-    // the upstream Display rendering).
+    // the canonical wire rendering).
     let lower = input.to_ascii_lowercase();
     ContractAddress::from_hex(&lower).map_err(|_| MidnightDidError::BadContractAddress)
 }
 
 /// Validate a 32-byte **lowercase**-hex offchain state hash and lift
-/// it into the upstream [`HashOutput`] type ([`OffchainStateHashHex`]).
+/// it into [`OffchainStateHashHex`].
 ///
 /// Off-chain identifiers must use lowercase hex — mirrors the TS
 /// `parseOffchainStateHash` invariant. Mixed-case is rejected with
@@ -243,7 +235,7 @@ pub fn parse_midnight_did_string(input: &str) -> Result<MidnightDidString, Midni
 
 /// Decompose a Midnight DID string into its `(network, subject_id)` pair.
 ///
-/// Both subject variants now wrap upstream-typed `[u8; 32]` storage; the
+/// Both subject variants wrap method-layer `[u8; 32]` storage; the
 /// hex sub-string from the DID URI is round-tripped through
 /// [`HashOutputExt::from_hex`].
 pub fn parse_midnight_did(did: &MidnightDidString) -> Result<(MidnightNetwork, MidnightSubjectId), MidnightDidError> {
@@ -271,8 +263,7 @@ mod tests {
     #[test]
     fn build_and_decompose() {
         let address = parse_contract_address(SAMPLE).unwrap();
-        // Address now backed by upstream ContractAddress(pub HashOutput);
-        // hex round-trip goes through HashOutputExt::to_hex.
+        // The address remains runtime-independent and round-trips through hex.
         let did = create_midnight_did_string(&address.to_hex(), MidnightNetwork::DevNet);
         assert_eq!(did.0, format!("did:midnight:devnet:{SAMPLE}"));
         let parsed = parse_midnight_did_string(&did.0).unwrap();
@@ -321,22 +312,17 @@ mod tests {
         assert_eq!(id.to_hex(), SAMPLE);
     }
 
-    // ---- v0.2.0 type-change coverage ----------------------------------
+    // ---- runtime-independent type coverage -----------------------------
 
     #[test]
-    fn parse_contract_address_returns_upstream_type() {
-        // Confirm the parser yields an upstream ContractAddress whose
-        // inner HashOutput's bytes match the hex-decoded input. This
-        // pins the new in-memory shape (was a 64-char String).
+    fn parse_contract_address_returns_method_type() {
         let addr = parse_contract_address(SAMPLE).unwrap();
-        let inner_hash: midnight_base_crypto::hash::HashOutput = addr.0;
-        let bytes = inner_hash.0;
         // SAMPLE is "cccc..." 64 chars → 32 bytes all 0xcc.
-        assert_eq!(bytes, [0xccu8; 32]);
+        assert_eq!(addr.0, [0xccu8; 32]);
     }
 
     #[test]
-    fn parse_offchain_state_hash_returns_upstream_type() {
+    fn parse_offchain_state_hash_returns_method_type() {
         let hash = parse_offchain_state_hash(SAMPLE).unwrap();
         assert_eq!(hash.0, [0xccu8; 32]);
     }

@@ -31,7 +31,7 @@ Compact contracts now ship as `midnight-vc-domain` and
 | Crate | Purpose | Publishable |
 |---|---|---|
 | `midnight-did-domain` | Pure-data W3C DID Core model + crypto codecs (zero `midnight-*` deps, wasm-clean) | yes |
-| `midnight-did-method` | `did:midnight:*` parsing, network mapping, MOD1 offchain codec | blocked¹ |
+| `midnight-did-method` | Runtime-independent `did:midnight:*` parsing, network mapping, holder binding, and MOD1 offchain codec | yes |
 | `midnight-did-api` | Async operation builders (create / update / rotate / recover / resolve / deactivate) over `Contract<B: Backend>` | blocked¹ |
 | `midnight-did-runtime` | `compactc --rust` codegen target: generated contract bindings, `Backend` trait, mock + resolver backends | blocked¹ |
 | `midnight-did` | Umbrella re-export crate | blocked¹ |
@@ -106,7 +106,7 @@ use midnight_did_runtime::{
     backend::RecordingBackend,
     contract_call::DidLedgerSnapshot,
 };
-use compact_runtime::ContractAddress;
+use midnight_did_method::midnight_did::ContractAddress;
 
 let snapshot = DidLedgerSnapshot::default(); // or a real fixture
 let addr = ContractAddress::default();
@@ -152,6 +152,7 @@ the integration branch — PRs target `develop`.
 
 Every PR runs: fmt + clippy (`-D warnings`), tests on Linux + macOS,
 a `wasm32-unknown-unknown` build of the wasm-clean `midnight-did-domain`
+and `midnight-did-method`
 crate, a line-coverage floor (cargo-llvm-cov) over every first-party
 crate, and the DID and VC codegen drift-checks against the
 flake-pinned compactc.

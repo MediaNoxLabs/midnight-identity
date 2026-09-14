@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 | Crate | crates.io status | Blocker |
 |---|---|---|
 | `midnight-did-domain` | **publishable now** | none — zero `midnight-*` deps |
-| `midnight-did-method` | blocked | `midnight-base-crypto`, `compact-runtime` unpublished |
+| `midnight-did-method` | **publishable now** | runtime-independent; depends only on published crates |
 | `midnight-did-runtime` | blocked | `midnight-ledger` crates, `compact-runtime` unpublished |
 | `midnight-did-api` | blocked | transitively via method + runtime |
 | `midnight-did` (umbrella) | blocked | transitively |
@@ -20,13 +20,14 @@ SPDX-License-Identifier: Apache-2.0
 | `midnight-vc-domain` | **publishable now** | none — zero `midnight-*` deps |
 | `midnight-vc-runtime` | `publish = false` | `compact-runtime` + `midnight-ledger` unpublished; generated-code artifact |
 
-**Why blocked:** crates.io rejects path-only dependencies. The
-workspace path-mounts `third_party/midnight-ledger/*` and
-`third_party/compact/runtime-rs` via the devshell; none of those crates
+**Why the remaining crates are blocked:** crates.io rejects path-only
+dependencies. Runtime/API crates path-mount `third_party/midnight-ledger/*`
+and `third_party/compact/runtime-rs` via the devshell; none of those crates
 exist on crates.io (verified 2026-08-07). Until the Midnight Foundation
 publishes `midnight-ledger`, and `compact-runtime` is published from
-[MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact),
-consumers use **git dependencies** on this repo.
+[MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact), consumers of
+those heavier crates use **git dependencies** on this repo. The domain and
+method crates do not inherit that restriction.
 
 **Decision (2026-08-07):** `compact-runtime` stays in the compact repo
 (codegen ↔ runtime co-evolve; compact's byte-parity CI compiles

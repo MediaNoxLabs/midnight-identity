@@ -236,20 +236,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-wasm-
 
-      # Only midnight-did-domain is wasm-clean today.
-      #   - method     -> midnight-base-crypto + compact-runtime (blst)
+      # The domain and method crates are runtime-independent and wasm-clean.
       #   - api        -> midnight-did-runtime  (blst via halo2)
       #   - umbrella   -> transitively depends on api/runtime
-      # All three drag the `blst` C bindings into the wasm32 build, and
+      # The latter two drag the `blst` C bindings into the wasm32 build, and
       # blst's `no_asm.h` fails to compile without an `llimb_t` typedef
       # on wasm targets. Restoring method/api/umbrella to the wasm gate
       # is a re-architecting task (feature-gate the crypto deps behind
       # a non-wasm cfg or expose the domain-shape mapping via a smaller
       # runtime-agnostic surface).
-      - name: Build wasm32-unknown-unknown (domain)
+      - name: Build wasm32-unknown-unknown (domain + method)
         run: |
           nix develop --command cargo build --target wasm32-unknown-unknown \
             -p midnight-did-domain \
+            -p midnight-did-method \
             --locked
 
   # Line-coverage gate over every first-party crate (cargo-llvm-cov via
