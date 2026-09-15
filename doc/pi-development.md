@@ -18,18 +18,36 @@ source for PR checks.
 
 The layering direction is: **nix provides pi, pi reads the repo policy.**
 
-1. `nix develop` provisions the `pi` binary (the `pi-coding-agent`
-   package from nixpkgs) alongside the Rust toolchain.
+1. `./bootstrap.sh --pi` provisions the `pi` binary (the `pi-coding-agent`
+   package from nixpkgs) in the lightweight factory shell. The full
+   `nix develop` shell still includes Pi, Rust, and Compact for explicit
+   build/codegen work, but factory startup does not require materializing the
+   Compact/Rust closure.
 2. Running `pi` at the repo root reads [`.pi/settings.json`](../.pi/settings.json);
    the first session asks you to **trust** the repository because that
-   file installs extension packages. It pins `dev-loops` (public npm)
-   into the git-ignored `.pi/npm/` prefix.
-3. The `/dev-loops` slash-commands enforce the repo policy in
-   [`.devloops`](../.devloops) — gates, validation commands (`just`
-   recipes under `nix develop`), signed+DCO commit requirements, and
-   human-only merges. The tracked `factory-supervisor` and non-invocable
+   file installs extension packages. It pins `dev-loops` and `pi-subagents`
+   (public npm) into the git-ignored `.pi/npm/` prefix, with
+   `openai-codex/gpt-5.5` at medium reasoning as the repository default for
+   Pi 0.75.4. Oxid currently exercises newer `gpt-5.6-terra` and taskflow/UI
+   packages; those are intentionally not adopted here because this Nix-pinned
+   Pi runtime does not list that model and the factory needs only one bounded
+   supervisor-to-worker delegation path.
+3. The `dev-loops` package extension is intentionally disabled in settings
+   (`extensions: []`) so Pi does not expose unavailable `/dev-loops` slash
+   commands. Use the documented `npx dev-loops@1.0.2 doctor` and
+   `npx dev-loops@1.0.2 gates` fallback to validate [`.devloops`](../.devloops)
+   and inspect gates. The tracked `factory-supervisor` and non-invocable
    `factory-worker` roles implement the bounded supervisor/sole-writer split;
    delivery and worker limits are machine-readable in `.pi/`.
+
+The `pi-subagents@0.35.1` pin is selected from package metadata, not from
+`./bootstrap.sh --pi --version` alone: `npm view pi-subagents@0.35.1
+peerDependencies` shows its peer dependencies are wildcards for `@earendil-works/pi-ai`,
+`@earendil-works/pi-tui`, `@earendil-works/pi-agent-core`,
+`@earendil-works/pi-coding-agent`, and `typebox`, while
+`pi-subagents@0.42.1` requires `@earendil-works/pi-ai >=0.80.0`. The external
+supervisor still owns the real tracked-extension startup smoke before final
+approval.
 
 Everything pi writes locally (`.pi/git/`, `.pi/npm/`, `.pi/harness/`,
 `.pi/agent/`, and `.pi/sessions/`) is git-ignored. Settings, delivery profiles,
@@ -38,20 +56,25 @@ changes to them like executable tooling.
 
 ## Commands
 
-Inside the pi shell at the repo root:
+Inside the Pi shell at the repo root:
 
 | Command | Purpose |
 |---|---|
-| `/dev-loops doctor` | Validate `.devloops` against the schema |
-| `/dev-loops gates` | List the review gates for this repo |
-| `/dev-loops start <issue>` | Begin a loop from a GitHub issue |
-| `/dev-loops status <issue>` | Report loop state |
-| `/dev-loops continue <pr>` | Resume on an open PR |
 | `/factory-supervisor prototype issue <n>` | Run one local provisional issue loop |
 | `/factory-supervisor production-ready issue <n>` | Produce and supervise one draft delivery candidate |
 
-Non-pi fallback (no shell): `npx dev-loops@0.9.0 doctor` / `gates`.
-Outside Pi, `doctor` reports the `subagent` command unavailable until the
+`/factory-supervisor` is the supported Pi delivery command. Do not use or
+advertise `/dev-loops` slash commands in this repository while the `dev-loops`
+extension remains disabled.
+
+Non-Pi fallback for the disabled `dev-loops` surfaces:
+
+```bash
+npx dev-loops@1.0.2 doctor
+npx dev-loops@1.0.2 gates
+```
+
+Outside Pi, `doctor` may report the `subagent` command unavailable until the
 tracked `pi-subagents` package is loaded by Pi; `gates` remains the standalone
 configuration check.
 
@@ -66,3 +89,24 @@ configuration check.
   service.
 - Use `node scripts/factory/check.mjs` for harness/configuration changes and the immutable
   target plan for code. Pi adds no privileged validation or merge path.
+
+## Provenance-bound extraction flow
+
+Reusable components may be extracted only from the read-only consumer
+repositories listed in [`.pi/extraction-policy.json`](../.pi/extraction-policy.json):
+`MediaNoxLabs/oxid` and `input-output-hk/lace-id-portal`. The authorized Portal
+checkout origin is `https://github.com/input-output-hk/lace-id-portal.git`; its
+remote symbolic HEAD is `refs/heads/develop`, so the recorded reference remains
+`origin/develop`. Before admitting the worker, the supervisor records each used
+checkout's origin remote, `origin/develop` SHA, and `git status --short` with:
+
+```bash
+node scripts/factory/reference-repositories.mjs observe \
+  --repository MediaNoxLabs/oxid --path /absolute/path/to/oxid
+```
+
+The worker may read only the recorded revisions and must return source
+repository, exact SHA, source paths, and license/provenance evidence in the
+handoff. The supervisor repeats the observation after the worker and stops if
+the remote, exact SHA, or status changed, or if source-path/provenance evidence
+is missing. `MediaNoxLabs/midnight-identity` remains the sole mutation target.

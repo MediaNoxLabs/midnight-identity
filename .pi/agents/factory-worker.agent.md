@@ -20,7 +20,10 @@ requires.
 
 Keep the diff inside the acceptance criteria and non-goals. Run the target
 planner, use the narrowest meaningful checks while editing, and finish with
-every target required by the selected delivery profile. Never edit consumer
+every target required by the selected delivery profile. Read consumer material
+only from supervisor-recorded revisions in `.pi/extraction-policy.json` and
+return source repository, exact SHA, source paths, and license/provenance
+evidence when consumer material influenced the diff. Never edit consumer
 repositories, share mutable build targets, hand-edit generated Compact output,
 expose secrets, change settings/protected branches, merge, create a nested
 agent/taskflow, or start a detached retry loop.
@@ -32,5 +35,6 @@ DCO and good OpenPGP signatures. Create the draft PR when instructed, then
 return control to the supervisor. Do not watch or merge it yourself.
 
 The terminal handoff contains issue, PR if any, exact head, base, changed
-paths, validations and durations, resource observations, risks, failure class,
-retry count, and any unavailable metrics as `null` rather than zero.
+paths, source-reference/provenance evidence if applicable, validations and
+durations, resource observations, risks, failure class, retry count, and any
+unavailable metrics as `null` rather than zero.

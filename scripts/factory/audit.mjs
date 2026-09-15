@@ -8,6 +8,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
+import { loadExtractionPolicy, validateExtractionPolicy } from "./reference-repositories.mjs";
+
 const REPOSITORY = "MediaNoxLabs/midnight-identity";
 const EXACT_VERSION = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/u;
 
@@ -107,6 +109,7 @@ function enrichRetryCauses(runs) {
 function localAudit(repoRoot) {
   const settings = JSON.parse(readFileSync(path.join(repoRoot, ".pi", "settings.json"), "utf8"));
   const packages = (settings.packages ?? []).map(parsePackageSpec);
+  const extractionPolicy = loadExtractionPolicy(repoRoot);
   const workflow = readFileSync(path.join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
   const worktreeReport = JSON.parse(command("node", [
     path.join(repoRoot, "scripts", "factory", "worktree-lifecycle.mjs"), "audit", "--json",
@@ -115,6 +118,9 @@ function localAudit(repoRoot) {
   for (const packageEntry of packages) {
     if (!packageEntry.exact) findings.push({ severity: "error", code: "pi-package-not-exact", package: packageEntry.name });
     if (packageEntry.disabled) findings.push({ severity: "notice", code: "pi-package-disabled", package: packageEntry.name });
+  }
+  for (const error of validateExtractionPolicy(extractionPolicy)) {
+    findings.push({ severity: "error", code: "extraction-policy-invalid", detail: error });
   }
   for (const [code, pattern] of [
     ["missing-stable-aggregator", /name:\s+Required CI/u],
@@ -136,6 +142,9 @@ function localAudit(repoRoot) {
   }
   return {
     packages,
+    extractionPolicy: {
+      references: extractionPolicy.referenceRepositories.map(({ repository, access }) => ({ repository, access })),
+    },
     workflow: { stableAggregator: /name:\s+Required CI/u.test(workflow), scheduled: /^\s+schedule:/mu.test(workflow) },
     worktrees: {
       count: worktreeReport.worktrees.length,

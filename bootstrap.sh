@@ -19,7 +19,8 @@ usage() {
     "       ./bootstrap.sh -- COMMAND [ARGS...]" \
     "" \
     "With no arguments, enter the full Compact/Pi shell. --rust enters the" \
-    "light Rust shell. Factory commands and hooks use the pinned policy shell."
+    "light Rust shell. --pi enters the light Pi/factory shell. Factory" \
+    "commands and hooks use the pinned policy shell."
 }
 
 nix_bin="$(command -v nix || true)"
@@ -76,7 +77,7 @@ case "${1:-}" in
     ;;
   --pi)
     shift
-    run_pinned .#default bash -c '
+    run_pinned .#pi bash -c '
       set -euo pipefail
       node scripts/factory/check.mjs
       exec pi "$@"

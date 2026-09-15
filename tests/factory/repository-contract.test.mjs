@@ -8,6 +8,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { validateExtractionPolicy } from "../../scripts/factory/reference-repositories.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 test("Pi settings and delivery profiles enforce bounded exact-pinned operation", async () => {
@@ -16,9 +18,14 @@ test("Pi settings and delivery profiles enforce bounded exact-pinned operation",
     readFile(path.join(root, ".pi", "delivery-profiles.json"), "utf8").then(JSON.parse),
     readFile(path.join(root, ".pi", "subagent-policy.json"), "utf8").then(JSON.parse),
   ]);
+  assert.equal(settings.defaultProvider, "openai-codex");
+  assert.equal(settings.defaultModel, "gpt-5.5");
+  assert.equal(settings.defaultThinkingLevel, "medium");
   assert.deepEqual(settings.packages, [
-    "npm:dev-loops@0.9.0", "npm:pi-subagents@0.42.1", "npm:typebox@1.3.9",
+    { source: "npm:dev-loops@1.0.2", extensions: [] }, "npm:pi-subagents@0.35.1", "npm:typebox@1.3.9",
   ]);
+  assert.equal(settings.subagents.defaultModel, "openai-codex/gpt-5.5");
+  assert.equal(settings.subagents.defaultThinking, "medium");
   assert.equal(settings.retry.maxRetries, 1);
   assert.equal(settings.retry.provider.maxRetries, 0);
   assert.equal(profiles.defaultProfile, "production-ready");
@@ -27,7 +34,56 @@ test("Pi settings and delivery profiles enforce bounded exact-pinned operation",
   assert.equal(profiles.profiles["production-ready"].qualityBudget.targetPercent, 70);
   assert.equal(profiles.profiles["production-ready"].qualityBudget.mandatoryInvariantsPercent, 100);
   assert.equal(subagents.maxSubagentDepth, 1);
+  assert.equal(subagents.maxSubagentSpawnsPerSession, 1);
+  assert.equal(subagents.maxSubagentSpawnsPerRun, 1);
+  assert.equal(subagents.globalConcurrencyLimit, 1);
+  assert.equal(subagents.toolBudget.soft, 40);
+  assert.equal(subagents.toolBudget.hard, 60);
+  assert.equal(subagents.toolBudget.block, "*");
+  assert.equal(subagents.usageBudget.tokens.soft, 80000);
+  assert.equal(subagents.usageBudget.tokens.hard, 120000);
   assert.equal(subagents.parallel.maxTasks, 1);
+});
+
+test("extraction policy is machine-readable and fails closed around consumer provenance", async () => {
+  const policy = await readFile(path.join(root, ".pi", "extraction-policy.json"), "utf8").then(JSON.parse);
+  assert.deepEqual(validateExtractionPolicy(policy), []);
+  assert.equal(policy.mutationTarget.repository, "MediaNoxLabs/midnight-identity");
+  assert.deepEqual(policy.referenceRepositories.map(({ repository }) => repository), [
+    "MediaNoxLabs/oxid", "input-output-hk/lace-id-portal",
+  ]);
+  const portal = policy.referenceRepositories.find(({ repository }) => repository === "input-output-hk/lace-id-portal");
+  assert.equal(portal.allowedRemote, "https://github.com/input-output-hk/lace-id-portal.git");
+  assert.equal(portal.remoteSymbolicHead, "refs/heads/develop");
+  assert.equal(portal.defaultReference, "origin/develop");
+  for (const reference of policy.referenceRepositories) {
+    assert.equal(reference.access, "read-only");
+    assert.equal(reference.defaultReference, "origin/develop");
+    for (const field of [
+      "remote", "exactSourceSha", "cleanStateBefore", "cleanStateAfter", "sourcePaths",
+      "licenseProvenance", "beforeStatus", "afterStatus",
+    ]) assert.ok(reference.requiredEvidence.includes(field), `${reference.repository}: ${field}`);
+  }
+  assert.ok(validateExtractionPolicy({ ...policy, mutationTarget: { repository: "MediaNoxLabs/oxid" } }).length > 0);
+  assert.ok(validateExtractionPolicy({
+    ...policy,
+    referenceRepositories: policy.referenceRepositories.map((entry, index) => index === 0 ? { ...entry, access: "write" } : entry),
+  }).length > 0);
+  assert.ok(validateExtractionPolicy({
+    ...policy,
+    referenceRepositories: policy.referenceRepositories.map((entry, index) => index === 0
+      ? { ...entry, requiredEvidence: entry.requiredEvidence.filter((field) => field !== "licenseProvenance") }
+      : entry),
+  }).length > 0);
+});
+
+test("Pi package pin rationale is based on extension peer contracts", async () => {
+  const documentation = await readFile(path.join(root, "doc", "pi-development.md"), "utf8");
+  assert.match(documentation, /pi-subagents@0\.35\.1/u);
+  assert.match(documentation, /peer dependencies are wildcards/u);
+  assert.match(documentation, /pi-subagents@0\.42\.1/u);
+  assert.match(documentation, /@earendil-works\/pi-ai >=0\.80\.0/u);
+  assert.doesNotMatch(documentation, /runtime compatible because .*bootstrap\.sh --pi --version/iu);
 });
 
 test("supervisor owns delegation and the worker cannot create nested agents", async () => {

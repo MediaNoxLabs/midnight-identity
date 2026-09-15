@@ -56,11 +56,12 @@ Do not edit consumer repositories unless the owner separately authorizes it.
 
 Use exactly one public profile:
 
-- `/dev-loop prototype issue <n>`: local, provisional, narrow affected checks,
-  at most one reviewer, no push/PR/hosted-CI wait, and no readiness claim.
-- `/dev-loop production-ready issue <n>`: issue worktree, affected-target plan,
-  draft PR, one bounded review round, exact-head CI, metrics, and human handoff.
-  This is the default when the profile is omitted.
+- `/factory-supervisor prototype issue <n>`: local, provisional, narrow affected
+  checks, at most one reviewer, no push/PR/hosted-CI wait, and no readiness
+  claim.
+- `/factory-supervisor production-ready issue <n>`: issue worktree,
+  affected-target plan, draft PR, one bounded review round, exact-head CI,
+  metrics, and human handoff. This is the default when the profile is omitted.
 
 Routine work targets 70% polish. Acceptance criteria, correctness, security,
 provenance, required tests, DCO/GPG, and required CI remain 100% mandatory.
@@ -90,10 +91,14 @@ Run the target planner before broad checks:
 node scripts/ci/target-plan.mjs --base origin/develop --head HEAD
 ```
 
+For extraction/crystallization work, `.pi/extraction-policy.json` is the
+machine-readable boundary: Oxid and input-output-hk/lace-id-portal are read-only
+references, and this repository is the only mutation target.
+
 Use the repository Nix shell for Rust and Compact targets. `prototype` runs the
 narrowest meaningful affected target. `production-ready` runs every selected
 correctness, security, provenance, generation, and compatibility target. Run
-`npx dev-loops@0.9.0 doctor`, `npx dev-loops@0.9.0 gates`, and
+`npx dev-loops@1.0.2 doctor`, `npx dev-loops@1.0.2 gates`, and
 `node scripts/factory/check.mjs` after changing factory or Pi configuration.
 
 Before pushing, verify the intended diff, clean status, commit convention,
