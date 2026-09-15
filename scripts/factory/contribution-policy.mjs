@@ -85,26 +85,30 @@ export function validateCommit(commit, { requireLocalSignature = false } = {}) {
   return errors;
 }
 
-export function isPlatformGeneratedCommit({ parents, committerName, committerEmail, subject }) {
+export function isPlatformGeneratedCommit({
+  parents, committerName, committerEmail, subject, allowSquash = false,
+}) {
   if (committerName !== "GitHub" || committerEmail !== "noreply@github.com") return false;
   const parentCount = parents.trim().split(/\s+/u).filter(Boolean).length;
   if (parentCount > 1) return true;
   const squash = SQUASH_SUBJECT.exec(subject);
-  return parentCount === 1 && squash !== null && validateSubject(squash[1]).length === 0;
+  return allowSquash && parentCount === 1 && squash !== null && validateSubject(squash[1]).length === 0;
 }
 
 function git(cwd, args) {
   return execFileSync("git", args, { cwd, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trim();
 }
 
-export function readCommits(base, head, cwd = process.cwd()) {
+export function readCommits(base, head, cwd = process.cwd(), { allowGeneratedSquash = false } = {}) {
   const shas = git(cwd, ["rev-list", "--reverse", `${base}..${head}`]).split("\n").filter(Boolean);
   return shas.map((sha) => {
     const raw = execFileSync("git", [
       "show", "-s", "--format=%an%x00%ae%x00%cn%x00%ce%x00%s%x00%B%x00%G?%x00%P", sha,
     ], { cwd, encoding: "utf8", maxBuffer: 1024 * 1024 });
     const [authorName, authorEmail, committerName, committerEmail, subject, body, signature, parents] = raw.split("\0");
-    const generatedMerge = isPlatformGeneratedCommit({ parents, committerName, committerEmail, subject });
+    const generatedMerge = isPlatformGeneratedCommit({
+      parents, committerName, committerEmail, subject, allowSquash: allowGeneratedSquash,
+    });
     return { sha, authorName, authorEmail, subject, body, signature, generatedMerge };
   });
 }
@@ -154,7 +158,9 @@ export function run(argv = process.argv.slice(2), {
   const base = option(argv, "--base");
   const head = option(argv, "--head") ?? "HEAD";
   if (!base) errors.push("--base is required for commit-range validation");
-  const commits = base ? readCommits(base, head, cwd) : [];
+  const commits = base ? readCommits(base, head, cwd, {
+    allowGeneratedSquash: argv.includes("--allow-generated-squash"),
+  }) : [];
   if (commits.length === 0) errors.push("commit range is empty");
   for (const commit of commits) {
     errors.push(...validateCommit(commit, { requireLocalSignature: argv.includes("--local-signatures") }));

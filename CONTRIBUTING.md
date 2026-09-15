@@ -114,8 +114,10 @@ regenerated `generated.rs` + keys in the same PR.
   merge. The PR title becomes the squash subject and therefore must keep the
   scoped Conventional Commit grammar. Hosted policy recognizes only a
   GitHub-committed, GitHub-verified squash with the canonical ` (#N)` suffix
-  as generated; ordinary authored commits still require their own exact DCO
-  trailer and verified signature.
+  as generated on a post-merge durable-branch push. Pull-request runs never
+  apply the squash exception, so GitHub web-editor commits remain ordinary
+  authored commits and require their own exact DCO trailer and verified
+  signature.
 - **Every commit must be GPG-signed and DCO-signed-off.** This matches
   the policy of the upstream
   [`midnightntwrk/midnight-did`](https://github.com/midnightntwrk/midnight-did/blob/main/CONTRIBUTING.md)

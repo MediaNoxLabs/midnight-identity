@@ -61,8 +61,9 @@ Hosted contribution policy additionally checks GitHub's signature verification
 for each exact PR commit. Human squash merge remains supported: the resulting
 single-parent commit is exempt from an authored DCO trailer only when GitHub is
 the committer, the signature is GitHub-verified, and the canonical ` (#N)`
-subject suffix follows a valid scoped PR title. Ordinary authored commits are
-never covered by that exception.
+subject suffix follows a valid scoped PR title. CI enables this exception only
+for pushes to `develop` or `rust-codegen`, never for pull-request commits, so
+ordinary authored and GitHub web-editor commits are not covered.
 
 ## Draft and handoff
 
