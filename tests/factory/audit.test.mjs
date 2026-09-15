@@ -5,7 +5,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parsePackageSpec, summarizeRemote } from "../../scripts/factory/audit.mjs";
+import { markdown, parsePackageSpec, summarizeRemote } from "../../scripts/factory/audit.mjs";
+
+function report(packageVersions) {
+  return {
+    generatedAt: "2026-09-15T00:00:00.000Z",
+    local: {
+      findings: [],
+      packages: packageVersions,
+      worktrees: { count: 1, totalTargetKiB: 0, reviewCandidates: [] },
+    },
+    online: {
+      available: true,
+      packageVersions,
+      ci: { medianMs: 1, p90Ms: 1, retries: 0, retryCauses: {} },
+      cache: { entries: 0, bytes: 0, accessedLast7Days: 0, staleOver30Days: 0, accessSamples: 0 },
+      delivery: { mergedPullRequestsLast30Days: 0 },
+    },
+  };
+}
 
 test("Pi packages must use exact npm versions and disabled surfaces stay visible", () => {
   assert.deepEqual(parsePackageSpec("npm:dev-loops@0.9.0"), {
@@ -44,4 +62,14 @@ test("remote summaries separate CI duration, retry causes, cache bytes, and thro
   assert.equal(report.cache.accessedLast7Days, 1);
   assert.equal(report.cache.staleOver30Days, 1);
   assert.equal(report.delivery.mergedPullRequestsLast30Days, 1);
+});
+
+test("package freshness is explicit for current, stale, partial, and total lookup results", () => {
+  const current = { name: "dev-loops", version: "0.9.0", latest: "0.9.0", stale: false };
+  const stale = { name: "pi-subagents", version: "0.42.1", latest: "0.67.0", stale: true };
+  const unavailable = { name: "typebox", version: "1.3.9", latest: null, stale: null };
+  assert.match(markdown(report([current])), /\| Stale Pi packages \| none observed \|/u);
+  assert.match(markdown(report([current, stale])), /pi-subagents 0\.42\.1 -> 0\.67\.0/u);
+  assert.match(markdown(report([current, unavailable])), /\| Stale Pi packages \| unavailable \(typebox\) \|/u);
+  assert.match(markdown(report([unavailable])), /\| Stale Pi packages \| unavailable \(typebox\) \|/u);
 });

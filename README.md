@@ -159,15 +159,16 @@ the integration branch — PRs target `develop`.
 
 ## CI
 
-Every PR runs its ordinary Rust gates in the light `.#rust` shell:
-fmt + clippy (`-D warnings`), tests on Linux + macOS,
-a `wasm32-unknown-unknown` build of the wasm-clean `midnight-did-domain`
-and `midnight-did-method`
-crate, a line-coverage floor (cargo-llvm-cov) over every first-party
-crate, and the DID and VC codegen drift-checks in the full shell against
-the flake-pinned compactc. All jobs use public binary caches; light jobs also
-use their explicit Cargo cache. No CI or release gate requires a FlakeHub
-account.
+Every PR runs the change planner plus the policy/factory lane. Affected Rust
+crates add focused format, clippy, compile, test, coverage, and WASM lanes in
+the light `.#rust` shell. DID or VC Compact inputs and generated artifacts add
+their corresponding codegen drift lane in the full shell against the
+flake-pinned `compactc`. Documentation-only and factory/CI-only changes do not
+construct the Rust or Compact closure. Unknown/build-system changes, promotion
+branches, scheduled audits, and manually requested full runs fail closed to
+the complete public matrix. All jobs use public binary caches; light jobs also
+use their explicit Cargo source cache. No CI or release gate requires a
+FlakeHub account.
 
 ## Community
 

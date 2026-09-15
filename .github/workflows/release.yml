@@ -60,6 +60,8 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
+          # Variables intentionally expand in the nested devshell.
+          # shellcheck disable=SC2016
           nix develop --command bash -c '
             set -euo pipefail
             ws_version=$(cargo metadata --format-version 1 --no-deps \
@@ -72,6 +74,8 @@ jobs:
 
       - name: Run gates (fmt + lint + tests) for publishable crates
         run: |
+          # Variables intentionally expand in the nested devshell.
+          # shellcheck disable=SC2016
           nix develop --command bash -c '
             set -euo pipefail
             for crate in $PUBLISH_CRATES; do
@@ -103,6 +107,8 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |
+          # Variables intentionally expand in the nested devshell.
+          # shellcheck disable=SC2016
           nix develop --command bash -c '
             set -euo pipefail
             for crate in $PUBLISH_CRATES; do

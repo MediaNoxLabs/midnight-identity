@@ -85,7 +85,11 @@ dev loop:
 
 5. **Open a draft PR against the issue's recorded delivery base.** Normal
    library and factory work targets `develop`; release promotion targets
-   `rust-codegen`. Keep the diff focused; reference the
+   `rust-codegen`. Keep exactly one `factory-delivery-target` and
+   `factory-stacked-parent` marker from the PR template. Use `none` for a
+   direct PR; for a temporary stack, record the exact issue branch as the
+   parent while retaining the durable final target. CI rejects a base that
+   does not match those markers. Keep the diff focused; reference the
    ADR(s) you touched (or argue for a new one if you're changing a
    load-bearing decision).
 
@@ -107,7 +111,13 @@ regenerated `generated.rs` + keys in the same PR.
   titles follow the same grammar.
 - **Do not force-push** to a PR branch under review — reviewers lose
   their place. Push fixup commits and let the maintainer squash on
-  merge.
+  merge. The PR title becomes the squash subject and therefore must keep the
+  scoped Conventional Commit grammar. Hosted policy recognizes only a
+  GitHub-committed, GitHub-verified squash with the canonical ` (#N)` suffix
+  as generated on a post-merge durable-branch push. Pull-request runs never
+  apply the squash exception, so GitHub web-editor commits remain ordinary
+  authored commits and require their own exact DCO trailer and verified
+  signature.
 - **Every commit must be GPG-signed and DCO-signed-off.** This matches
   the policy of the upstream
   [`midnightntwrk/midnight-did`](https://github.com/midnightntwrk/midnight-did/blob/main/CONTRIBUTING.md)

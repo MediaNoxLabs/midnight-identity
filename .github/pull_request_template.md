@@ -1,4 +1,6 @@
-<!-- Final delivery target: develop for normal library/factory work; rust-codegen for human release promotion. -->
+<!-- Keep exactly one of each marker. Change the stacked parent only for an explicitly issue-backed stack. -->
+<!-- factory-delivery-target: develop -->
+<!-- factory-stacked-parent: none -->
 
 ## Summary
 
@@ -6,7 +8,7 @@
 
 ## Scope and context
 
-<!-- Name the issue, delivery profile, final target, and any temporary stacked parent. -->
+<!-- Name the issue, delivery profile, final target, and any temporary stacked parent. Keep the markers above aligned. -->
 
 ## Acceptance criteria
 
