@@ -14,15 +14,25 @@
     let
       inherit (midnightDidRsLib.rustTools) rust;
 
+      factoryPackages = with pkgs; [
+        git
+        gh
+        nodejs_24
+      ];
+
       rustPackages = with pkgs; [
         rust
         just
         taplo
         cargo-nextest
         cargo-llvm-cov
-        git
         jq
-      ];
+      ] ++ factoryPackages;
+
+      factoryShellHook = ''
+        export ROOT_DIR=$(${pkgs.git}/bin/git rev-parse --show-toplevel)
+        cd "$ROOT_DIR"
+      '';
 
       workspaceShellHook = ''
         export ROOT_DIR=$(${pkgs.git}/bin/git rev-parse --show-toplevel)
@@ -91,6 +101,12 @@
     in
     {
       devShells = {
+        # Fast policy shell used by bootstrap and repository-local Git hooks.
+        factory = pkgs.mkShell {
+          packages = factoryPackages;
+          shellHook = factoryShellHook;
+        };
+
         # Interactive factory shell: keep compactc and pi.dev available.
         default = mkWorkspaceShell (
           [

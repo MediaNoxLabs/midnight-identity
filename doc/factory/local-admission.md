@@ -9,7 +9,9 @@ SPDX-License-Identifier: Apache-2.0
 [`bootstrap.sh`](../../bootstrap.sh) is the supported local entrypoint. It
 discovers the standard Nix daemon profile when the desktop shell does not have
 Nix on `PATH`, enters the repository-pinned environment, and keeps factory
-commands rooted in the active worktree.
+commands rooted in the active worktree. A lightweight `factory` shell pins
+Node.js 24, GitHub CLI, and Git for policy commands and hook execution; hooks
+do not inherit ambient host versions of those tools.
 
 Configure the repository-local contribution hooks once in each clone:
 
@@ -48,8 +50,11 @@ target plan. The private mode-0600 receipt lives below the Git common
 directory in `midnight-identity-factory/local-gates-v1`; it is shared by the
 clone's linked worktrees but never committed.
 
-The pre-push hook verifies the receipt against the pushed branch/head and the
-current exact base ref. Authored commits must verify in the local OpenPGP
+Receipt creation fetches the selected branch from `origin` (and the durable
+delivery target for a stack) before resolving the base SHA. The pre-push hook
+verifies the receipt against the pushed branch/head and queries `origin` for
+the current exact base SHA, so an unavailable or advanced remote base fails
+closed. Authored commits must verify in the local OpenPGP
 keyring. A GitHub update-branch merge is instead checked against GitHub's
 verified commit record, because the forge key need not be valid in the local
 keyring. A changed head, advanced base, wrong branch, malformed record,

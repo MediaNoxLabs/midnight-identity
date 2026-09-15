@@ -2,5 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 set -eu
-repo_root=$(git rev-parse --show-toplevel)
-exec node "$repo_root/scripts/git-hooks/local-policy.mjs" commit-msg "$@"
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(dirname "$hook_dir")
+exec "$repo_root/bootstrap.sh" --hook commit-msg "$@"

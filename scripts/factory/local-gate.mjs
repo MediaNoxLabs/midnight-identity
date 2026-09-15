@@ -14,6 +14,7 @@ const REPOSITORY = "MediaNoxLabs/midnight-identity";
 const SHA = /^[0-9a-f]{40}$/u;
 const DELIVERY_TARGET = /^(?:develop|rust-codegen)$/u;
 const BASE_REF = /^(?:origin\/)?(?:(?:develop|rust-codegen)|(?:feat|fix|docs|refactor|test|ci|chore)\/issue-[1-9]\d*)$/u;
+const RECEIPT_BASE_REF = /^origin\/(?:(?:develop|rust-codegen)|(?:feat|fix|docs|refactor|test|ci|chore)\/issue-[1-9]\d*)$/u;
 const CHECK_IDS = Object.freeze(["factory-contract", "contribution-policy", "secret-scan", "diff-check"]);
 const TARGET_IDS = new Set(["policy", "rust", "unit", "wasm", "coverage", "did-codegen", "vc-codegen"]);
 const RECEIPT_KEYS = Object.freeze([
@@ -60,6 +61,36 @@ function isAncestor(cwd, base, head) {
   return spawnSync("git", ["merge-base", "--is-ancestor", base, head], { cwd }).status === 0;
 }
 
+export function canonicalRemoteBaseRef(baseRef) {
+  if (!BASE_REF.test(baseRef ?? "")) {
+    throw new Error("--base must be a durable target or issue-backed branch ref");
+  }
+  return baseRef.startsWith("origin/") ? baseRef : `origin/${baseRef}`;
+}
+
+function branchFromRemoteRef(baseRef) {
+  if (!RECEIPT_BASE_REF.test(baseRef)) throw new Error("base ref is not an approved origin branch");
+  return baseRef.slice("origin/".length);
+}
+
+function fetchRemoteBranch(cwd, branch) {
+  runCommand("git", [
+    "fetch", "--no-tags", "--no-recurse-submodules", "origin",
+    `+refs/heads/${branch}:refs/remotes/origin/${branch}`,
+  ], cwd);
+}
+
+function remoteSha(cwd, baseRef) {
+  const branch = branchFromRemoteRef(baseRef);
+  const expectedRef = `refs/heads/${branch}`;
+  const output = git(cwd, ["ls-remote", "--exit-code", "origin", expectedRef]);
+  const matches = output.split("\n").filter(Boolean).map((line) => line.trim().split(/\s+/u));
+  if (matches.length !== 1 || matches[0][1] !== expectedRef || !SHA.test(matches[0][0])) {
+    throw new Error(`remote base ${baseRef} did not resolve exactly once`);
+  }
+  return matches[0][0];
+}
+
 export function validateReceipt(receipt, {
   repository = REPOSITORY,
   head,
@@ -76,7 +107,7 @@ export function validateReceipt(receipt, {
   if (validateBranch(receipt.branch ?? "").length > 0) errors.push("receipt branch is not issue-backed");
   if (receipt.issue !== issueFromBranch(receipt.branch ?? "")) errors.push("receipt issue does not match its branch");
   if (!DELIVERY_TARGET.test(receipt.deliveryTarget ?? "")) errors.push("receipt delivery target is not durable");
-  if (!BASE_REF.test(receipt.baseRef ?? "")) errors.push("receipt base ref is not approved");
+  if (!RECEIPT_BASE_REF.test(receipt.baseRef ?? "")) errors.push("receipt base ref is not an approved origin branch");
   if (!SHA.test(receipt.baseSha ?? "")) errors.push("receipt base SHA is invalid");
   if (!SHA.test(receipt.headSha ?? "")) errors.push("receipt head SHA is invalid");
   if (!Number.isFinite(Date.parse(receipt.createdAt ?? ""))) errors.push("receipt timestamp is invalid");
@@ -114,9 +145,11 @@ function runGate(argv, cwd, stdout) {
   if (branchErrors.length > 0) throw new Error(branchErrors.join("; "));
   const deliveryTarget = option(argv, "--delivery-target");
   if (!DELIVERY_TARGET.test(deliveryTarget ?? "")) throw new Error("--delivery-target must be develop or rust-codegen");
-  const baseRef = option(argv, "--base") ?? `origin/${deliveryTarget}`;
-  if (!BASE_REF.test(baseRef)) throw new Error("--base must be a durable target or issue-backed branch ref");
+  const baseRef = canonicalRemoteBaseRef(option(argv, "--base") ?? deliveryTarget);
   if (git(cwd, ["status", "--porcelain"])) throw new Error("worktree must be clean before creating an exact-head receipt");
+  fetchRemoteBranch(cwd, deliveryTarget);
+  const baseBranch = branchFromRemoteRef(baseRef);
+  if (baseBranch !== deliveryTarget) fetchRemoteBranch(cwd, baseBranch);
   const baseSha = git(cwd, ["rev-parse", `${baseRef}^{commit}`]);
   const headSha = git(cwd, ["rev-parse", "HEAD^{commit}"]);
   if (!isAncestor(cwd, baseSha, headSha)) throw new Error("selected base is not an ancestor of HEAD");
@@ -149,7 +182,7 @@ function runGate(argv, cwd, stdout) {
   const errors = validateReceipt(receipt, {
     head: headSha,
     branch,
-    resolveRef: (ref) => git(cwd, ["rev-parse", `${ref}^{commit}`]),
+    resolveRef: (ref) => remoteSha(cwd, ref),
     ancestor: (base, head) => isAncestor(cwd, base, head),
   });
   if (errors.length > 0) throw new Error(errors.join("; "));
@@ -178,7 +211,7 @@ function verifyGate(argv, cwd, stdout) {
   const errors = validateReceipt(receipt, {
     head,
     branch,
-    resolveRef: (ref) => git(cwd, ["rev-parse", `${ref}^{commit}`]),
+    resolveRef: (ref) => remoteSha(cwd, ref),
     ancestor: (base, candidate) => isAncestor(cwd, base, candidate),
   });
   if (errors.length > 0) throw new Error(errors.join("; "));

@@ -13,7 +13,7 @@ import { EXPECTED_CONFIG, auditConfig } from "../../scripts/git-hooks/configure.
 import {
   parsePushUpdates, stagedDiffErrors, validatePushUpdate,
 } from "../../scripts/git-hooks/local-policy.mjs";
-import { validateReceipt } from "../../scripts/factory/local-gate.mjs";
+import { canonicalRemoteBaseRef, validateReceipt } from "../../scripts/factory/local-gate.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const base = "a".repeat(40);
@@ -24,7 +24,7 @@ const receipt = {
   issue: 63,
   branch: "chore/issue-63",
   deliveryTarget: "develop",
-  baseRef: "fix/issue-58",
+  baseRef: "origin/fix/issue-58",
   baseSha: base,
   headSha: head,
   createdAt: "2026-09-15T00:00:00.000Z",
@@ -55,6 +55,13 @@ test("local gate receipt binds exact repository, branch, base, head, plan, and c
     { ...receipt, unexpected: true },
   ]) assert.ok(validateReceipt(candidate, options).length > 0, JSON.stringify(candidate));
   assert.ok(validateReceipt(receipt, { ...options, ancestor: () => false }).length > 0);
+});
+
+test("local gate canonicalizes every selected base to a remote-tracking ref", () => {
+  assert.equal(canonicalRemoteBaseRef("develop"), "origin/develop");
+  assert.equal(canonicalRemoteBaseRef("origin/rust-codegen"), "origin/rust-codegen");
+  assert.equal(canonicalRemoteBaseRef("fix/issue-58"), "origin/fix/issue-58");
+  assert.throws(() => canonicalRemoteBaseRef("main"), /--base must be/u);
 });
 
 test("pre-push parsing preserves branch updates and permits deletion and tag records", () => {
@@ -129,5 +136,13 @@ test("bootstrap and hooks are tracked executable entrypoints", async () => {
   const bootstrap = await readFile(path.join(root, "bootstrap.sh"), "utf8");
   for (const mode of ["--check", "--configure-git", "--local-gate", "--verify-local-gate", "--pi"]) {
     assert.ok(bootstrap.includes(mode), mode);
+  }
+  const shell = await readFile(path.join(root, "nix", "devShells.nix"), "utf8");
+  assert.match(shell, /factoryPackages[\s\S]*gh[\s\S]*nodejs_24/u);
+  assert.match(shell, /factory = pkgs\.mkShell/u);
+  for (const hook of ["commit-msg", "pre-commit", "pre-push"]) {
+    const wrapper = await readFile(path.join(root, ".githooks", hook), "utf8");
+    assert.match(wrapper, new RegExp(`bootstrap\\.sh" --hook ${hook}`, "u"));
+    assert.doesNotMatch(wrapper, /exec node/u);
   }
 });
