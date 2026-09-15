@@ -51,10 +51,6 @@ pub const INCLUDE_CLOSURE: &[AuthenticatedSource] = &[
         source: include_str!("../contract/vendored/credentials.compact"),
     },
     AuthenticatedSource {
-        path: "contract/vendored/credentials/bindings.compact",
-        source: include_str!("../contract/vendored/credentials/bindings.compact"),
-    },
-    AuthenticatedSource {
         path: "contract/vendored/credentials/composable.compact",
         source: include_str!("../contract/vendored/credentials/composable.compact"),
     },
@@ -75,10 +71,6 @@ pub const INCLUDE_CLOSURE: &[AuthenticatedSource] = &[
         source: include_str!("../contract/vendored/credentials/proofs.compact"),
     },
     AuthenticatedSource {
-        path: "contract/vendored/credentials/protocol-support.compact",
-        source: include_str!("../contract/vendored/credentials/protocol-support.compact"),
-    },
-    AuthenticatedSource {
         path: "contract/vendored/credentials/protocols.compact",
         source: include_str!("../contract/vendored/credentials/protocols.compact"),
     },
@@ -93,10 +85,6 @@ pub const INCLUDE_CLOSURE: &[AuthenticatedSource] = &[
     AuthenticatedSource {
         path: "contract/vendored/credentials/types.compact",
         source: include_str!("../contract/vendored/credentials/types.compact"),
-    },
-    AuthenticatedSource {
-        path: "contract/vendored/credentials/vc-support.compact",
-        source: include_str!("../contract/vendored/credentials/vc-support.compact"),
     },
     AuthenticatedSource {
         path: "contract/vendored/credentials/vc.compact",
@@ -133,10 +121,10 @@ pub const INCLUDE_CLOSURE: &[AuthenticatedSource] = &[
 ];
 
 /// SHA-256 of the include sources concatenated in [`INCLUDE_CLOSURE`] order.
-pub const INCLUDE_CLOSURE_SHA256: &str = "9a6045b513ca32587b309cf5c36c43e50f0788506d1f028f09795224712f1635";
+pub const INCLUDE_CLOSURE_SHA256: &str = "76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127";
 
 /// Total bytes in the authenticated transitive include closure.
-pub const INCLUDE_CLOSURE_BYTES: usize = 68_897;
+pub const INCLUDE_CLOSURE_BYTES: usize = 68_290;
 
 /// Machine-readable source provenance and compatibility manifest.
 pub const SOURCE_MANIFEST: &str = include_str!("../manifest.json");
@@ -203,11 +191,13 @@ mod tests {
 
     #[test]
     fn include_closure_is_complete_and_authenticated() {
-        use std::collections::HashSet;
+        use std::collections::{HashMap, HashSet};
         use std::path::{Component, Path};
 
         let mut digest = Sha256::new();
-        let paths: HashSet<_> = INCLUDE_CLOSURE.iter().map(|file| file.path).collect();
+        let sources: HashMap<_, _> = std::iter::once((CONTRACT_PATH, CONTRACT_SOURCE))
+            .chain(INCLUDE_CLOSURE.iter().map(|file| (file.path, file.source)))
+            .collect();
         for file in INCLUDE_CLOSURE {
             digest.update(file.source);
         }
@@ -217,20 +207,23 @@ mod tests {
         );
         assert_eq!(format!("{:x}", digest.finalize()), INCLUDE_CLOSURE_SHA256);
 
-        for file in std::iter::once(AuthenticatedSource {
-            path: CONTRACT_PATH,
-            source: CONTRACT_SOURCE,
-        })
-        .chain(INCLUDE_CLOSURE.iter().copied())
-        {
-            for line in file.source.lines().map(str::trim) {
+        let mut pending = vec![CONTRACT_PATH.to_owned()];
+        let mut reached = HashSet::new();
+        while let Some(path) = pending.pop() {
+            if !reached.insert(path.clone()) {
+                continue;
+            }
+            let source = sources
+                .get(path.as_str())
+                .unwrap_or_else(|| panic!("missing authenticated source {path}"));
+            for line in source.lines().map(str::trim) {
                 let Some(include) = line
                     .strip_prefix("include \"")
                     .and_then(|line| line.strip_suffix("\";"))
                 else {
                     continue;
                 };
-                let candidate = Path::new(file.path)
+                let candidate = Path::new(&path)
                     .parent()
                     .unwrap()
                     .join(include)
@@ -243,17 +236,22 @@ mod tests {
                             normalized.pop();
                         }
                         Component::CurDir => {}
-                        _ => panic!("unsupported include path in {}: {include}", file.path),
+                        _ => panic!("unsupported include path in {path}: {include}"),
                     }
                 }
                 let resolved = normalized.join("/");
                 assert!(
-                    paths.contains(resolved.as_str()),
-                    "missing include {resolved} from {}",
-                    file.path
+                    sources.contains_key(resolved.as_str()),
+                    "missing include {resolved} from {path}"
                 );
+                pending.push(resolved);
             }
         }
+        assert_eq!(
+            reached.len(),
+            sources.len(),
+            "authenticated closure contains unreachable files"
+        );
     }
 
     #[test]
