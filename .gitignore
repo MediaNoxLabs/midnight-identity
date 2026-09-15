@@ -31,3 +31,12 @@ docs/superpowers/
 .pi/npm/
 .pi/harness/
 .pi/nix-global/
+.pi/agent/
+.pi/sessions/
+.pi/**/*.jsonl
+
+# Local credentials and environment overrides (examples remain tracked).
+.env
+.env.*
+!.env.example
+!infra/*.env.example

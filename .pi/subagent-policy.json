@@ -1,0 +1,21 @@
+{
+  "asyncByDefault": false,
+  "forceTopLevelAsync": false,
+  "maxSubagentDepth": 1,
+  "maxSubagentSpawnsPerSession": 2,
+  "globalConcurrencyLimit": 2,
+  "turnBudget": {
+    "maxTurns": 20,
+    "graceTurns": 1
+  },
+  "parallel": {
+    "maxTasks": 1,
+    "concurrency": 1
+  },
+  "chain": {
+    "dynamicFanout": {
+      "maxItems": 1
+    }
+  },
+  "artifactDir": "session"
+}

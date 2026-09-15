@@ -135,6 +135,7 @@ Everything runs inside the nix devshell:
 
 ```bash
 nix develop            # toolchain + compactc + third_party mounts
+nix develop .#rust     # light Rust gates; no compactc/proving closure
 just --list            # available recipes
 just ci                # fmt-check + lint + build + test + coverage-gate
 just codegen-check     # regen generated.rs, assert no drift
@@ -145,17 +146,26 @@ just coverage          # HTML coverage report (line floor: see justfile)
 An optional [pi.dev operator shell](./doc/pi-development.md) layers the
 `dev-loops` workflow on top of the devshell.
 
+Repository delivery follows the [AI Software Factory](./doc/factory/README.md):
+issue-backed worktrees, `prototype` or `production-ready` profiles,
+path-proportional validation, draft-first pull requests, exact-head metrics,
+and fail-closed worktree cleanup. The repository is the reusable Midnight
+library boundary; application policy and deployment remain in consumers.
+
 **Branch model:** `rust-codegen` is the stable mainline; `develop` is
 the integration branch — PRs target `develop`.
 
 ## CI
 
-Every PR runs: fmt + clippy (`-D warnings`), tests on Linux + macOS,
+Every PR runs its ordinary Rust gates in the light `.#rust` shell:
+fmt + clippy (`-D warnings`), tests on Linux + macOS,
 a `wasm32-unknown-unknown` build of the wasm-clean `midnight-did-domain`
 and `midnight-did-method`
 crate, a line-coverage floor (cargo-llvm-cov) over every first-party
-crate, and the DID and VC codegen drift-checks against the
-flake-pinned compactc.
+crate, and the DID and VC codegen drift-checks in the full shell against
+the flake-pinned compactc. All jobs use public binary caches; light jobs also
+use their explicit Cargo cache. No CI or release gate requires a FlakeHub
+account.
 
 ## Community
 

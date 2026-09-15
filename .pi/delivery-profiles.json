@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "defaultProfile": "production-ready",
+  "profiles": {
+    "prototype": {
+      "remoteMutation": false,
+      "mergeEligible": false,
+      "evidenceClass": "provisional",
+      "maximumReviewers": 1,
+      "maximumRetries": 1,
+      "targets": {
+        "strategy": "directly-affected",
+        "broadPlatformValidation": false,
+        "hostedCi": false
+      }
+    },
+    "production-ready": {
+      "remoteMutation": "authority-gated",
+      "mergeEligible": "human-durable-branches-only",
+      "evidenceClass": "production",
+      "maximumReviewers": 1,
+      "maximumRetries": 1,
+      "qualityBudget": {
+        "targetPercent": 70,
+        "mandatoryInvariantsPercent": 100,
+        "maximumAutomaticReviewRounds": 1,
+        "advisoryDisposition": "follow-up"
+      },
+      "targets": {
+        "strategy": "path-and-risk",
+        "hostedCi": true
+      }
+    }
+  },
+  "promotion": {
+    "explicit": true,
+    "refreshBase": true,
+    "invalidatePrototypeEvidence": true,
+    "recomputeTargets": true
+  },
+  "alwaysEnforced": [
+    "issue-backed-worktree",
+    "branch-grammar",
+    "conventional-commits",
+    "dco-signoff",
+    "gpg-signing",
+    "acceptance-correctness-security-provenance",
+    "process-ownership",
+    "disk-bounds"
+  ]
+}

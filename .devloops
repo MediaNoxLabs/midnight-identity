@@ -1,70 +1,75 @@
 # This file is part of MediaNoxLabs/midnight-identity.
 # Copyright (C) 2026 Midnight Foundation
 # SPDX-License-Identifier: Apache-2.0
-#
-# Policy for the `dev-loops` pi.dev extension (see doc/pi-development.md).
-# Adapted from midnightntwrk/midnight-did's .devloops to this repo's
-# nix + just Rust workflow. Review changes to this file like executable
-# tooling — it drives what agents run and when they stop for a human.
 
-repository:
-  defaultBaseBranch: develop
-  requirePrBase: develop
+version: 1
+
+strategy:
+  default: local-first
+
+refinement:
+  fanOut: 1
+  mode: parallel
+  maxCopilotRounds: 0
+  stopOnLowSignal: true
+  lowSignalRoundThreshold: 1
+  lowSignalMaxComments: 1
+  roles:
+    - correctness
 
 gates:
   draft:
-    - scope          # PR does one thing; no drive-by changes
-    - correctness    # logic reviewed against the driving issue
-    - coverage       # tests added/updated; `just coverage-gate` honest
-    - contract-surface # crates' public API changes are deliberate
+    angles:
+      - correctness
+    mandatoryAngles: []
+    blockCleanOnFindingSeverities:
+      - must-fix
+    required: true
+    requireCi: false
   preApproval:
-    - ci-guard       # all CI jobs green, no skipped required checks
-    - codegen        # generated.rs only via `just codegen`; codegen-check green
-    - docs           # README/doc/CHANGELOG updated where behavior changed
-    - security       # no new unsafe, no secret material, deps vetted
-    - external-review
+    angles:
+      - security
+    mandatoryAngles: []
+    blockCleanOnFindingSeverities:
+      - must-fix
+    required: true
+    requireCi: true
+  requireFanoutEvidence: false
+  requireFanoutProvenance: false
+  maxFanoutReviewers: 1
+  postFindingsComments: true
+  rejectForeignAngles: true
 
 personas:
   security:
-    prompt: >
-      Review as a security engineer for a public SSI library: key
-      material handling, private-state persistence, unsafe code,
-      dependency provenance, and CI supply-chain (pinned actions,
-      least-privilege permissions).
-  contract-surface:
-    prompt: >
-      Review changes under crates/midnight-did-runtime/src/contract/ as
-      codegen artifacts: they must be reproducible via `just codegen`
-      against the flake-pinned compactc, never hand-edited. Compare the
-      compact input pin when generated.rs changes.
+    persona: review
+    prompt: >-
+      Review secret and identifier exposure, unsafe key/custody boundaries,
+      protocol claims, generated artifact provenance, dependency risk, and
+      GitHub workflow safety. Report concrete findings with file and line
+      references.
+    defaultModel: null
 
 autonomy:
-  stopAt: [ready-for-review, merge]
+  stopAt:
+    - pre-approval
+    - merge
   humanMergeOnly: true
 
 workflow:
+  asyncStartMode: allowed
   requireDraftFirst: true
   requireRetrospective: false
+  devModeDefault: false
 
-validation:
-  preCommit:
-    always:
-      - nix develop --command just fmt-check
-      - nix develop --command just lint
-    onContractChange:
-      - nix develop --command just codegen-check
-  prePush:
-    always:
-      - nix develop --command just ci
+localImplementation:
+  lightMode:
+    enabled: true
+    maxFiles: 8
+    maxLines: 800
+    maxCopilotRounds: 0
 
-externalReview:
-  reviewers:
-    - codex review --base origin/develop
-  maxRounds: 2
-
-ciWatch:
-  pollSeconds: 30
-  fixLoop:
-    requireSignedCommits: true
-    requireDco: true
-    validateLocallyBeforePush: true
+queue:
+  maxParallel: 1
+  maxAutoFiledIssues: 0
+  reDispatchMaxRetries: 1

@@ -12,6 +12,15 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Light CI shell (issue #54)** — ordinary formatting, clippy, test, WASM,
+  and coverage jobs now use `nix develop .#rust`, which preserves the pinned
+  Rust toolchain and third-party mounts without constructing the unrelated
+  Compact compiler, proving, and Node dependency closure. Those jobs also avoid
+  private cache authentication; codegen drift jobs continue to use
+  the full default shell with public Nix binary caches.
+
 ### Added
 
 - **VC core crates, slice 1 (issue #13)** — the Verifiable Credentials
