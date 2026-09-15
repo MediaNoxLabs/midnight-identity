@@ -82,7 +82,18 @@ export function validateCommit(commit, { requireLocalSignature = false } = {}) {
   if (requireLocalSignature && !commit.generatedMerge && commit.signature !== "G") {
     errors.push(`${commit.sha}: local OpenPGP verification is ${commit.signature || "unknown"}, expected G`);
   }
+  if (requireLocalSignature && !commit.generatedMerge && commit.signatureFormat !== "openpgp") {
+    errors.push(`${commit.sha}: signature format is ${commit.signatureFormat || "unknown"}, expected openpgp`);
+  }
   return errors;
+}
+
+export function signatureFormatFromCommit(rawCommit) {
+  const marker = /^gpgsig -----BEGIN ([A-Z0-9 ]+)-----$/mu.exec(rawCommit)?.[1];
+  if (marker === "PGP SIGNATURE") return "openpgp";
+  if (marker === "SSH SIGNATURE") return "ssh";
+  if (marker === "SIGNED MESSAGE") return "x509";
+  return null;
 }
 
 export function isPlatformGeneratedCommit({
@@ -109,7 +120,9 @@ export function readCommits(base, head, cwd = process.cwd(), { allowGeneratedSqu
     const generatedMerge = isPlatformGeneratedCommit({
       parents, committerName, committerEmail, subject, allowSquash: allowGeneratedSquash,
     });
-    return { sha, authorName, authorEmail, subject, body, signature, generatedMerge };
+    const rawCommit = git(cwd, ["cat-file", "commit", sha]);
+    const signatureFormat = signatureFormatFromCommit(rawCommit);
+    return { sha, authorName, authorEmail, subject, body, signature, signatureFormat, generatedMerge };
   });
 }
 

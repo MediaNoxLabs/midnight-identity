@@ -13,7 +13,9 @@ import { EXPECTED_CONFIG, auditConfig } from "../../scripts/git-hooks/configure.
 import {
   parsePushUpdates, stagedDiffErrors, validatePushUpdate,
 } from "../../scripts/git-hooks/local-policy.mjs";
-import { canonicalRemoteBaseRef, validateReceipt } from "../../scripts/factory/local-gate.mjs";
+import {
+  canonicalRemoteBaseRef, validateBaseTarget, validateReceipt,
+} from "../../scripts/factory/local-gate.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const base = "a".repeat(40);
@@ -55,6 +57,9 @@ test("local gate receipt binds exact repository, branch, base, head, plan, and c
     { ...receipt, unexpected: true },
   ]) assert.ok(validateReceipt(candidate, options).length > 0, JSON.stringify(candidate));
   assert.ok(validateReceipt(receipt, { ...options, ancestor: () => false }).length > 0);
+  assert.ok(validateReceipt({
+    ...receipt, baseRef: "origin/rust-codegen", deliveryTarget: "develop",
+  }, options).length > 0);
 });
 
 test("local gate canonicalizes every selected base to a remote-tracking ref", () => {
@@ -62,6 +67,9 @@ test("local gate canonicalizes every selected base to a remote-tracking ref", ()
   assert.equal(canonicalRemoteBaseRef("origin/rust-codegen"), "origin/rust-codegen");
   assert.equal(canonicalRemoteBaseRef("fix/issue-58"), "origin/fix/issue-58");
   assert.throws(() => canonicalRemoteBaseRef("main"), /--base must be/u);
+  assert.deepEqual(validateBaseTarget("origin/develop", "develop"), []);
+  assert.deepEqual(validateBaseTarget("origin/fix/issue-58", "develop"), []);
+  assert.match(validateBaseTarget("origin/rust-codegen", "develop").join("\n"), /does not match/u);
 });
 
 test("pre-push parsing preserves branch updates and permits deletion and tag records", () => {
@@ -126,6 +134,7 @@ test("Git configuration audit is repository-local and idempotent", () => {
   assert.deepEqual(auditConfig(() => ""), [
     { key: "core.hooksPath", expected: ".githooks", actual: null },
     { key: "commit.gpgsign", expected: "true", actual: null },
+    { key: "gpg.format", expected: "openpgp", actual: null },
   ]);
 });
 

@@ -21,7 +21,8 @@ Configure the repository-local contribution hooks once in each clone:
 ```
 
 The installer changes only this repository's Git configuration. It selects
-the tracked `.githooks` directory and enables commit signing; it does not edit
+the tracked `.githooks` directory, enables commit signing, and pins the
+repository-local signing format to OpenPGP; it does not edit
 global/user configuration, authentication, signing keys, remotes, or branch
 protection. The hooks provide fast feedback for commit-message grammar,
 staged whitespace/secrets, and exact-head push admission. Hosted CI repeats
@@ -44,7 +45,10 @@ For an explicitly stacked candidate, add its temporary diff base:
 ```
 
 The gate requires a clean issue-backed worktree and a signed/DCO-valid commit
-range. It runs the repository factory contracts, contribution policy,
+range. A durable base must match the named delivery target; only an
+issue-backed base is accepted as a temporary stack parent. Authored signatures
+must contain an OpenPGP commit envelope in addition to Git's successful local
+verification. The gate runs the repository factory contracts, contribution policy,
 added-line secret scan, and `git diff --check`, then records the immutable
 target plan. The private mode-0600 receipt lives below the Git common
 directory in `midnight-identity-factory/local-gates-v1`; it is shared by the

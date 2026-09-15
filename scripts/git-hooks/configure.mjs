@@ -11,6 +11,7 @@ import path from "node:path";
 export const EXPECTED_CONFIG = Object.freeze({
   "core.hooksPath": ".githooks",
   "commit.gpgsign": "true",
+  "gpg.format": "openpgp",
 });
 
 function git(cwd, args, options = {}) {

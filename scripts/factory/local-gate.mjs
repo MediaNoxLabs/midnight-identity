@@ -15,6 +15,7 @@ const SHA = /^[0-9a-f]{40}$/u;
 const DELIVERY_TARGET = /^(?:develop|rust-codegen)$/u;
 const BASE_REF = /^(?:origin\/)?(?:(?:develop|rust-codegen)|(?:feat|fix|docs|refactor|test|ci|chore)\/issue-[1-9]\d*)$/u;
 const RECEIPT_BASE_REF = /^origin\/(?:(?:develop|rust-codegen)|(?:feat|fix|docs|refactor|test|ci|chore)\/issue-[1-9]\d*)$/u;
+const DURABLE_BASE_REF = /^origin\/(?:develop|rust-codegen)$/u;
 const CHECK_IDS = Object.freeze(["factory-contract", "contribution-policy", "secret-scan", "diff-check"]);
 const TARGET_IDS = new Set(["policy", "rust", "unit", "wasm", "coverage", "did-codegen", "vc-codegen"]);
 const RECEIPT_KEYS = Object.freeze([
@@ -91,6 +92,19 @@ function remoteSha(cwd, baseRef) {
   return matches[0][0];
 }
 
+export function validateBaseTarget(baseRef, deliveryTarget) {
+  if (DURABLE_BASE_REF.test(baseRef) && baseRef !== `origin/${deliveryTarget}`) {
+    return [`durable base ${baseRef} does not match delivery target ${deliveryTarget}`];
+  }
+  return [];
+}
+
+function requireOpenPgpConfig(cwd) {
+  let format = null;
+  try { format = git(cwd, ["config", "--local", "--get", "gpg.format"]); } catch { /* reported below */ }
+  if (format !== "openpgp") throw new Error("repository-local gpg.format must be openpgp; rerun bootstrap --configure-git");
+}
+
 export function validateReceipt(receipt, {
   repository = REPOSITORY,
   head,
@@ -108,6 +122,7 @@ export function validateReceipt(receipt, {
   if (receipt.issue !== issueFromBranch(receipt.branch ?? "")) errors.push("receipt issue does not match its branch");
   if (!DELIVERY_TARGET.test(receipt.deliveryTarget ?? "")) errors.push("receipt delivery target is not durable");
   if (!RECEIPT_BASE_REF.test(receipt.baseRef ?? "")) errors.push("receipt base ref is not an approved origin branch");
+  else errors.push(...validateBaseTarget(receipt.baseRef, receipt.deliveryTarget));
   if (!SHA.test(receipt.baseSha ?? "")) errors.push("receipt base SHA is invalid");
   if (!SHA.test(receipt.headSha ?? "")) errors.push("receipt head SHA is invalid");
   if (!Number.isFinite(Date.parse(receipt.createdAt ?? ""))) errors.push("receipt timestamp is invalid");
@@ -146,7 +161,10 @@ function runGate(argv, cwd, stdout) {
   const deliveryTarget = option(argv, "--delivery-target");
   if (!DELIVERY_TARGET.test(deliveryTarget ?? "")) throw new Error("--delivery-target must be develop or rust-codegen");
   const baseRef = canonicalRemoteBaseRef(option(argv, "--base") ?? deliveryTarget);
+  const baseTargetErrors = validateBaseTarget(baseRef, deliveryTarget);
+  if (baseTargetErrors.length > 0) throw new Error(baseTargetErrors.join("; "));
   if (git(cwd, ["status", "--porcelain"])) throw new Error("worktree must be clean before creating an exact-head receipt");
+  requireOpenPgpConfig(cwd);
   fetchRemoteBranch(cwd, deliveryTarget);
   const baseBranch = branchFromRemoteRef(baseRef);
   if (baseBranch !== deliveryTarget) fetchRemoteBranch(cwd, baseBranch);
@@ -207,6 +225,7 @@ function verifyGate(argv, cwd, stdout) {
   const branch = option(argv, "--branch");
   if (!SHA.test(head ?? "")) throw new Error("--head must be an exact lowercase 40-character SHA");
   if (validateBranch(branch ?? "").length > 0) throw new Error("--branch must be an issue-backed branch");
+  requireOpenPgpConfig(cwd);
   const receipt = JSON.parse(readFileSync(receiptPath(cwd, head), "utf8"));
   const errors = validateReceipt(receipt, {
     head,
