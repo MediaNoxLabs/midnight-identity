@@ -16,10 +16,8 @@ description            = "Schnorr-over-Jubjub signature suite for the Midnight D
 publish = false
 
 [dependencies]
+hex                       = { workspace = true }
 midnight-transient-crypto = { workspace = true }
 rand                      = "0.8"
 sha2                      = "0.10"
 thiserror                 = "2"
-
-[dev-dependencies]
-hex = { workspace = true }
