@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 
 Codegen target and contract-transport layer for the Midnight DID Method
 Rust port. This is the only crate in the workspace that touches
-`compact-runtime` and the `midnight-ledger` crates directly.
+`midnight-compact-runtime` and the `midnight-ledger` crates directly.
 
 ## What lives here
 

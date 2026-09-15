@@ -6,3 +6,7 @@
 	path = third_party/midnight-verifiable-credentials
 	url = https://github.com/midnightntwrk/midnight-verifiable-credentials.git
 	branch = main
+[submodule "third_party/midnight-verifiable-credential-digital-passport"]
+	path = third_party/midnight-verifiable-credential-digital-passport
+	url = https://github.com/midnightntwrk/midnight-verifiable-credential-digital-passport.git
+	branch = main

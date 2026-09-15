@@ -63,6 +63,25 @@ test("Compact inputs select only their affected generation family", () => {
   assert.ok(!vc.targets.includes(Target.DID_CODEGEN));
 });
 
+test("Digital Passport sources and bindings select the family codegen gate", () => {
+  for (const path of [
+    "third_party/midnight-verifiable-credential-digital-passport",
+    "crates/midnight-vc-families/src/contract/digital_passport.rs",
+  ]) {
+    const plan = makeTargetPlan([path]);
+    assert.deepEqual(plan.packages, ["midnight-vc-families"]);
+    assert.ok(plan.targets.includes(Target.VC_CODEGEN));
+    assert.ok(!plan.targets.includes(Target.DID_CODEGEN));
+  }
+});
+
+test("the Rust target compiles credential families with their opt-in features", async () => {
+  const script = await import("node:fs/promises").then(({ readFile }) =>
+    readFile(new URL("../../scripts/ci/rust-target.sh", import.meta.url), "utf8"));
+  assert.match(script, /midnight-vc-families/u);
+  assert.match(script, /--all-features/u);
+});
+
 test("build, unknown, and empty diff states fail closed", () => {
   for (const paths of [["Cargo.lock"], ["new-root-format.custom"], []]) {
     const plan = makeTargetPlan(paths);

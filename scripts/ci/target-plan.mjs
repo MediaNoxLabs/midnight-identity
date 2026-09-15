@@ -37,6 +37,7 @@ export const ALL_PACKAGES = Object.freeze([
   "midnight-did-jubjub-schnorr",
   "midnight-passport-vault-source",
   "midnight-vc-domain",
+  "midnight-vc-families",
   "midnight-vc-runtime",
 ]);
 
@@ -68,6 +69,7 @@ const DEPENDENTS = Object.freeze({
   "midnight-did-jubjub-schnorr": ["midnight-did-jubjub-schnorr"],
   "midnight-passport-vault-source": ["midnight-passport-vault-source"],
   "midnight-vc-domain": ["midnight-vc-domain"],
+  "midnight-vc-families": ["midnight-vc-families"],
   "midnight-vc-runtime": ["midnight-vc-runtime"],
 });
 
@@ -94,11 +96,18 @@ export function classifyPath(candidate) {
       || file.startsWith("third_party/midnight-verifiable-credentials/")) {
     return { area: "vc-codegen", package: "midnight-vc-runtime" };
   }
+  if (file === "third_party/midnight-verifiable-credential-digital-passport"
+      || file.startsWith("third_party/midnight-verifiable-credential-digital-passport/")) {
+    return { area: "vc-codegen", package: "midnight-vc-families" };
+  }
   if (/^crates\/midnight-did-runtime\/(?:src\/contract|assets\/keys)\//u.test(file)) {
     return { area: "did-codegen", package: "midnight-did-runtime" };
   }
   if (/^crates\/midnight-vc-runtime\/src\/contract\//u.test(file)) {
     return { area: "vc-codegen", package: "midnight-vc-runtime" };
+  }
+  if (/^crates\/midnight-vc-families\/src\/contract\//u.test(file)) {
+    return { area: "vc-codegen", package: "midnight-vc-families" };
   }
   const crate = /^crates\/([^/]+)\//u.exec(file)?.[1];
   if (crate && ALL_PACKAGES.includes(crate)) return { area: "rust", package: crate };

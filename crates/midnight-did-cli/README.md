@@ -98,7 +98,7 @@ demand.
 This binary is a reference flow, not a production wallet:
 
 - **Mock contract** — uses `midnight_did_api::contract::mock::RecordingContract`.
-  No live Midnight node, no compact-runtime invocation, no signature
+  No live Midnight node, no midnight-compact-runtime invocation, no signature
   checking. The `midnight-did` runtime crate is currently blocked on a
   halo2 dependency mismatch (see workspace README); this CLI is built so
   the API layer can be exercised end-to-end while the runtime catches up.

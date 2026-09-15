@@ -246,7 +246,7 @@ impl PrivateStateStore for FailingStore {
 ///
 /// Custom backends use the `RawChargedState` + `RawDb` re-exports from
 /// the runtime crate so api-level callers do not need a direct
-/// `compact-runtime` dep just to satisfy the `Backend::read_state`
+/// `midnight-compact-runtime` dep just to satisfy the `Backend::read_state`
 /// signature.
 struct FailingBackend;
 

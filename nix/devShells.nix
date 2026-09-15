@@ -55,7 +55,7 @@
 
         # Materialise compact's runtime-rs + runtime-rs-macros subtrees inside
         # third_party/compact/, mirroring the in-repo layout so that the
-        # relative path `../runtime-rs-macros` (in compact-runtime's Cargo.toml)
+        # relative path `../runtime-rs-macros` (in midnight-compact-runtime's Cargo.toml)
         # and `../runtime-rs` (in runtime-rs-macros' dev-deps) both resolve
         # correctly without aliasing.
         mkdir -p "$ROOT_DIR/third_party/compact"

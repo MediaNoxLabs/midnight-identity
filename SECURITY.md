@@ -92,7 +92,7 @@ fastest fix:
   `midnight-base-crypto`, `midnight-onchain-runtime`, …) — report to
   the
   [midnight-ledger maintainers](https://github.com/midnightntwrk).
-- **The Compact compiler** (`compactc`, `compact-runtime`,
+- **The Compact compiler** (`compactc`, `midnight-compact-runtime`,
   codegen passes) — report to the Compact maintainers.
 - **The TypeScript reference**
   [`midnightntwrk/midnight-did`](https://github.com/midnightntwrk/midnight-did)

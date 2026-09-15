@@ -28,9 +28,9 @@
 
 use std::marker::PhantomData;
 
-use compact_runtime::*;
+use midnight_compact_runtime::*;
 
-compact_runtime::check_runtime_version!("0.16.100");
+midnight_compact_runtime::check_runtime_version!("0.16.100");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 #[repr(u8)]
@@ -63,12 +63,12 @@ impl FromFieldRepr for VerificationMethodType {
         }
     }
 }
-impl From<VerificationMethodType> for compact_runtime::Value {
-    fn from(v: VerificationMethodType) -> compact_runtime::Value {
-        compact_runtime::Value::from(v as u8)
+impl From<VerificationMethodType> for midnight_compact_runtime::Value {
+    fn from(v: VerificationMethodType) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
     }
 }
-impl compact_runtime::BinaryHashRepr for VerificationMethodType {
+impl midnight_compact_runtime::BinaryHashRepr for VerificationMethodType {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         (*self as u8).binary_repr(writer);
     }
@@ -115,12 +115,12 @@ impl FromFieldRepr for VerificationMethodRelation {
         }
     }
 }
-impl From<VerificationMethodRelation> for compact_runtime::Value {
-    fn from(v: VerificationMethodRelation) -> compact_runtime::Value {
-        compact_runtime::Value::from(v as u8)
+impl From<VerificationMethodRelation> for midnight_compact_runtime::Value {
+    fn from(v: VerificationMethodRelation) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
     }
 }
-impl compact_runtime::BinaryHashRepr for VerificationMethodRelation {
+impl midnight_compact_runtime::BinaryHashRepr for VerificationMethodRelation {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         (*self as u8).binary_repr(writer);
     }
@@ -161,12 +161,12 @@ impl FromFieldRepr for MapMutation {
         }
     }
 }
-impl From<MapMutation> for compact_runtime::Value {
-    fn from(v: MapMutation) -> compact_runtime::Value {
-        compact_runtime::Value::from(v as u8)
+impl From<MapMutation> for midnight_compact_runtime::Value {
+    fn from(v: MapMutation) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
     }
 }
-impl compact_runtime::BinaryHashRepr for MapMutation {
+impl midnight_compact_runtime::BinaryHashRepr for MapMutation {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         (*self as u8).binary_repr(writer);
     }
@@ -207,12 +207,12 @@ impl FromFieldRepr for SetMutation {
         }
     }
 }
-impl From<SetMutation> for compact_runtime::Value {
-    fn from(v: SetMutation) -> compact_runtime::Value {
-        compact_runtime::Value::from(v as u8)
+impl From<SetMutation> for midnight_compact_runtime::Value {
+    fn from(v: SetMutation) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
     }
 }
-impl compact_runtime::BinaryHashRepr for SetMutation {
+impl midnight_compact_runtime::BinaryHashRepr for SetMutation {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         (*self as u8).binary_repr(writer);
     }
@@ -255,12 +255,12 @@ impl FromFieldRepr for KeyType {
         }
     }
 }
-impl From<KeyType> for compact_runtime::Value {
-    fn from(v: KeyType) -> compact_runtime::Value {
-        compact_runtime::Value::from(v as u8)
+impl From<KeyType> for midnight_compact_runtime::Value {
+    fn from(v: KeyType) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
     }
 }
-impl compact_runtime::BinaryHashRepr for KeyType {
+impl midnight_compact_runtime::BinaryHashRepr for KeyType {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         (*self as u8).binary_repr(writer);
     }
@@ -309,12 +309,12 @@ impl FromFieldRepr for CurveType {
         }
     }
 }
-impl From<CurveType> for compact_runtime::Value {
-    fn from(v: CurveType) -> compact_runtime::Value {
-        compact_runtime::Value::from(v as u8)
+impl From<CurveType> for midnight_compact_runtime::Value {
+    fn from(v: CurveType) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
     }
 }
-impl compact_runtime::BinaryHashRepr for CurveType {
+impl midnight_compact_runtime::BinaryHashRepr for CurveType {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         (*self as u8).binary_repr(writer);
     }
@@ -326,16 +326,16 @@ impl compact_runtime::BinaryHashRepr for CurveType {
 pub struct PublicKeyJwk {
     pub kty: KeyType,
     pub crv: CurveType,
-    pub x: compact_runtime::std_lib::OpaqueString,
-    pub y: compact_runtime::std_lib::OpaqueString,
+    pub x: midnight_compact_runtime::std_lib::OpaqueString,
+    pub y: midnight_compact_runtime::std_lib::OpaqueString,
 }
 impl Aligned for PublicKeyJwk {
     fn alignment() -> Alignment {
         Alignment::concat([
             &<KeyType as Aligned>::alignment(),
             &<CurveType as Aligned>::alignment(),
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
         ])
     }
 }
@@ -353,8 +353,8 @@ impl FieldRepr for PublicKeyJwk {
 impl FromFieldRepr for PublicKeyJwk {
     const FIELD_SIZE: usize = <KeyType as FromFieldRepr>::FIELD_SIZE
         + <CurveType as FromFieldRepr>::FIELD_SIZE
-        + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
-        + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+        + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
@@ -368,29 +368,29 @@ impl FromFieldRepr for PublicKeyJwk {
             &_repr[_offset.._offset + <CurveType as FromFieldRepr>::FIELD_SIZE],
         )?;
         _offset += <CurveType as FromFieldRepr>::FIELD_SIZE;
-        let x = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let x = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
-        let y = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        let y = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
         Some(PublicKeyJwk { kty, crv, x, y })
     }
 }
-impl From<PublicKeyJwk> for compact_runtime::Value {
-    fn from(s: PublicKeyJwk) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.kty));
-        _v.push(compact_runtime::Value::from(s.crv));
-        _v.push(compact_runtime::Value::from(s.x));
-        _v.push(compact_runtime::Value::from(s.y));
-        compact_runtime::Value::concat(_v.iter())
+impl From<PublicKeyJwk> for midnight_compact_runtime::Value {
+    fn from(s: PublicKeyJwk) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.kty));
+        _v.push(midnight_compact_runtime::Value::from(s.crv));
+        _v.push(midnight_compact_runtime::Value::from(s.x));
+        _v.push(midnight_compact_runtime::Value::from(s.y));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for PublicKeyJwk {
+impl midnight_compact_runtime::BinaryHashRepr for PublicKeyJwk {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.kty.binary_repr(writer);
         self.crv.binary_repr(writer);
@@ -404,14 +404,14 @@ impl compact_runtime::BinaryHashRepr for PublicKeyJwk {
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct VerificationMethod {
-    pub id: compact_runtime::std_lib::OpaqueString,
+    pub id: midnight_compact_runtime::std_lib::OpaqueString,
     pub typ: VerificationMethodType,
     pub publicKeyJwk: PublicKeyJwk,
 }
 impl Aligned for VerificationMethod {
     fn alignment() -> Alignment {
         Alignment::concat([
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
             &<VerificationMethodType as Aligned>::alignment(),
             &<PublicKeyJwk as Aligned>::alignment(),
         ])
@@ -428,7 +428,7 @@ impl FieldRepr for VerificationMethod {
     }
 }
 impl FromFieldRepr for VerificationMethod {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
         + <VerificationMethodType as FromFieldRepr>::FIELD_SIZE
         + <PublicKeyJwk as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
@@ -436,10 +436,10 @@ impl FromFieldRepr for VerificationMethod {
             return None;
         }
         let mut _offset = 0usize;
-        let id = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let id = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let typ = <VerificationMethodType as FromFieldRepr>::from_field_repr(
             &_repr[_offset.._offset + <VerificationMethodType as FromFieldRepr>::FIELD_SIZE],
         )?;
@@ -452,16 +452,16 @@ impl FromFieldRepr for VerificationMethod {
         Some(VerificationMethod { id, typ, publicKeyJwk })
     }
 }
-impl From<VerificationMethod> for compact_runtime::Value {
-    fn from(s: VerificationMethod) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.id));
-        _v.push(compact_runtime::Value::from(s.typ));
-        _v.push(compact_runtime::Value::from(s.publicKeyJwk));
-        compact_runtime::Value::concat(_v.iter())
+impl From<VerificationMethod> for midnight_compact_runtime::Value {
+    fn from(s: VerificationMethod) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.id));
+        _v.push(midnight_compact_runtime::Value::from(s.typ));
+        _v.push(midnight_compact_runtime::Value::from(s.publicKeyJwk));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for VerificationMethod {
+impl midnight_compact_runtime::BinaryHashRepr for VerificationMethod {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.id.binary_repr(writer);
         self.typ.binary_repr(writer);
@@ -474,13 +474,13 @@ impl compact_runtime::BinaryHashRepr for VerificationMethod {
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct SchnorrJubjubVerificationMethod {
-    pub id: compact_runtime::std_lib::OpaqueString,
+    pub id: midnight_compact_runtime::std_lib::OpaqueString,
     pub publicKey: JubjubPoint,
 }
 impl Aligned for SchnorrJubjubVerificationMethod {
     fn alignment() -> Alignment {
         Alignment::concat([
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
             &<JubjubPoint as Aligned>::alignment(),
         ])
     }
@@ -488,62 +488,62 @@ impl Aligned for SchnorrJubjubVerificationMethod {
 impl FieldRepr for SchnorrJubjubVerificationMethod {
     fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
         self.id.field_repr(writer);
-        compact_runtime::jubjub_point_field_repr(&self.publicKey, writer);
+        midnight_compact_runtime::jubjub_point_field_repr(&self.publicKey, writer);
     }
     fn field_size(&self) -> usize {
-        self.id.field_size() + compact_runtime::jubjub_point_field_size(&self.publicKey)
+        self.id.field_size() + midnight_compact_runtime::jubjub_point_field_size(&self.publicKey)
     }
 }
 impl FromFieldRepr for SchnorrJubjubVerificationMethod {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
-        + compact_runtime::JUBJUB_POINT_FIELD_SIZE;
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+        + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
         }
         let mut _offset = 0usize;
-        let id = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let id = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
-        let publicKey = compact_runtime::jubjub_point_from_field_repr(
-            &_repr[_offset.._offset + compact_runtime::JUBJUB_POINT_FIELD_SIZE],
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        let publicKey = midnight_compact_runtime::jubjub_point_from_field_repr(
+            &_repr[_offset.._offset + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE],
         )?;
-        _offset += compact_runtime::JUBJUB_POINT_FIELD_SIZE;
+        _offset += midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
         let _ = _offset;
         Some(SchnorrJubjubVerificationMethod { id, publicKey })
     }
 }
-impl From<SchnorrJubjubVerificationMethod> for compact_runtime::Value {
-    fn from(s: SchnorrJubjubVerificationMethod) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.id));
-        _v.push(compact_runtime::Value::from(s.publicKey));
-        compact_runtime::Value::concat(_v.iter())
+impl From<SchnorrJubjubVerificationMethod> for midnight_compact_runtime::Value {
+    fn from(s: SchnorrJubjubVerificationMethod) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.id));
+        _v.push(midnight_compact_runtime::Value::from(s.publicKey));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for SchnorrJubjubVerificationMethod {
+impl midnight_compact_runtime::BinaryHashRepr for SchnorrJubjubVerificationMethod {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.id.binary_repr(writer);
-        compact_runtime::jubjub_point_binary_repr(&self.publicKey, writer);
+        midnight_compact_runtime::jubjub_point_binary_repr(&self.publicKey, writer);
     }
     fn binary_len(&self) -> usize {
-        self.id.binary_len() + compact_runtime::jubjub_point_binary_len(&self.publicKey)
+        self.id.binary_len() + midnight_compact_runtime::jubjub_point_binary_len(&self.publicKey)
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Service {
-    pub id: compact_runtime::std_lib::OpaqueString,
-    pub typ: compact_runtime::std_lib::OpaqueString,
-    pub serviceEndpoint: compact_runtime::std_lib::OpaqueString,
+    pub id: midnight_compact_runtime::std_lib::OpaqueString,
+    pub typ: midnight_compact_runtime::std_lib::OpaqueString,
+    pub serviceEndpoint: midnight_compact_runtime::std_lib::OpaqueString,
 }
 impl Aligned for Service {
     fn alignment() -> Alignment {
         Alignment::concat([
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
         ])
     }
 }
@@ -558,26 +558,26 @@ impl FieldRepr for Service {
     }
 }
 impl FromFieldRepr for Service {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
-        + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
-        + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+        + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+        + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
         }
         let mut _offset = 0usize;
-        let id = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let id = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
-        let typ = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        let typ = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
-        let serviceEndpoint = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        let serviceEndpoint = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
         Some(Service {
             id,
@@ -586,16 +586,16 @@ impl FromFieldRepr for Service {
         })
     }
 }
-impl From<Service> for compact_runtime::Value {
-    fn from(s: Service) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.id));
-        _v.push(compact_runtime::Value::from(s.typ));
-        _v.push(compact_runtime::Value::from(s.serviceEndpoint));
-        compact_runtime::Value::concat(_v.iter())
+impl From<Service> for midnight_compact_runtime::Value {
+    fn from(s: Service) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.id));
+        _v.push(midnight_compact_runtime::Value::from(s.typ));
+        _v.push(midnight_compact_runtime::Value::from(s.serviceEndpoint));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for Service {
+impl midnight_compact_runtime::BinaryHashRepr for Service {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.id.binary_repr(writer);
         self.typ.binary_repr(writer);
@@ -642,15 +642,15 @@ impl FromFieldRepr for RecoverControllerKeyArgs {
         Some(RecoverControllerKeyArgs { publicKeyX, publicKeyY })
     }
 }
-impl From<RecoverControllerKeyArgs> for compact_runtime::Value {
-    fn from(s: RecoverControllerKeyArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.publicKeyX));
-        _v.push(compact_runtime::Value::from(s.publicKeyY));
-        compact_runtime::Value::concat(_v.iter())
+impl From<RecoverControllerKeyArgs> for midnight_compact_runtime::Value {
+    fn from(s: RecoverControllerKeyArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.publicKeyX));
+        _v.push(midnight_compact_runtime::Value::from(s.publicKeyY));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for RecoverControllerKeyArgs {
+impl midnight_compact_runtime::BinaryHashRepr for RecoverControllerKeyArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.publicKeyX.binary_repr(writer);
         self.publicKeyY.binary_repr(writer);
@@ -662,7 +662,7 @@ impl compact_runtime::BinaryHashRepr for RecoverControllerKeyArgs {
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct SetSchnorrJubjubVerificationMethodArgs {
-    pub id: compact_runtime::std_lib::OpaqueString,
+    pub id: midnight_compact_runtime::std_lib::OpaqueString,
     pub publicKeyX: Fr,
     pub publicKeyY: Fr,
     pub mutation: MapMutation,
@@ -670,7 +670,7 @@ pub struct SetSchnorrJubjubVerificationMethodArgs {
 impl Aligned for SetSchnorrJubjubVerificationMethodArgs {
     fn alignment() -> Alignment {
         Alignment::concat([
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
             &<Fr as Aligned>::alignment(),
             &<Fr as Aligned>::alignment(),
             &<MapMutation as Aligned>::alignment(),
@@ -689,7 +689,7 @@ impl FieldRepr for SetSchnorrJubjubVerificationMethodArgs {
     }
 }
 impl FromFieldRepr for SetSchnorrJubjubVerificationMethodArgs {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
         + <Fr as FromFieldRepr>::FIELD_SIZE
         + <Fr as FromFieldRepr>::FIELD_SIZE
         + <MapMutation as FromFieldRepr>::FIELD_SIZE;
@@ -698,10 +698,10 @@ impl FromFieldRepr for SetSchnorrJubjubVerificationMethodArgs {
             return None;
         }
         let mut _offset = 0usize;
-        let id = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let id = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let publicKeyX =
             <Fr as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <Fr as FromFieldRepr>::FIELD_SIZE])?;
         _offset += <Fr as FromFieldRepr>::FIELD_SIZE;
@@ -721,17 +721,17 @@ impl FromFieldRepr for SetSchnorrJubjubVerificationMethodArgs {
         })
     }
 }
-impl From<SetSchnorrJubjubVerificationMethodArgs> for compact_runtime::Value {
-    fn from(s: SetSchnorrJubjubVerificationMethodArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.id));
-        _v.push(compact_runtime::Value::from(s.publicKeyX));
-        _v.push(compact_runtime::Value::from(s.publicKeyY));
-        _v.push(compact_runtime::Value::from(s.mutation));
-        compact_runtime::Value::concat(_v.iter())
+impl From<SetSchnorrJubjubVerificationMethodArgs> for midnight_compact_runtime::Value {
+    fn from(s: SetSchnorrJubjubVerificationMethodArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.id));
+        _v.push(midnight_compact_runtime::Value::from(s.publicKeyX));
+        _v.push(midnight_compact_runtime::Value::from(s.publicKeyY));
+        _v.push(midnight_compact_runtime::Value::from(s.mutation));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for SetSchnorrJubjubVerificationMethodArgs {
+impl midnight_compact_runtime::BinaryHashRepr for SetSchnorrJubjubVerificationMethodArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.id.binary_repr(writer);
         self.publicKeyX.binary_repr(writer);
@@ -784,15 +784,15 @@ impl FromFieldRepr for SetServiceArgs {
         Some(SetServiceArgs { service, mutation })
     }
 }
-impl From<SetServiceArgs> for compact_runtime::Value {
-    fn from(s: SetServiceArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.service));
-        _v.push(compact_runtime::Value::from(s.mutation));
-        compact_runtime::Value::concat(_v.iter())
+impl From<SetServiceArgs> for midnight_compact_runtime::Value {
+    fn from(s: SetServiceArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.service));
+        _v.push(midnight_compact_runtime::Value::from(s.mutation));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for SetServiceArgs {
+impl midnight_compact_runtime::BinaryHashRepr for SetServiceArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.service.binary_repr(writer);
         self.mutation.binary_repr(writer);
@@ -834,14 +834,14 @@ impl FromFieldRepr for ContractAddress {
         Some(ContractAddress { bytes })
     }
 }
-impl From<ContractAddress> for compact_runtime::Value {
-    fn from(s: ContractAddress) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.bytes));
-        compact_runtime::Value::concat(_v.iter())
+impl From<ContractAddress> for midnight_compact_runtime::Value {
+    fn from(s: ContractAddress) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.bytes));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for ContractAddress {
+impl midnight_compact_runtime::BinaryHashRepr for ContractAddress {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.bytes.binary_repr(writer);
     }
@@ -852,11 +852,11 @@ impl compact_runtime::BinaryHashRepr for ContractAddress {
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct RemoveServiceArgs {
-    pub id: compact_runtime::std_lib::OpaqueString,
+    pub id: midnight_compact_runtime::std_lib::OpaqueString,
 }
 impl Aligned for RemoveServiceArgs {
     fn alignment() -> Alignment {
-        Alignment::concat([&<compact_runtime::std_lib::OpaqueString as Aligned>::alignment()])
+        Alignment::concat([&<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment()])
     }
 }
 impl FieldRepr for RemoveServiceArgs {
@@ -868,28 +868,28 @@ impl FieldRepr for RemoveServiceArgs {
     }
 }
 impl FromFieldRepr for RemoveServiceArgs {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
         }
         let mut _offset = 0usize;
-        let id = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let id = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
         Some(RemoveServiceArgs { id })
     }
 }
-impl From<RemoveServiceArgs> for compact_runtime::Value {
-    fn from(s: RemoveServiceArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.id));
-        compact_runtime::Value::concat(_v.iter())
+impl From<RemoveServiceArgs> for midnight_compact_runtime::Value {
+    fn from(s: RemoveServiceArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.id));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for RemoveServiceArgs {
+impl midnight_compact_runtime::BinaryHashRepr for RemoveServiceArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.id.binary_repr(writer);
     }
@@ -900,11 +900,11 @@ impl compact_runtime::BinaryHashRepr for RemoveServiceArgs {
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct RemoveSchnorrJubjubVerificationMethodArgs {
-    pub id: compact_runtime::std_lib::OpaqueString,
+    pub id: midnight_compact_runtime::std_lib::OpaqueString,
 }
 impl Aligned for RemoveSchnorrJubjubVerificationMethodArgs {
     fn alignment() -> Alignment {
-        Alignment::concat([&<compact_runtime::std_lib::OpaqueString as Aligned>::alignment()])
+        Alignment::concat([&<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment()])
     }
 }
 impl FieldRepr for RemoveSchnorrJubjubVerificationMethodArgs {
@@ -916,28 +916,28 @@ impl FieldRepr for RemoveSchnorrJubjubVerificationMethodArgs {
     }
 }
 impl FromFieldRepr for RemoveSchnorrJubjubVerificationMethodArgs {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
         }
         let mut _offset = 0usize;
-        let id = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let id = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
         Some(RemoveSchnorrJubjubVerificationMethodArgs { id })
     }
 }
-impl From<RemoveSchnorrJubjubVerificationMethodArgs> for compact_runtime::Value {
-    fn from(s: RemoveSchnorrJubjubVerificationMethodArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.id));
-        compact_runtime::Value::concat(_v.iter())
+impl From<RemoveSchnorrJubjubVerificationMethodArgs> for midnight_compact_runtime::Value {
+    fn from(s: RemoveSchnorrJubjubVerificationMethodArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.id));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for RemoveSchnorrJubjubVerificationMethodArgs {
+impl midnight_compact_runtime::BinaryHashRepr for RemoveSchnorrJubjubVerificationMethodArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.id.binary_repr(writer);
     }
@@ -978,14 +978,14 @@ impl FromFieldRepr for ControllerAuthorizationDomain {
         Some(ControllerAuthorizationDomain { domain })
     }
 }
-impl From<ControllerAuthorizationDomain> for compact_runtime::Value {
-    fn from(s: ControllerAuthorizationDomain) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.domain));
-        compact_runtime::Value::concat(_v.iter())
+impl From<ControllerAuthorizationDomain> for midnight_compact_runtime::Value {
+    fn from(s: ControllerAuthorizationDomain) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.domain));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for ControllerAuthorizationDomain {
+impl midnight_compact_runtime::BinaryHashRepr for ControllerAuthorizationDomain {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.domain.binary_repr(writer);
     }
@@ -1030,15 +1030,15 @@ impl FromFieldRepr for RotateControllerKeyArgs {
         Some(RotateControllerKeyArgs { publicKeyX, publicKeyY })
     }
 }
-impl From<RotateControllerKeyArgs> for compact_runtime::Value {
-    fn from(s: RotateControllerKeyArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.publicKeyX));
-        _v.push(compact_runtime::Value::from(s.publicKeyY));
-        compact_runtime::Value::concat(_v.iter())
+impl From<RotateControllerKeyArgs> for midnight_compact_runtime::Value {
+    fn from(s: RotateControllerKeyArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.publicKeyX));
+        _v.push(midnight_compact_runtime::Value::from(s.publicKeyY));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for RotateControllerKeyArgs {
+impl midnight_compact_runtime::BinaryHashRepr for RotateControllerKeyArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.publicKeyX.binary_repr(writer);
         self.publicKeyY.binary_repr(writer);
@@ -1111,7 +1111,7 @@ impl FromFieldRepr for SchnorrHashInput {
         let pk_y =
             <Fr as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <Fr as FromFieldRepr>::FIELD_SIZE])?;
         _offset += <Fr as FromFieldRepr>::FIELD_SIZE;
-        let msg = compact_runtime::array_from_field_repr::<Fr, 4>(
+        let msg = midnight_compact_runtime::array_from_field_repr::<Fr, 4>(
             &_repr[_offset.._offset + <Fr as FromFieldRepr>::FIELD_SIZE * 4],
             <Fr as FromFieldRepr>::FIELD_SIZE,
         )?;
@@ -1126,20 +1126,20 @@ impl FromFieldRepr for SchnorrHashInput {
         })
     }
 }
-impl From<SchnorrHashInput> for compact_runtime::Value {
-    fn from(s: SchnorrHashInput) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.ann_x));
-        _v.push(compact_runtime::Value::from(s.ann_y));
-        _v.push(compact_runtime::Value::from(s.pk_x));
-        _v.push(compact_runtime::Value::from(s.pk_y));
+impl From<SchnorrHashInput> for midnight_compact_runtime::Value {
+    fn from(s: SchnorrHashInput) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.ann_x));
+        _v.push(midnight_compact_runtime::Value::from(s.ann_y));
+        _v.push(midnight_compact_runtime::Value::from(s.pk_x));
+        _v.push(midnight_compact_runtime::Value::from(s.pk_y));
         for _e in s.msg.iter() {
-            _v.push(compact_runtime::Value::from(_e.clone()));
+            _v.push(midnight_compact_runtime::Value::from(_e.clone()));
         }
-        compact_runtime::Value::concat(_v.iter())
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for SchnorrHashInput {
+impl midnight_compact_runtime::BinaryHashRepr for SchnorrHashInput {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.ann_x.binary_repr(writer);
         self.ann_y.binary_repr(writer);
@@ -1190,14 +1190,14 @@ impl FromFieldRepr for ControllerAuthorizationOperation {
         Some(ControllerAuthorizationOperation { name })
     }
 }
-impl From<ControllerAuthorizationOperation> for compact_runtime::Value {
-    fn from(s: ControllerAuthorizationOperation) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.name));
-        compact_runtime::Value::concat(_v.iter())
+impl From<ControllerAuthorizationOperation> for midnight_compact_runtime::Value {
+    fn from(s: ControllerAuthorizationOperation) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.name));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for ControllerAuthorizationOperation {
+impl midnight_compact_runtime::BinaryHashRepr for ControllerAuthorizationOperation {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.name.binary_repr(writer);
     }
@@ -1238,14 +1238,14 @@ impl FromFieldRepr for ControllerAuthorizationNoArgs {
         Some(ControllerAuthorizationNoArgs { domain })
     }
 }
-impl From<ControllerAuthorizationNoArgs> for compact_runtime::Value {
-    fn from(s: ControllerAuthorizationNoArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.domain));
-        compact_runtime::Value::concat(_v.iter())
+impl From<ControllerAuthorizationNoArgs> for midnight_compact_runtime::Value {
+    fn from(s: ControllerAuthorizationNoArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.domain));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for ControllerAuthorizationNoArgs {
+impl midnight_compact_runtime::BinaryHashRepr for ControllerAuthorizationNoArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.domain.binary_repr(writer);
     }
@@ -1257,14 +1257,14 @@ impl compact_runtime::BinaryHashRepr for ControllerAuthorizationNoArgs {
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct SetVerificationMethodRelationArgs {
     pub relation: VerificationMethodRelation,
-    pub methodId: compact_runtime::std_lib::OpaqueString,
+    pub methodId: midnight_compact_runtime::std_lib::OpaqueString,
     pub mutation: SetMutation,
 }
 impl Aligned for SetVerificationMethodRelationArgs {
     fn alignment() -> Alignment {
         Alignment::concat([
             &<VerificationMethodRelation as Aligned>::alignment(),
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
             &<SetMutation as Aligned>::alignment(),
         ])
     }
@@ -1281,7 +1281,7 @@ impl FieldRepr for SetVerificationMethodRelationArgs {
 }
 impl FromFieldRepr for SetVerificationMethodRelationArgs {
     const FIELD_SIZE: usize = <VerificationMethodRelation as FromFieldRepr>::FIELD_SIZE
-        + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+        + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
         + <SetMutation as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
@@ -1292,10 +1292,10 @@ impl FromFieldRepr for SetVerificationMethodRelationArgs {
             &_repr[_offset.._offset + <VerificationMethodRelation as FromFieldRepr>::FIELD_SIZE],
         )?;
         _offset += <VerificationMethodRelation as FromFieldRepr>::FIELD_SIZE;
-        let methodId = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let methodId = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let mutation = <SetMutation as FromFieldRepr>::from_field_repr(
             &_repr[_offset.._offset + <SetMutation as FromFieldRepr>::FIELD_SIZE],
         )?;
@@ -1308,16 +1308,16 @@ impl FromFieldRepr for SetVerificationMethodRelationArgs {
         })
     }
 }
-impl From<SetVerificationMethodRelationArgs> for compact_runtime::Value {
-    fn from(s: SetVerificationMethodRelationArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.relation));
-        _v.push(compact_runtime::Value::from(s.methodId));
-        _v.push(compact_runtime::Value::from(s.mutation));
-        compact_runtime::Value::concat(_v.iter())
+impl From<SetVerificationMethodRelationArgs> for midnight_compact_runtime::Value {
+    fn from(s: SetVerificationMethodRelationArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.relation));
+        _v.push(midnight_compact_runtime::Value::from(s.methodId));
+        _v.push(midnight_compact_runtime::Value::from(s.mutation));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for SetVerificationMethodRelationArgs {
+impl midnight_compact_runtime::BinaryHashRepr for SetVerificationMethodRelationArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.relation.binary_repr(writer);
         self.methodId.binary_repr(writer);
@@ -1373,15 +1373,15 @@ impl FromFieldRepr for SetVerificationMethodArgs {
         })
     }
 }
-impl From<SetVerificationMethodArgs> for compact_runtime::Value {
-    fn from(s: SetVerificationMethodArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.verificationMethod));
-        _v.push(compact_runtime::Value::from(s.mutation));
-        compact_runtime::Value::concat(_v.iter())
+impl From<SetVerificationMethodArgs> for midnight_compact_runtime::Value {
+    fn from(s: SetVerificationMethodArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.verificationMethod));
+        _v.push(midnight_compact_runtime::Value::from(s.mutation));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for SetVerificationMethodArgs {
+impl midnight_compact_runtime::BinaryHashRepr for SetVerificationMethodArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.verificationMethod.binary_repr(writer);
         self.mutation.binary_repr(writer);
@@ -1393,13 +1393,13 @@ impl compact_runtime::BinaryHashRepr for SetVerificationMethodArgs {
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct SetAlsoKnownAsArgs {
-    pub value: compact_runtime::std_lib::OpaqueString,
+    pub value: midnight_compact_runtime::std_lib::OpaqueString,
     pub mutation: SetMutation,
 }
 impl Aligned for SetAlsoKnownAsArgs {
     fn alignment() -> Alignment {
         Alignment::concat([
-            &<compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
+            &<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment(),
             &<SetMutation as Aligned>::alignment(),
         ])
     }
@@ -1414,17 +1414,17 @@ impl FieldRepr for SetAlsoKnownAsArgs {
     }
 }
 impl FromFieldRepr for SetAlsoKnownAsArgs {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE
         + <SetMutation as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
         }
         let mut _offset = 0usize;
-        let value = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let value = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let mutation = <SetMutation as FromFieldRepr>::from_field_repr(
             &_repr[_offset.._offset + <SetMutation as FromFieldRepr>::FIELD_SIZE],
         )?;
@@ -1433,15 +1433,15 @@ impl FromFieldRepr for SetAlsoKnownAsArgs {
         Some(SetAlsoKnownAsArgs { value, mutation })
     }
 }
-impl From<SetAlsoKnownAsArgs> for compact_runtime::Value {
-    fn from(s: SetAlsoKnownAsArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.value));
-        _v.push(compact_runtime::Value::from(s.mutation));
-        compact_runtime::Value::concat(_v.iter())
+impl From<SetAlsoKnownAsArgs> for midnight_compact_runtime::Value {
+    fn from(s: SetAlsoKnownAsArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.value));
+        _v.push(midnight_compact_runtime::Value::from(s.mutation));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for SetAlsoKnownAsArgs {
+impl midnight_compact_runtime::BinaryHashRepr for SetAlsoKnownAsArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.value.binary_repr(writer);
         self.mutation.binary_repr(writer);
@@ -1453,11 +1453,11 @@ impl compact_runtime::BinaryHashRepr for SetAlsoKnownAsArgs {
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct RemoveVerificationMethodArgs {
-    pub id: compact_runtime::std_lib::OpaqueString,
+    pub id: midnight_compact_runtime::std_lib::OpaqueString,
 }
 impl Aligned for RemoveVerificationMethodArgs {
     fn alignment() -> Alignment {
-        Alignment::concat([&<compact_runtime::std_lib::OpaqueString as Aligned>::alignment()])
+        Alignment::concat([&<midnight_compact_runtime::std_lib::OpaqueString as Aligned>::alignment()])
     }
 }
 impl FieldRepr for RemoveVerificationMethodArgs {
@@ -1469,28 +1469,28 @@ impl FieldRepr for RemoveVerificationMethodArgs {
     }
 }
 impl FromFieldRepr for RemoveVerificationMethodArgs {
-    const FIELD_SIZE: usize = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+    const FIELD_SIZE: usize = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
         }
         let mut _offset = 0usize;
-        let id = <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
+        let id = <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE],
         )?;
-        _offset += <compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
+        _offset += <midnight_compact_runtime::std_lib::OpaqueString as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
         Some(RemoveVerificationMethodArgs { id })
     }
 }
-impl From<RemoveVerificationMethodArgs> for compact_runtime::Value {
-    fn from(s: RemoveVerificationMethodArgs) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.id));
-        compact_runtime::Value::concat(_v.iter())
+impl From<RemoveVerificationMethodArgs> for midnight_compact_runtime::Value {
+    fn from(s: RemoveVerificationMethodArgs) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.id));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for RemoveVerificationMethodArgs {
+impl midnight_compact_runtime::BinaryHashRepr for RemoveVerificationMethodArgs {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.id.binary_repr(writer);
     }
@@ -1539,15 +1539,15 @@ impl FromFieldRepr for ControllerAuthorizationState {
         Some(ControllerAuthorizationState { contractId, version })
     }
 }
-impl From<ControllerAuthorizationState> for compact_runtime::Value {
-    fn from(s: ControllerAuthorizationState) -> compact_runtime::Value {
-        let mut _v: Vec<compact_runtime::Value> = Vec::new();
-        _v.push(compact_runtime::Value::from(s.contractId));
-        _v.push(compact_runtime::Value::from(s.version));
-        compact_runtime::Value::concat(_v.iter())
+impl From<ControllerAuthorizationState> for midnight_compact_runtime::Value {
+    fn from(s: ControllerAuthorizationState) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.contractId));
+        _v.push(midnight_compact_runtime::Value::from(s.version));
+        midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl compact_runtime::BinaryHashRepr for ControllerAuthorizationState {
+impl midnight_compact_runtime::BinaryHashRepr for ControllerAuthorizationState {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.contractId.binary_repr(writer);
         self.version.binary_repr(writer);
@@ -1587,8 +1587,8 @@ where
         let sv = new_array(vec![
             new_array(vec![
                 new_cell(0u32),
-                new_cell(compact_runtime::JubjubPoint::default()),
-                new_cell(compact_runtime::JubjubPoint::default()),
+                new_cell(midnight_compact_runtime::JubjubPoint::default()),
+                new_cell(midnight_compact_runtime::JubjubPoint::default()),
                 new_cell(ContractAddress::default()),
             ]),
             new_array(vec![
@@ -1610,7 +1610,7 @@ where
             ]),
         ]);
         let state = ChargedState::new(sv);
-        let qctx = QueryContext::new(state, compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(state, midnight_compact_runtime::ContractAddress::default());
         let tmp = 2u32;
         let tmp_0 = {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1621,10 +1621,10 @@ where
             let _gather_results = query_for_read(&qctx, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+            midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
         };
         let _witness_ctx_2 = WitnessContext::new(ledger(&qctx.state), ctx.initial_private_state, &qctx);
         let (current_private_state, tmp_1) = self.witnesses.local_controller_public_key(&_witness_ctx_2);
@@ -1674,10 +1674,10 @@ where
             let _gather_results = query_for_read(&qctx, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_jubjub_point(_av)?
+            midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
         };
         let _cctx_6 = CircuitContext {
             current_private_state: current_private_state,
@@ -1718,11 +1718,11 @@ where
         &self,
         ctx: CircuitContext<PS>,
         digest: [Fr; 4],
-        signature: compact_runtime::SchnorrSignature,
+        signature: midnight_compact_runtime::SchnorrSignature,
         pk: JubjubPoint,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
-        let _cr_1 = compact_runtime::schnorr_verify_jubjub(ctx, digest, signature.clone(), pk.clone())?;
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
+        let _cr_1 = midnight_compact_runtime::schnorr_verify_jubjub(ctx, digest, signature.clone(), pk.clone())?;
         let ctx = _cr_1.context;
         __gas_acc += _cr_1.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new().build();
@@ -1742,7 +1742,7 @@ where
     pub(crate) fn verification_method_exists(
         &self,
         ctx: CircuitContext<PS>,
-        id: compact_runtime::std_lib::OpaqueString,
+        id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<CircuitResults<PS, bool>, CompactError> {
         let result = ({
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1756,10 +1756,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_bool(_av)?
+            midnight_compact_runtime::std_lib::decode_bool(_av)?
         } || {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
                 .dup(0)
@@ -1772,26 +1772,26 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_bool(_av)?
+            midnight_compact_runtime::std_lib::decode_bool(_av)?
         });
         Ok(CircuitResults {
             result,
             context: ctx,
-            gas_cost: compact_runtime::RunningCost::default(),
+            gas_cost: midnight_compact_runtime::RunningCost::default(),
         })
     }
 
     pub(crate) fn assert_controller(
         &self,
         ctx: CircuitContext<PS>,
-        signature: compact_runtime::SchnorrSignature,
+        signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
         digest: [Fr; 4],
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         compact_assert!(
             (expected_version == {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1804,10 +1804,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_u64(_av)?
+                midnight_compact_runtime::std_lib::decode_u64(_av)?
             }),
             "Controller authorization version is stale"
         );
@@ -1821,10 +1821,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_jubjub_point(_av)?
+            midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
         };
         let _cr_2 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_2_2)?;
         let ctx = _cr_2.context;
@@ -1846,11 +1846,11 @@ where
     pub(crate) fn assert_controller_can_update(
         &self,
         ctx: CircuitContext<PS>,
-        signature: compact_runtime::SchnorrSignature,
+        signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
         digest: [Fr; 4],
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let _cr_1 = self.assert_controller(ctx, signature.clone(), expected_version, digest)?;
         let ctx = _cr_1.context;
         __gas_acc += _cr_1.gas_cost.clone();
@@ -1866,10 +1866,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "Contract is not active"
         );
@@ -1890,11 +1890,11 @@ where
     pub(crate) fn assert_recovery_can_update(
         &self,
         ctx: CircuitContext<PS>,
-        signature: compact_runtime::SchnorrSignature,
+        signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
         digest: [Fr; 4],
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         compact_assert!(
             (expected_version == {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -1907,10 +1907,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_u64(_av)?
+                midnight_compact_runtime::std_lib::decode_u64(_av)?
             }),
             "Recovery authorization version is stale"
         );
@@ -1924,10 +1924,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_jubjub_point(_av)?
+            midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
         };
         let _cr_2 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_2_2)?;
         let ctx = _cr_2.context;
@@ -1944,10 +1944,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "Contract is not active"
         );
@@ -1971,8 +1971,8 @@ where
         new_controller_public_key: JubjubPoint,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
         compact_assert!(
-            ((compact_runtime::jubjub_point_x(new_controller_public_key.clone())
-                != compact_runtime::jubjub_point_x({
+            ((midnight_compact_runtime::jubjub_point_x(new_controller_public_key.clone())
+                != midnight_compact_runtime::jubjub_point_x({
                     let _gather_ops = OpProgramGather::<DefaultDB>::new()
                         .dup(0)
                         .idx_at_index(0u8, false)
@@ -1983,13 +1983,13 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_jubjub_point(_av)?
+                    midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
                 }))
-                || (compact_runtime::jubjub_point_y(new_controller_public_key.clone())
-                    != compact_runtime::jubjub_point_y({
+                || (midnight_compact_runtime::jubjub_point_y(new_controller_public_key.clone())
+                    != midnight_compact_runtime::jubjub_point_y({
                         let _gather_ops = OpProgramGather::<DefaultDB>::new()
                             .dup(0)
                             .idx_at_index(0u8, false)
@@ -2000,10 +2000,10 @@ where
                             query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                         let _av = match _gather_results.events.last() {
-                            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                         };
-                        compact_runtime::std_lib::decode_jubjub_point(_av)?
+                        midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
                     }))),
             "New controller key matches current controller key"
         );
@@ -2027,8 +2027,8 @@ where
         new_controller_public_key: JubjubPoint,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
         compact_assert!(
-            ((compact_runtime::jubjub_point_x(new_controller_public_key.clone())
-                != compact_runtime::jubjub_point_x({
+            ((midnight_compact_runtime::jubjub_point_x(new_controller_public_key.clone())
+                != midnight_compact_runtime::jubjub_point_x({
                     let _gather_ops = OpProgramGather::<DefaultDB>::new()
                         .dup(0)
                         .idx_at_index(0u8, false)
@@ -2039,13 +2039,13 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_jubjub_point(_av)?
+                    midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
                 }))
-                || (compact_runtime::jubjub_point_y(new_controller_public_key.clone())
-                    != compact_runtime::jubjub_point_y({
+                || (midnight_compact_runtime::jubjub_point_y(new_controller_public_key.clone())
+                    != midnight_compact_runtime::jubjub_point_y({
                         let _gather_ops = OpProgramGather::<DefaultDB>::new()
                             .dup(0)
                             .idx_at_index(0u8, false)
@@ -2056,10 +2056,10 @@ where
                             query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                         let _av = match _gather_results.events.last() {
-                            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                         };
-                        compact_runtime::std_lib::decode_jubjub_point(_av)?
+                        midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
                     }))),
             "New controller key matches recovery authority key"
         );
@@ -2119,7 +2119,7 @@ where
         &self,
         ctx: CircuitContext<PS>,
         relation: VerificationMethodRelation,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<CircuitResults<PS, bool>, CompactError> {
         let result = if (relation == VerificationMethodRelation::Authentication) {
             {
@@ -2135,10 +2135,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             }
         } else if (relation == VerificationMethodRelation::AssertionMethod) {
             {
@@ -2154,10 +2154,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             }
         } else if (relation == VerificationMethodRelation::KeyAgreement) {
             {
@@ -2173,10 +2173,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             }
         } else if (relation == VerificationMethodRelation::CapabilityInvocation) {
             {
@@ -2192,10 +2192,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             }
         } else if (relation == VerificationMethodRelation::CapabilityDelegation) {
             {
@@ -2211,10 +2211,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             }
         } else {
             false
@@ -2222,7 +2222,7 @@ where
         Ok(CircuitResults {
             result,
             context: ctx,
-            gas_cost: compact_runtime::RunningCost::default(),
+            gas_cost: midnight_compact_runtime::RunningCost::default(),
         })
     }
 
@@ -2230,9 +2230,9 @@ where
         &self,
         ctx: CircuitContext<PS>,
         relation: VerificationMethodRelation,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
 
         let _if_results_0 = if (relation == VerificationMethodRelation::Authentication) {
             let ops = OpProgramVerify::<DefaultDB>::new()
@@ -2308,9 +2308,9 @@ where
         &self,
         ctx: CircuitContext<PS>,
         relation: VerificationMethodRelation,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
 
         let _if_results_0 = if (relation == VerificationMethodRelation::Authentication) {
             let ops = OpProgramVerify::<DefaultDB>::new()
@@ -2380,7 +2380,7 @@ where
     pub(crate) fn assert_verification_method_is_not_referenced(
         &self,
         ctx: CircuitContext<PS>,
-        id: compact_runtime::std_lib::OpaqueString,
+        id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
         compact_assert!(
             (!({
@@ -2396,10 +2396,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             })),
             "Verification method still referenced in authenticationRelation"
         );
@@ -2417,10 +2417,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             })),
             "Verification method still referenced in assertionMethodRelation"
         );
@@ -2438,10 +2438,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             })),
             "Verification method still referenced in keyAgreementRelation"
         );
@@ -2459,10 +2459,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             })),
             "Verification method still referenced in capabilityInvocationRelation"
         );
@@ -2480,10 +2480,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             })),
             "Verification method still referenced in capabilityDelegationRelation"
         );
@@ -2505,9 +2505,9 @@ where
         &self,
         ctx: CircuitContext<PS>,
         relation: VerificationMethodRelation,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
 
         let _if_results_0 = if (relation == VerificationMethodRelation::KeyAgreement) {
             compact_assert!(
@@ -2524,10 +2524,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 },
                 "KeyAgreement requires an agreement verification method"
             );
@@ -2539,9 +2539,9 @@ where
                     .idx(
                         false,
                         false,
-                        vec![compact_runtime::Key::Value(compact_runtime::AlignedValue::from(
-                            method_id.clone(),
-                        ))],
+                        vec![midnight_compact_runtime::Key::Value(
+                            midnight_compact_runtime::AlignedValue::from(method_id.clone()),
+                        )],
                     )
                     .popeq(false)
                     .build();
@@ -2549,10 +2549,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<VerificationMethod>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<VerificationMethod>(_av)?
             };
             compact_assert!(
                 (verification_method.publicKeyJwk.crv == CurveType::X25519),
@@ -2575,10 +2575,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 })) || ({
                     let _gather_ops = OpProgramGather::<DefaultDB>::new()
                         .dup(0)
@@ -2587,9 +2587,9 @@ where
                         .idx(
                             false,
                             false,
-                            vec![compact_runtime::Key::Value(compact_runtime::AlignedValue::from(
-                                method_id.clone(),
-                            ))],
+                            vec![midnight_compact_runtime::Key::Value(
+                                midnight_compact_runtime::AlignedValue::from(method_id.clone()),
+                            )],
                         )
                         .popeq(false)
                         .build();
@@ -2597,10 +2597,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_via_field_repr::<VerificationMethod>(_av)?
+                    midnight_compact_runtime::std_lib::decode_via_field_repr::<VerificationMethod>(_av)?
                 }
                 .publicKeyJwk
                 .crv != CurveType::X25519)),
@@ -2631,10 +2631,10 @@ where
     pub(crate) fn assert_existing_verification_method_relations_compatible(
         &self,
         ctx: CircuitContext<PS>,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
         curve: CurveType,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
 
         let _if_results_0 = if {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -2648,10 +2648,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_bool(_av)?
+            midnight_compact_runtime::std_lib::decode_bool(_av)?
         } {
             compact_assert!(
                 (curve == CurveType::X25519),
@@ -2681,10 +2681,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_bool(_av)?
+            midnight_compact_runtime::std_lib::decode_bool(_av)?
         } || {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
                 .dup(0)
@@ -2697,10 +2697,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_bool(_av)?
+            midnight_compact_runtime::std_lib::decode_bool(_av)?
         }) || {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
                 .dup(0)
@@ -2713,10 +2713,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_bool(_av)?
+            midnight_compact_runtime::std_lib::decode_bool(_av)?
         }) || {
             let _gather_ops = OpProgramGather::<DefaultDB>::new()
                 .dup(0)
@@ -2729,10 +2729,10 @@ where
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_bool(_av)?
+            midnight_compact_runtime::std_lib::decode_bool(_av)?
         }) {
             compact_assert!(
                 (curve != CurveType::X25519),
@@ -2764,10 +2764,10 @@ where
         &self,
         ctx: CircuitContext<PS>,
         new_controller_public_key: JubjubPoint,
-        controller_signature: compact_runtime::SchnorrSignature,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_new_controller_public_key = new_controller_public_key.clone();
         let _carg_2_2 = pure_circuits::rotate_controller_key_authorization_digest(
             {
@@ -2781,10 +2781,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_new_controller_public_key.clone(),
@@ -2829,10 +2829,10 @@ where
         &self,
         ctx: CircuitContext<PS>,
         new_controller_public_key: JubjubPoint,
-        recovery_signature: compact_runtime::SchnorrSignature,
+        recovery_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_new_controller_public_key = new_controller_public_key.clone();
         let _carg_2_2 = pure_circuits::recover_controller_key_authorization_digest(
             {
@@ -2846,10 +2846,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_new_controller_public_key.clone(),
@@ -2892,12 +2892,12 @@ where
     pub fn set_also_known_as(
         &self,
         ctx: CircuitContext<PS>,
-        value: compact_runtime::std_lib::OpaqueString,
+        value: midnight_compact_runtime::std_lib::OpaqueString,
         mutation: SetMutation,
-        controller_signature: compact_runtime::SchnorrSignature,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_mutation = mutation.clone();
         let alias = value.clone();
         let _carg_2_2 = pure_circuits::set_also_known_as_authorization_digest(
@@ -2912,10 +2912,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             alias.clone(),
@@ -2942,10 +2942,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 })),
                 "alsoKnownAs value already exists"
             );
@@ -2973,10 +2973,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 },
                 "alsoKnownAs value does not exist"
             );
@@ -3016,10 +3016,10 @@ where
         ctx: CircuitContext<PS>,
         verification_method: VerificationMethod,
         mutation: MapMutation,
-        controller_signature: compact_runtime::SchnorrSignature,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_verification_method = verification_method.clone();
         let disclosed_mutation = mutation.clone();
         let _carg_2_2 = pure_circuits::set_verification_method_authorization_digest(
@@ -3034,10 +3034,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_verification_method.clone(),
@@ -3066,10 +3066,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 },
                 "Verification method does not exist"
             );
@@ -3145,11 +3145,11 @@ where
     pub fn remove_verification_method(
         &self,
         ctx: CircuitContext<PS>,
-        method_id: compact_runtime::std_lib::OpaqueString,
-        controller_signature: compact_runtime::SchnorrSignature,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_id = method_id.clone();
         let _carg_2_2 = pure_circuits::remove_verification_method_authorization_digest(
             {
@@ -3163,10 +3163,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_id.clone(),
@@ -3189,10 +3189,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "Verification method does not exist"
         );
@@ -3227,10 +3227,10 @@ where
         ctx: CircuitContext<PS>,
         verification_method: SchnorrJubjubVerificationMethod,
         mutation: MapMutation,
-        controller_signature: compact_runtime::SchnorrSignature,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_verification_method = verification_method.clone();
         let disclosed_mutation = mutation.clone();
         let _carg_2_2 = pure_circuits::set_schnorr_jubjub_verification_method_authorization_digest(
@@ -3245,10 +3245,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_verification_method.clone(),
@@ -3276,10 +3276,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 },
                 "Verification method does not exist"
             );
@@ -3344,11 +3344,11 @@ where
     pub fn remove_schnorr_jubjub_verification_method(
         &self,
         ctx: CircuitContext<PS>,
-        method_id: compact_runtime::std_lib::OpaqueString,
-        controller_signature: compact_runtime::SchnorrSignature,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_id = method_id.clone();
         let _carg_2_2 = pure_circuits::remove_schnorr_jubjub_verification_method_authorization_digest(
             {
@@ -3362,10 +3362,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_id.clone(),
@@ -3388,10 +3388,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "Verification method does not exist"
         );
@@ -3424,11 +3424,11 @@ where
     pub fn verify_schnorr_jubjub_digest_signature(
         &self,
         ctx: CircuitContext<PS>,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
         digest: [Fr; 4],
-        signature: compact_runtime::SchnorrSignature,
+        signature: midnight_compact_runtime::SchnorrSignature,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         compact_assert!(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -3441,10 +3441,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "Contract is not active"
         );
@@ -3463,10 +3463,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "Verification method does not exist"
         );
@@ -3478,19 +3478,19 @@ where
                 .idx(
                     false,
                     false,
-                    vec![compact_runtime::Key::Value(compact_runtime::AlignedValue::from(
-                        disclosed_method_id.clone(),
-                    ))],
+                    vec![midnight_compact_runtime::Key::Value(
+                        midnight_compact_runtime::AlignedValue::from(disclosed_method_id.clone()),
+                    )],
                 )
                 .popeq(false)
                 .build();
             let _gather_results = query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                 .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
             let _av = match _gather_results.events.last() {
-                Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                 _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
             };
-            compact_runtime::std_lib::decode_via_field_repr::<SchnorrJubjubVerificationMethod>(_av)?
+            midnight_compact_runtime::std_lib::decode_via_field_repr::<SchnorrJubjubVerificationMethod>(_av)?
         };
         let _cr_5 =
             self.schnorr_verify_digest(ctx, digest, signature.clone(), verification_method.publicKey.clone())?;
@@ -3514,12 +3514,12 @@ where
         &self,
         ctx: CircuitContext<PS>,
         relation: VerificationMethodRelation,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
         mutation: SetMutation,
-        controller_signature: compact_runtime::SchnorrSignature,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_relation = relation.clone();
         let disclosed_method_id = method_id.clone();
         let disclosed_mutation = mutation.clone();
@@ -3535,10 +3535,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_relation.clone(),
@@ -3564,10 +3564,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             } || {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
                     .dup(0)
@@ -3581,10 +3581,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             }),
             "Verification method does not exist"
         );
@@ -3662,10 +3662,10 @@ where
         ctx: CircuitContext<PS>,
         service: Service,
         mutation: MapMutation,
-        controller_signature: compact_runtime::SchnorrSignature,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_service = service.clone();
         let disclosed_mutation = mutation.clone();
         let _carg_2_2 = pure_circuits::set_service_authorization_digest(
@@ -3680,10 +3680,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_service.clone(),
@@ -3711,10 +3711,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 },
                 "Service with a given id does not exist"
             );
@@ -3742,10 +3742,10 @@ where
                         query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                     let _av = match _gather_results.events.last() {
-                        Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                        Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                         _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                     };
-                    compact_runtime::std_lib::decode_bool(_av)?
+                    midnight_compact_runtime::std_lib::decode_bool(_av)?
                 })),
                 "Service with a given id already exists"
             );
@@ -3798,11 +3798,11 @@ where
     pub fn remove_service(
         &self,
         ctx: CircuitContext<PS>,
-        service_id: compact_runtime::std_lib::OpaqueString,
-        controller_signature: compact_runtime::SchnorrSignature,
+        service_id: midnight_compact_runtime::std_lib::OpaqueString,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let disclosed_id = service_id.clone();
         let _carg_2_2 = pure_circuits::remove_service_authorization_digest(
             {
@@ -3816,10 +3816,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
             disclosed_id.clone(),
@@ -3842,10 +3842,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "Service with a given id does not exist"
         );
@@ -3875,10 +3875,10 @@ where
     pub fn deactivate(
         &self,
         ctx: CircuitContext<PS>,
-        controller_signature: compact_runtime::SchnorrSignature,
+        controller_signature: midnight_compact_runtime::SchnorrSignature,
         expected_version: u64,
     ) -> Result<CircuitResults<PS, ()>, CompactError> {
-        let mut __gas_acc = compact_runtime::RunningCost::default();
+        let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
         let _carg_1_2 = pure_circuits::deactivate_authorization_digest(
             {
                 let _gather_ops = OpProgramGather::<DefaultDB>::new()
@@ -3891,10 +3891,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
+                midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(_av)?
             },
             expected_version,
         )?;
@@ -3913,10 +3913,10 @@ where
                     query_for_read(&ctx.current_query_context, &_gather_ops, None, &initial_cost_model())
                         .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
                 let _av = match _gather_results.events.last() {
-                    Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+                    Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
                     _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
                 };
-                compact_runtime::std_lib::decode_bool(_av)?
+                midnight_compact_runtime::std_lib::decode_bool(_av)?
             },
             "DID is already inactive"
         );
@@ -3959,7 +3959,7 @@ pub fn ledger<D: DB>(state: &ChargedState<D>) -> Ledger<'_, D> {
 
 impl<'a, D: DB> Ledger<'a, D> {
     pub fn contract_version(&self) -> Result<u32, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(0u8, false)
@@ -3969,13 +3969,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_u32(av)
+        midnight_compact_runtime::std_lib::decode_u32(av)
     }
     pub fn controller_public_key(&self) -> Result<JubjubPoint, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(0u8, false)
@@ -3985,13 +3985,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_jubjub_point(av)
+        midnight_compact_runtime::std_lib::decode_jubjub_point(av)
     }
     pub fn recovery_authority_public_key(&self) -> Result<JubjubPoint, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(0u8, false)
@@ -4001,13 +4001,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_jubjub_point(av)
+        midnight_compact_runtime::std_lib::decode_jubjub_point(av)
     }
     pub fn id(&self) -> Result<ContractAddress, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(0u8, false)
@@ -4017,13 +4017,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(av)
+        midnight_compact_runtime::std_lib::decode_via_field_repr::<ContractAddress>(av)
     }
     pub fn version(&self) -> Result<u64, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(1u8, false)
@@ -4033,13 +4033,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_u64(av)
+        midnight_compact_runtime::std_lib::decode_u64(av)
     }
     pub fn created(&self) -> Result<u64, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(1u8, false)
@@ -4049,13 +4049,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_u64(av)
+        midnight_compact_runtime::std_lib::decode_u64(av)
     }
     pub fn updated(&self) -> Result<u64, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(1u8, false)
@@ -4065,13 +4065,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_u64(av)
+        midnight_compact_runtime::std_lib::decode_u64(av)
     }
     pub fn deactivated(&self) -> Result<bool, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(1u8, false)
@@ -4081,13 +4081,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_bool(av)
+        midnight_compact_runtime::std_lib::decode_bool(av)
     }
     pub fn active(&self) -> Result<bool, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(1u8, false)
@@ -4097,13 +4097,13 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_bool(av)
+        midnight_compact_runtime::std_lib::decode_bool(av)
     }
     pub fn operation_count(&self) -> Result<u64, CompactError> {
-        let qctx = QueryContext::new(self.state.clone(), compact_runtime::ContractAddress::default());
+        let qctx = QueryContext::new(self.state.clone(), midnight_compact_runtime::ContractAddress::default());
         let ops = OpProgramGather::<D>::new()
             .dup(0)
             .idx_at_index(1u8, false)
@@ -4113,10 +4113,10 @@ impl<'a, D: DB> Ledger<'a, D> {
         let results = query_for_read(&qctx, &ops, None, &initial_cost_model())
             .map_err(|e| CompactError::AssertionFailed(format!("ledger query failed: {:?}", e)))?;
         let av = match results.events.last() {
-            Some(compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
+            Some(midnight_compact_runtime::onchain_vm::result_mode::GatherEvent::Read(av)) => av,
             _ => return Err(CompactError::AssertionFailed("ledger: expected Read event".into())),
         };
-        compact_runtime::std_lib::decode_u64(av)
+        midnight_compact_runtime::std_lib::decode_u64(av)
     }
 }
 
@@ -4124,14 +4124,14 @@ pub mod pure_circuits {
     use super::*;
 
     pub(crate) fn controller_operation_hash(name: [u8; 32]) -> Result<Fr, CompactError> {
-        Ok(compact_runtime::std_lib::transient_hash_aligned(&[
-            compact_runtime::AlignedValue::from(ControllerAuthorizationOperation { name: name }),
+        Ok(midnight_compact_runtime::std_lib::transient_hash_aligned(&[
+            midnight_compact_runtime::AlignedValue::from(ControllerAuthorizationOperation { name: name }),
         ]))
     }
 
     pub(crate) fn controller_no_args_hash() -> Result<Fr, CompactError> {
-        Ok(compact_runtime::std_lib::transient_hash_aligned(&[
-            compact_runtime::AlignedValue::from(ControllerAuthorizationNoArgs {
+        Ok(midnight_compact_runtime::std_lib::transient_hash_aligned(&[
+            midnight_compact_runtime::AlignedValue::from(ControllerAuthorizationNoArgs {
                 domain: [
                     110u8, 111, 45, 97, 114, 103, 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0,
@@ -4147,7 +4147,7 @@ pub mod pure_circuits {
         args_hash: Fr,
     ) -> Result<[Fr; 4], CompactError> {
         Ok([
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 ControllerAuthorizationDomain {
                     domain: [
                         109u8, 105, 100, 110, 105, 103, 104, 116, 45, 100, 105, 100, 45, 99, 116, 114, 108, 45, 115,
@@ -4155,7 +4155,7 @@ pub mod pure_circuits {
                     ],
                 },
             )]),
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 ControllerAuthorizationState {
                     contractId: contract_id,
                     version: expected_version,
@@ -4178,10 +4178,10 @@ pub mod pure_circuits {
                 114u8, 111, 116, 97, 116, 101, 67, 111, 110, 116, 114, 111, 108, 108, 101, 114, 75, 101, 121, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 RotateControllerKeyArgs {
-                    publicKeyX: compact_runtime::jubjub_point_x(new_controller_public_key.clone()),
-                    publicKeyY: compact_runtime::jubjub_point_y(new_controller_public_key.clone()),
+                    publicKeyX: midnight_compact_runtime::jubjub_point_x(new_controller_public_key.clone()),
+                    publicKeyY: midnight_compact_runtime::jubjub_point_y(new_controller_public_key.clone()),
                 },
             )]),
         )?)
@@ -4199,10 +4199,10 @@ pub mod pure_circuits {
                 114u8, 101, 99, 111, 118, 101, 114, 67, 111, 110, 116, 114, 111, 108, 108, 101, 114, 75, 101, 121, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 RecoverControllerKeyArgs {
-                    publicKeyX: compact_runtime::jubjub_point_x(new_controller_public_key.clone()),
-                    publicKeyY: compact_runtime::jubjub_point_y(new_controller_public_key.clone()),
+                    publicKeyX: midnight_compact_runtime::jubjub_point_x(new_controller_public_key.clone()),
+                    publicKeyY: midnight_compact_runtime::jubjub_point_y(new_controller_public_key.clone()),
                 },
             )]),
         )?)
@@ -4211,7 +4211,7 @@ pub mod pure_circuits {
     pub fn set_also_known_as_authorization_digest(
         contract_id: ContractAddress,
         expected_version: u64,
-        value: compact_runtime::std_lib::OpaqueString,
+        value: midnight_compact_runtime::std_lib::OpaqueString,
         mutation: SetMutation,
     ) -> Result<[Fr; 4], CompactError> {
         Ok(pure_circuits::controller_authorization_digest(
@@ -4221,7 +4221,7 @@ pub mod pure_circuits {
                 115u8, 101, 116, 65, 108, 115, 111, 75, 110, 111, 119, 110, 65, 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 SetAlsoKnownAsArgs {
                     value: value,
                     mutation: mutation,
@@ -4243,7 +4243,7 @@ pub mod pure_circuits {
                 115u8, 101, 116, 86, 101, 114, 105, 102, 105, 99, 97, 116, 105, 111, 110, 77, 101, 116, 104, 111, 100,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 SetVerificationMethodArgs {
                     verificationMethod: verification_method,
                     mutation: mutation,
@@ -4255,7 +4255,7 @@ pub mod pure_circuits {
     pub fn remove_verification_method_authorization_digest(
         contract_id: ContractAddress,
         expected_version: u64,
-        id: compact_runtime::std_lib::OpaqueString,
+        id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<[Fr; 4], CompactError> {
         Ok(pure_circuits::controller_authorization_digest(
             contract_id.clone(),
@@ -4264,7 +4264,7 @@ pub mod pure_circuits {
                 114u8, 101, 109, 111, 118, 101, 86, 101, 114, 105, 102, 105, 99, 97, 116, 105, 111, 110, 77, 101, 116,
                 104, 111, 100, 0, 0, 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 RemoveVerificationMethodArgs { id: id },
             )]),
         )?)
@@ -4283,11 +4283,11 @@ pub mod pure_circuits {
                 115u8, 101, 116, 83, 99, 104, 110, 111, 114, 114, 74, 117, 98, 106, 117, 98, 86, 77, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 SetSchnorrJubjubVerificationMethodArgs {
                     id: verification_method.id,
-                    publicKeyX: compact_runtime::jubjub_point_x(verification_method.publicKey.clone()),
-                    publicKeyY: compact_runtime::jubjub_point_y(verification_method.publicKey.clone()),
+                    publicKeyX: midnight_compact_runtime::jubjub_point_x(verification_method.publicKey.clone()),
+                    publicKeyY: midnight_compact_runtime::jubjub_point_y(verification_method.publicKey.clone()),
                     mutation: mutation,
                 },
             )]),
@@ -4297,7 +4297,7 @@ pub mod pure_circuits {
     pub fn remove_schnorr_jubjub_verification_method_authorization_digest(
         contract_id: ContractAddress,
         expected_version: u64,
-        id: compact_runtime::std_lib::OpaqueString,
+        id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<[Fr; 4], CompactError> {
         Ok(pure_circuits::controller_authorization_digest(
             contract_id.clone(),
@@ -4306,7 +4306,7 @@ pub mod pure_circuits {
                 114u8, 101, 109, 111, 118, 101, 83, 99, 104, 110, 111, 114, 114, 74, 117, 98, 106, 117, 98, 86, 77, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 RemoveSchnorrJubjubVerificationMethodArgs { id: id },
             )]),
         )?)
@@ -4316,7 +4316,7 @@ pub mod pure_circuits {
         contract_id: ContractAddress,
         expected_version: u64,
         relation: VerificationMethodRelation,
-        method_id: compact_runtime::std_lib::OpaqueString,
+        method_id: midnight_compact_runtime::std_lib::OpaqueString,
         mutation: SetMutation,
     ) -> Result<[Fr; 4], CompactError> {
         Ok(pure_circuits::controller_authorization_digest(
@@ -4326,7 +4326,7 @@ pub mod pure_circuits {
                 115u8, 101, 116, 86, 77, 82, 101, 108, 97, 116, 105, 111, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 SetVerificationMethodRelationArgs {
                     relation: relation,
                     methodId: method_id,
@@ -4349,17 +4349,19 @@ pub mod pure_circuits {
                 115u8, 101, 116, 83, 101, 114, 118, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(SetServiceArgs {
-                service: service,
-                mutation: mutation,
-            })]),
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
+                SetServiceArgs {
+                    service: service,
+                    mutation: mutation,
+                },
+            )]),
         )?)
     }
 
     pub fn remove_service_authorization_digest(
         contract_id: ContractAddress,
         expected_version: u64,
-        id: compact_runtime::std_lib::OpaqueString,
+        id: midnight_compact_runtime::std_lib::OpaqueString,
     ) -> Result<[Fr; 4], CompactError> {
         Ok(pure_circuits::controller_authorization_digest(
             contract_id.clone(),
@@ -4368,7 +4370,7 @@ pub mod pure_circuits {
                 114u8, 101, 109, 111, 118, 101, 83, 101, 114, 118, 105, 99, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0,
             ])?,
-            compact_runtime::std_lib::transient_hash_aligned(&[compact_runtime::AlignedValue::from(
+            midnight_compact_runtime::std_lib::transient_hash_aligned(&[midnight_compact_runtime::AlignedValue::from(
                 RemoveServiceArgs { id: id },
             )]),
         )?)

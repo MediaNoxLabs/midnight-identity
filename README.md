@@ -23,8 +23,8 @@ in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues)
 
 **The Verifiable Credentials track has started** (issue #13): the
 credential model and the generated bindings for the Midnight VC
-Compact contracts now ship as `midnight-vc-domain` and
-`midnight-vc-runtime`.
+Compact contracts now ship as `midnight-vc-domain`, `midnight-vc-runtime`,
+and the opt-in `midnight-vc-families` bindings.
 
 ## What's here
 
@@ -41,10 +41,11 @@ Compact contracts now ship as `midnight-vc-domain` and
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
 | `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
 | `midnight-vc-runtime` | `compactc --rust` codegen target for the VC contracts (credentials / iso-registry / same-holder bindings) | no (`publish = false`)² |
+| `midnight-vc-families` | Feature-gated generated bindings for credential families (`digital-passport` today) | no (`publish = false`)² |
 | `midnight-passport-vault-source` | Authenticated Passport Vault Compact source, provenance, and circuit baselines (no runtime dependencies) | yes |
 
 ¹ crates.io publication is blocked until the upstream `midnight-ledger`
-crates and `compact-runtime` are published; consume via git until then.
+crates and `midnight-compact-runtime` are published; consume via git until then.
 See the publishing issue in the backlog.
 
 ² same upstream blocker, and it is a generated-code artifact rather
@@ -182,7 +183,7 @@ account.
 
 - [MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact) —
   Compact compiler fork carrying the `--rust` codegen backend
-  (`codegen-rust` branch) and `compact-runtime`.
+  (pinned compiler revision) and `midnight-compact-runtime`.
 - [midnightntwrk/midnight-did](https://github.com/midnightntwrk/midnight-did)
   — TypeScript reference implementation + the `did.compact` contract
   (vendored here as a submodule).

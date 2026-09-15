@@ -39,7 +39,14 @@
       flake = false;
     };
     compact = {
-      url = "github:MediaNoxLabs/compact/codegen-rust";
+      type  = "github";
+      owner = "MediaNoxLabs";
+      repo  = "compact";
+      rev   = "611a3dda0c512326a2c15a2e68ce20f8dcf58105";
+      # The compiler revision's newer Nixpkgs pin fails while building
+      # compiler-rt on aarch64-darwin. Keep the last repository-validated pin
+      # until that upstream Darwin regression is fixed.
+      inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
     };
   };
 
