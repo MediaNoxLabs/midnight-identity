@@ -19,7 +19,7 @@
 //! The VC-layer counterpart of `midnight-did-runtime`: it holds the Rust
 //! bindings the flake-pinned `compactc --rust --skip-ts` emits for the VC
 //! Compact contracts, and nothing else yet. It is a separate crate from
-//! [`midnight_vc_domain`] because `compact-runtime` drags in the halo2 /
+//! [`midnight_vc_domain`] because `midnight-compact-runtime` drags in the halo2 /
 //! arkworks stack, which does not build for `wasm32-unknown-unknown` (ADR 0006,
 //! ADR 0009 rule 1).
 //!

@@ -30,7 +30,7 @@ use tokio::sync::Mutex;
 
 /// Default contract address for the mock — same value used by the
 /// integration tests in `midnight-did-api`. Real impls will replace the
-/// inner [`Contract<RecordingBackend>`] with a `compact-runtime`-backed
+/// inner [`Contract<RecordingBackend>`] with a `midnight-compact-runtime`-backed
 /// contract.
 const DEFAULT_ADDRESS: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 

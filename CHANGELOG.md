@@ -23,6 +23,14 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Added
 
+- **Digital Passport credential family (issue #49)** — new opt-in
+  `midnight-vc-families` codegen crate with the `digital-passport` feature,
+  generated from the standalone family repository at `v0.1.0-rc1`
+  (`bf2b608f`) and `@midnight-ntwrk/credential-compact@0.1.0-rc3`
+  (SHA-256 pinned). The bindings use the Compact compiler/runtime revision
+  `611a3dda`, include invariant smoke tests, and are covered by targeted
+  generation, Rust, unit, and coverage gates.
+
 - **Passport Vault source ownership, slice 1 (issue #47)** — new
   `midnight-passport-vault-source` crate with the byte-identical reviewed Ledger
   8 Compact source, Apache-2.0 provenance, compatibility manifest, and circuit

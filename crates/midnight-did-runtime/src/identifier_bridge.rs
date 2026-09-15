@@ -12,12 +12,12 @@ use midnight_base_crypto::hash::HashOutput;
 use midnight_did_method::midnight_did::ContractAddress as MethodContractAddress;
 
 /// Convert a runtime-independent method address into the Compact runtime type.
-pub fn to_runtime_contract_address(address: MethodContractAddress) -> compact_runtime::ContractAddress {
-    compact_runtime::ContractAddress(HashOutput(address.0))
+pub fn to_runtime_contract_address(address: MethodContractAddress) -> midnight_compact_runtime::ContractAddress {
+    midnight_compact_runtime::ContractAddress(HashOutput(address.0))
 }
 
 /// Convert a Compact runtime address into the runtime-independent method type.
-pub fn from_runtime_contract_address(address: compact_runtime::ContractAddress) -> MethodContractAddress {
+pub fn from_runtime_contract_address(address: midnight_compact_runtime::ContractAddress) -> MethodContractAddress {
     MethodContractAddress(address.0.0)
 }
 

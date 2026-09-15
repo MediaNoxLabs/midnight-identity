@@ -44,7 +44,9 @@
 
 use std::collections::BTreeMap;
 
-use compact_runtime::{AlignedValue, ChargedState, ContractState, DefaultDB, JubjubPoint, StateValue, aligned_bytes};
+use midnight_compact_runtime::{
+    AlignedValue, ChargedState, ContractState, DefaultDB, JubjubPoint, StateValue, aligned_bytes,
+};
 use midnight_did_domain::did_document::{CurveType, KeyType, VerificationMethodType};
 
 use crate::backend::BackendError;
@@ -92,10 +94,10 @@ pub fn decode_ledger_snapshot(state: &ChargedState<DefaultDB>) -> Result<DidLedg
     // Through the generated accessor: A30 (compact 0.31.110) made
     // `decode_via_field_repr` alignment-aware, including normalize-stripped
     // all-zero Bytes<32> cells (re-padded from the alignment's declared
-    // length). An earlier failure here was a stale pre-A30 `compact-runtime`
+    // length). An earlier failure here was a stale pre-A30 `midnight-compact-runtime`
     // rlib — the path dep keeps version 0.16.100 across pin bumps and
     // nix-store epoch mtimes defeat cargo's fingerprinting, so `cargo clean
-    // -p compact-runtime` is required after compact pin syncs
+    // -p midnight-compact-runtime` is required after compact pin syncs
     // (MediaNoxLabs/compact#15 has the full diagnosis).
     let id_hex = hex::encode(view.id().map_err(|e| decode_err("id", &e))?.bytes);
     let controller_public_key_hex = jubjub_x_hex(
@@ -144,7 +146,7 @@ pub fn snapshot_from_bytes(bytes: &[u8]) -> Result<DidLedgerSnapshot, BackendErr
 /// `[0]` (fields 0–3) is validated for shape but read only through the
 /// generated accessors.
 struct StateChunks<'a> {
-    chunk1: &'a compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
+    chunk1: &'a midnight_compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
 }
 
 impl<'a> StateChunks<'a> {
@@ -179,7 +181,7 @@ impl<'a> StateChunks<'a> {
 
 /// Borrow of the `[1]` chunk (fields 4–18) of the outer state array.
 struct CollectionSlots<'a> {
-    inner: &'a compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
+    inner: &'a midnight_compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
 }
 
 impl CollectionSlots<'_> {
@@ -402,7 +404,7 @@ fn jubjub_x_hex(point: &JubjubPoint) -> Result<String, BackendError> {
     coordinate_hex(point.x(), "x")
 }
 
-fn coordinate_hex(coordinate: Option<compact_runtime::Fr>, which: &str) -> Result<String, BackendError> {
+fn coordinate_hex(coordinate: Option<midnight_compact_runtime::Fr>, which: &str) -> Result<String, BackendError> {
     let fr = coordinate
         .ok_or_else(|| BackendError::Decode(format!("JubjubPoint {which}: identity point has no coordinates")))?;
     let mut bytes = fr.as_le_bytes();
@@ -450,7 +452,7 @@ fn curve_type(d: u8) -> Result<CurveType, BackendError> {
 
 #[cfg(test)]
 mod tests {
-    use compact_runtime::{Alignment, AlignmentAtom, Map, Value, ValueAtom, new_array, new_cell, new_map};
+    use midnight_compact_runtime::{Alignment, AlignmentAtom, Map, Value, ValueAtom, new_array, new_cell, new_map};
 
     use super::*;
     use crate::contract as generated;
@@ -511,7 +513,7 @@ mod tests {
     }
 
     fn opaque_key(s: &str) -> AlignedValue {
-        let sv = new_cell::<DefaultDB, _>(compact_runtime::std_lib::OpaqueString(s.to_string()));
+        let sv = new_cell::<DefaultDB, _>(midnight_compact_runtime::std_lib::OpaqueString(s.to_string()));
         cell_av(&sv)
     }
 
