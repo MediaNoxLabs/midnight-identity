@@ -274,15 +274,15 @@
       "locked": {
         "lastModified": 1779981625,
         "narHash": "sha256-By8iBnSC5tVRpF18dxZJyZDQjNn9Kw4yOBCsyml2C6s=",
-        "owner": "yshyn-iohk",
+        "owner": "MediaNoxLabs",
         "repo": "midnight-ledger",
         "rev": "591a31700f8956744227211b96f5594a91400388",
         "type": "github"
       },
       "original": {
-        "owner": "yshyn-iohk",
-        "ref": "dioxus-vc-demo",
+        "owner": "MediaNoxLabs",
         "repo": "midnight-ledger",
+        "rev": "591a31700f8956744227211b96f5594a91400388",
         "type": "github"
       }
     },
@@ -291,15 +291,15 @@
       "locked": {
         "lastModified": 1779560338,
         "narHash": "sha256-rvEmntRM/lqtuT01QBqbEHR9OwobHLO48u6W9xebtxU=",
-        "owner": "yshyn-iohk",
+        "owner": "MediaNoxLabs",
         "repo": "midnight-zk",
         "rev": "cf60e3ccb87f2de40b1307f7e78abdcb4c696c91",
         "type": "github"
       },
       "original": {
-        "owner": "yshyn-iohk",
-        "ref": "feat/v0.7-h-poly-streaming",
+        "owner": "MediaNoxLabs",
         "repo": "midnight-zk",
+        "rev": "cf60e3ccb87f2de40b1307f7e78abdcb4c696c91",
         "type": "github"
       }
     },
