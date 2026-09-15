@@ -31,6 +31,24 @@ export function parsePushUpdates(input) {
   });
 }
 
+export function validatePushUpdate(update) {
+  if (ZERO_SHA.test(update.localSha) || !update.remoteRef.startsWith("refs/heads/")) {
+    return { branch: null, errors: [] };
+  }
+
+  const branch = update.remoteRef.slice("refs/heads/".length);
+  const errors = validateBranch(branch);
+  if (update.localRef.startsWith("refs/heads/")) {
+    const localBranch = update.localRef.slice("refs/heads/".length);
+    if (localBranch !== branch) {
+      errors.push(`local branch ${localBranch} cannot update remote branch ${branch}`);
+    }
+  } else if (update.localRef !== "HEAD") {
+    errors.push(`unsupported local ref for issue branch ${branch}: ${update.localRef}`);
+  }
+  return { branch, errors };
+}
+
 export function stagedDiffErrors(diff, diffCheckError = "") {
   const errors = [];
   if (diffCheckError) errors.push(diffCheckError.trim());
@@ -64,11 +82,10 @@ function preCommit(root, stdout, stderr) {
 function prePush(root, input, stdout, stderr) {
   const updates = parsePushUpdates(input);
   for (const update of updates) {
-    if (ZERO_SHA.test(update.localSha) || !update.localRef.startsWith("refs/heads/")) continue;
-    const branch = update.localRef.slice("refs/heads/".length);
-    const branchErrors = validateBranch(branch);
-    if (branchErrors.length > 0) {
-      branchErrors.forEach((error) => stderr.write(`pre-push: ${error}\n`));
+    const { branch, errors } = validatePushUpdate(update);
+    if (branch === null) continue;
+    if (errors.length > 0) {
+      errors.forEach((error) => stderr.write(`pre-push: ${error}\n`));
       return 1;
     }
     try {

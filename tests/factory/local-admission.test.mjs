@@ -10,7 +10,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { EXPECTED_CONFIG, auditConfig } from "../../scripts/git-hooks/configure.mjs";
-import { parsePushUpdates, stagedDiffErrors } from "../../scripts/git-hooks/local-policy.mjs";
+import {
+  parsePushUpdates, stagedDiffErrors, validatePushUpdate,
+} from "../../scripts/git-hooks/local-policy.mjs";
 import { validateReceipt } from "../../scripts/factory/local-gate.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -67,6 +69,42 @@ test("pre-push parsing preserves branch updates and permits deletion and tag rec
     { localRef: "refs/tags/v0.6.0", localSha: head, remoteRef: "refs/tags/v0.6.0", remoteSha: zero },
   ]);
   assert.throws(() => parsePushUpdates("malformed"), /malformed ref update/u);
+});
+
+test("pre-push policy classifies the remote destination and rejects refspec mismatches", () => {
+  const zero = "0".repeat(40);
+  assert.deepEqual(validatePushUpdate({
+    localRef: "HEAD", localSha: head, remoteRef: "refs/heads/chore/issue-63", remoteSha: zero,
+  }), { branch: "chore/issue-63", errors: [] });
+  assert.deepEqual(validatePushUpdate({
+    localRef: "refs/heads/chore/issue-63", localSha: head,
+    remoteRef: "refs/heads/chore/issue-63", remoteSha: zero,
+  }), { branch: "chore/issue-63", errors: [] });
+
+  const mismatched = validatePushUpdate({
+    localRef: "refs/heads/chore/issue-63", localSha: head,
+    remoteRef: "refs/heads/fix/issue-64", remoteSha: zero,
+  });
+  assert.equal(mismatched.branch, "fix/issue-64");
+  assert.match(mismatched.errors.join("\n"), /cannot update remote branch/u);
+
+  const durable = validatePushUpdate({
+    localRef: "refs/heads/chore/issue-63", localSha: head,
+    remoteRef: "refs/heads/develop", remoteSha: zero,
+  });
+  assert.equal(durable.branch, "develop");
+  assert.match(durable.errors.join("\n"), /branch must match/u);
+
+  const unsupported = validatePushUpdate({
+    localRef: head, localSha: head, remoteRef: "refs/heads/chore/issue-63", remoteSha: zero,
+  });
+  assert.match(unsupported.errors.join("\n"), /unsupported local ref/u);
+  assert.deepEqual(validatePushUpdate({
+    localRef: "refs/tags/v0.6.0", localSha: head, remoteRef: "refs/tags/v0.6.0", remoteSha: zero,
+  }), { branch: null, errors: [] });
+  assert.deepEqual(validatePushUpdate({
+    localRef: "(delete)", localSha: zero, remoteRef: "refs/heads/chore/issue-63", remoteSha: head,
+  }), { branch: null, errors: [] });
 });
 
 test("pre-commit policy rejects whitespace errors and staged credential patterns", () => {
