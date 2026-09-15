@@ -73,8 +73,10 @@ test("workflow pins actions, uses a stable aggregator, and never caches target",
     assert.match(match[1], /^[0-9a-f]{40}$/u, match[0]);
   }
   assert.match(workflow, /name: Required CI/u);
+  assert.match(workflow, /types: \[opened, synchronize, reopened, edited\]/u);
   assert.match(workflow, /base\.ref == 'rust-codegen'/u);
   assert.match(workflow, /actionlint\/cmd\/actionlint@v1\.7\.7/u);
+  assert.match(workflow, /--allow-generated-squash/u);
   assert.match(workflow, /find \.github\/workflows/u);
   assert.doesNotMatch(workflow, /actionlint@v1\.7\.7 \.github\/workflows\/ci\.yml/u);
   assert.match(workflow, /actions\/cache\/restore@/u);

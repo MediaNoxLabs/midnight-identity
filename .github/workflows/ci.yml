@@ -6,6 +6,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
       - develop
@@ -121,6 +122,10 @@ jobs:
           args=(--base "$BASE_SHA" --head "$HEAD_SHA" --repo MediaNoxLabs/midnight-identity --github-signatures)
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             args+=(--branch "$HEAD_BRANCH" --pr-title "$PR_TITLE" --pr-base "$BASE_BRANCH" --pr-body "$PR_BODY")
+          else
+            # This workflow runs push policy only for develop/rust-codegen, where
+            # a GitHub-created single-parent commit can be a squash merge result.
+            args+=(--allow-generated-squash)
           fi
           node scripts/factory/contribution-policy.mjs "${args[@]}"
 

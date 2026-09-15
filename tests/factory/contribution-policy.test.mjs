@@ -36,10 +36,11 @@ test("GitHub squash commits receive only the narrow generated-commit exception",
     committerEmail: "noreply@github.com",
     subject: "fix(factory): validate the pull-request base (#58)",
   };
-  assert.equal(isPlatformGeneratedCommit(candidate), true);
-  assert.equal(isPlatformGeneratedCommit({ ...candidate, subject: "unscoped squash (#58)" }), false);
-  assert.equal(isPlatformGeneratedCommit({ ...candidate, subject: "fix(factory): missing PR suffix" }), false);
-  assert.equal(isPlatformGeneratedCommit({ ...candidate, committerEmail: "attacker@example.test" }), false);
+  assert.equal(isPlatformGeneratedCommit(candidate), false);
+  assert.equal(isPlatformGeneratedCommit({ ...candidate, allowSquash: true }), true);
+  assert.equal(isPlatformGeneratedCommit({ ...candidate, subject: "unscoped squash (#58)", allowSquash: true }), false);
+  assert.equal(isPlatformGeneratedCommit({ ...candidate, subject: "fix(factory): missing PR suffix", allowSquash: true }), false);
+  assert.equal(isPlatformGeneratedCommit({ ...candidate, committerEmail: "attacker@example.test", allowSquash: true }), false);
 });
 
 test("issue branch grammar accepts only approved types and positive issue numbers", () => {
