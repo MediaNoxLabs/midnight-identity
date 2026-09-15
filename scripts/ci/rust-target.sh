@@ -26,7 +26,7 @@ case "${1:-}" in
     cargo clippy --locked "${args[@]}" --all-targets --no-deps -- -D warnings
     cargo check --locked "${args[@]}" --all-targets
     if [[ "$families_selected" == true ]]; then
-      cargo clippy --locked -p midnight-vc-families --all-features --all-targets -- -D warnings
+      cargo clippy --locked -p midnight-vc-families --all-features --all-targets --no-deps -- -D warnings
       cargo check --locked -p midnight-vc-families --all-features --all-targets
     fi
     ;;
