@@ -17,7 +17,7 @@ import {
 test("documentation, factory, and CI changes avoid the Rust and Nix closure", () => {
   for (const paths of [
     ["README.md", "doc/factory/ci.md"],
-    ["AGENT.md", ".pi/settings.json", "scripts/factory/audit.mjs", ".gitignore"],
+    ["AGENT.md", ".pi/settings.json", "scripts/factory/audit.mjs", "scripts/git-hooks/configure.mjs", ".gitignore"],
     [".github/workflows/ci.yml", "scripts/ci/target-plan.mjs"],
   ]) {
     const plan = makeTargetPlan(paths);

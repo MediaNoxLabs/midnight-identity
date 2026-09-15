@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {
   isPlatformGeneratedCommit,
+  signatureFormatFromCommit,
   validateBranch,
   validateCommit,
   validatePullRequestBase,
@@ -85,14 +86,23 @@ test("authored commits require one exact author signoff and a good local signatu
     subject: "test(factory): prove the negative policy path",
     body: "test(factory): prove the negative policy path\n\nSigned-off-by: Ada Example <ada@example.test>\n",
     signature: "G",
+    signatureFormat: "openpgp",
     generatedMerge: false,
   };
   assert.deepEqual(validateCommit(commit, { requireLocalSignature: true }), []);
   assert.equal(validateCommit({ ...commit, signature: "N" }, { requireLocalSignature: true }).length, 1);
+  assert.equal(validateCommit({ ...commit, signatureFormat: "ssh" }, { requireLocalSignature: true }).length, 1);
   assert.equal(validateCommit({ ...commit, body: commit.body.replace("Ada", "Grace") }).length, 1);
 });
 
-test("the narrow GitHub-generated merge exception does not exempt signature verification", () => {
+test("raw commit signatures distinguish OpenPGP from SSH and X.509", () => {
+  assert.equal(signatureFormatFromCommit("gpgsig -----BEGIN PGP SIGNATURE-----\n payload"), "openpgp");
+  assert.equal(signatureFormatFromCommit("gpgsig -----BEGIN SSH SIGNATURE-----\n payload"), "ssh");
+  assert.equal(signatureFormatFromCommit("gpgsig -----BEGIN SIGNED MESSAGE-----\n payload"), "x509");
+  assert.equal(signatureFormatFromCommit("tree abc\n\nunsigned"), null);
+});
+
+test("GitHub-generated commits use hosted verification instead of a local keyring", () => {
   const commit = {
     sha: "b".repeat(40),
     authorName: "GitHub",
@@ -103,5 +113,5 @@ test("the narrow GitHub-generated merge exception does not exempt signature veri
     generatedMerge: true,
   };
   assert.deepEqual(validateCommit(commit, { requireLocalSignature: true }), []);
-  assert.equal(validateCommit({ ...commit, signature: "N" }, { requireLocalSignature: true }).length, 1);
+  assert.deepEqual(validateCommit({ ...commit, signature: "E" }, { requireLocalSignature: true }), []);
 });

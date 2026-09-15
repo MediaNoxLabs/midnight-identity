@@ -79,10 +79,21 @@ export function validateCommit(commit, { requireLocalSignature = false } = {}) {
   if (!commit.generatedMerge && count !== 1) {
     errors.push(`${commit.sha}: expected exactly one author-matching DCO trailer; found ${count}`);
   }
-  if (requireLocalSignature && commit.signature !== "G") {
+  if (requireLocalSignature && !commit.generatedMerge && commit.signature !== "G") {
     errors.push(`${commit.sha}: local OpenPGP verification is ${commit.signature || "unknown"}, expected G`);
   }
+  if (requireLocalSignature && !commit.generatedMerge && commit.signatureFormat !== "openpgp") {
+    errors.push(`${commit.sha}: signature format is ${commit.signatureFormat || "unknown"}, expected openpgp`);
+  }
   return errors;
+}
+
+export function signatureFormatFromCommit(rawCommit) {
+  const marker = /^gpgsig -----BEGIN ([A-Z0-9 ]+)-----$/mu.exec(rawCommit)?.[1];
+  if (marker === "PGP SIGNATURE") return "openpgp";
+  if (marker === "SSH SIGNATURE") return "ssh";
+  if (marker === "SIGNED MESSAGE") return "x509";
+  return null;
 }
 
 export function isPlatformGeneratedCommit({
@@ -109,7 +120,9 @@ export function readCommits(base, head, cwd = process.cwd(), { allowGeneratedSqu
     const generatedMerge = isPlatformGeneratedCommit({
       parents, committerName, committerEmail, subject, allowSquash: allowGeneratedSquash,
     });
-    return { sha, authorName, authorEmail, subject, body, signature, generatedMerge };
+    const rawCommit = git(cwd, ["cat-file", "commit", sha]);
+    const signatureFormat = signatureFormatFromCommit(rawCommit);
+    return { sha, authorName, authorEmail, subject, body, signature, signatureFormat, generatedMerge };
   });
 }
 
@@ -167,13 +180,20 @@ export function run(argv = process.argv.slice(2), {
   }
 
   const repo = option(argv, "--repo");
-  if (argv.includes("--github-signatures")) {
-    if (!repo) errors.push("--repo is required with --github-signatures");
+  const githubSignatures = argv.includes("--github-signatures");
+  const githubGeneratedSignatures = argv.includes("--github-generated-signatures");
+  if (githubSignatures || githubGeneratedSignatures) {
+    if (!repo) errors.push("--repo is required with GitHub signature verification");
     else {
       for (const commit of commits) {
+        if (!githubSignatures && !commit.generatedMerge) continue;
         if (!githubVerified(repo, commit.sha)) errors.push(`${commit.sha}: GitHub does not report a verified signature`);
       }
     }
+  }
+  if (argv.includes("--local-signatures") && !githubSignatures && !githubGeneratedSignatures
+      && commits.some(({ generatedMerge }) => generatedMerge)) {
+    errors.push("GitHub-generated commits require --github-generated-signatures with local verification");
   }
 
   if (errors.length) {

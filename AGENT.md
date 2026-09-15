@@ -78,6 +78,12 @@ No nested taskflow, detached retry loop, or uncontrolled retry is allowed.
 
 ## Validation and lifecycle
 
+Use [`bootstrap.sh`](bootstrap.sh) as the supported local shell and Pi
+entrypoint. Configure its repository-local hooks once per clone. A
+production-ready push requires the exact-head L0 receipt documented in
+[`doc/factory/local-admission.md`](doc/factory/local-admission.md); hosted
+affected lanes remain mandatory.
+
 Run the target planner before broad checks:
 
 ```bash

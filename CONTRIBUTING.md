@@ -41,11 +41,11 @@ dev loop:
    ```bash
    git clone https://github.com/MediaNoxLabs/midnight-identity.git
    cd midnight-identity
-   direnv allow            # or: nix develop
+   ./bootstrap.sh          # or: direnv allow
    ```
 
    For formatting, linting, tests, coverage, and WASM work that does not
-   invoke the Compact compiler, use `nix develop .#rust`. It keeps the same
+   invoke the Compact compiler, use `./bootstrap.sh --rust`. It keeps the same
    pinned Rust tools and third-party source mounts without constructing the
    heavy `compactc`/proving/Node closure. CI uses this light shell for those
    gates and reserves the default shell for code generation. CI uses only
@@ -92,6 +92,12 @@ dev loop:
    does not match those markers. Keep the diff focused; reference the
    ADR(s) you touched (or argue for a new one if you're changing a
    load-bearing decision).
+
+Before the first production-ready push, run `./bootstrap.sh --configure-git`.
+After each final candidate commit, run `./bootstrap.sh --local-gate
+--delivery-target develop` (adding `--base <stack-parent>` only for an explicit
+stack). The pre-push hook rejects missing or stale exact-head L0 evidence;
+hosted affected lanes still run after the push.
 
 The `just codegen-check` recipe is a CI regression signal: re-running
 codegen must produce no diff. If you've modified `did.compact` or

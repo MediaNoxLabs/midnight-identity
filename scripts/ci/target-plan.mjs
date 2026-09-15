@@ -113,6 +113,7 @@ export function classifyPath(candidate) {
   if (crate && ALL_PACKAGES.includes(crate)) return { area: "rust", package: crate };
   if (file === "AGENT.md" || file === ".devloops" || file.startsWith(".pi/")
       || file.startsWith("doc/factory/") || file.startsWith("scripts/factory/")
+      || file.startsWith("scripts/git-hooks/")
       || file.startsWith("tests/factory/") || file === "bootstrap.sh"
       || file.startsWith(".githooks/") || file === ".gitignore"
       || file === ".gitattributes" || file === "CODEOWNERS") return { area: "factory" };
