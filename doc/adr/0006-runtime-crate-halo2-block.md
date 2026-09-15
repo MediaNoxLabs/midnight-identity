@@ -403,6 +403,30 @@ The old URLs still resolve through GitHub's redirect, but the redirect is
 the only thing that kept them working; see the provenance hazard in the
 `midnight` vault.
 
+## Update — 2026-09-15 onto the maintained lines
+
+The org move kept the prototype branches; this update leaves them. The
+branch scheme names one maintained line per upstream ref
+(`<upstream-ref>-patched`), and the test of maintaining it is that a
+consumer can pin it instead of a prototype and everything works.
+
+| Pin | Was | Now |
+|---|---|---|
+| `flake.nix` `midnight-ledger` | `dioxus-vc-demo` @ `591a3170` | **`ledger-8-patched`** @ `16b451e7` |
+| `flake.nix` `midnight-zk` | `feat/v0.7-h-poly-streaming` @ `cf60e3cc` | **`proofs-0.7-patched`** @ `083c8282` |
+| `Cargo.toml` `[patch.crates-io]` `midnight-proofs` | `cf60e3cc` | `083c8282` (the rev `ledger-8-patched` pins) |
+
+Proven before it was committed: `rust-target.sh check` and `test` (48
+suites, 0 failures) and the wasm build of the domain crates, all green on
+the new pins. `Cargo.lock` moved 187+/52− — the maintained lines carry newer
+transitive dependencies (rustls, memmap2, …) than the prototype did.
+
+One consumer-side change rode along: `scripts/ci/rust-target.sh` now passes
+`--no-deps` to clippy. Without it the gate lints the path-mounted
+`third_party/midnight-ledger` crates — upstream code — and the maintained
+ledger-8 trips `clippy::type_complexity` in `storage-core`, which the
+ledger's own CI allows. Our gate is for our crates.
+
 ## References
 
 - `flake.nix` — `midnight-zk` input
