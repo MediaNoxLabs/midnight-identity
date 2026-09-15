@@ -22,7 +22,9 @@ Factory, harness, CI, documentation, dependency, and governance items target
 `develop`. Release promotion targets `rust-codegen`. A stacked PR can
 temporarily target its issue-backed parent branch, but its issue and handoff
 must retain the final target. The GitHub default branch is not delivery
-authority.
+authority. The PR template's single `factory-delivery-target` and
+`factory-stacked-parent` markers are the hosted machine-readable record. A
+direct PR records `none`; a stack records the exact `<type>/issue-N` parent.
 
 ## Profiles
 
@@ -56,7 +58,11 @@ git status --short
 Every commit must have a good signature (`G`), one exact `Signed-off-by`
 trailer matching the author, and an approved Conventional Commit title/scope.
 Hosted contribution policy additionally checks GitHub's signature verification
-for each exact PR commit.
+for each exact PR commit. Human squash merge remains supported: the resulting
+single-parent commit is exempt from an authored DCO trailer only when GitHub is
+the committer, the signature is GitHub-verified, and the canonical ` (#N)`
+subject suffix follows a valid scoped PR title. Ordinary authored commits are
+never covered by that exception.
 
 ## Draft and handoff
 

@@ -19,6 +19,10 @@ const SUBJECT = new RegExp(
   `^(?:${TYPES.join("|")})\\((?:${SCOPES.join("|")})\\)(?:!)?: [a-z0-9][^\\n]{0,71}$`,
   "u",
 );
+const DELIVERY_TARGET = /^(?:develop|rust-codegen)$/u;
+const DELIVERY_TARGET_MARKER = /<!--\s*factory-delivery-target:\s*([^\s]+)\s*-->/gu;
+const STACKED_PARENT_MARKER = /<!--\s*factory-stacked-parent:\s*([^\s]+)\s*-->/gu;
+const SQUASH_SUBJECT = /^(.*) \(#[1-9]\d*\)$/u;
 const SAFE_REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const SAFE_SHA = /^[0-9a-f]{40}$/u;
 
@@ -32,6 +36,35 @@ export function validateSubject(subject) {
   return SUBJECT.test(subject)
     ? []
     : [`subject must be a scoped Conventional Commit with an approved type/scope: ${subject}`];
+}
+
+function markerValues(body, pattern) {
+  return [...body.matchAll(pattern)].map((match) => match[1]);
+}
+
+export function validatePullRequestBase({ base, head, body }) {
+  const errors = [];
+  const targets = markerValues(body ?? "", DELIVERY_TARGET_MARKER);
+  const parents = markerValues(body ?? "", STACKED_PARENT_MARKER);
+  if (targets.length !== 1) {
+    errors.push(`pull-request body must contain exactly one factory delivery-target marker; found ${targets.length}`);
+  }
+  if (parents.length !== 1) {
+    errors.push(`pull-request body must contain exactly one factory stacked-parent marker; found ${parents.length}`);
+  }
+  if (errors.length) return errors;
+
+  const [target] = targets;
+  const [parent] = parents;
+  if (!DELIVERY_TARGET.test(target)) errors.push(`unsupported final delivery target: ${target}`);
+  if (parent === "none") {
+    if (base !== target) errors.push(`pull-request base ${base} does not match final delivery target ${target}`);
+  } else {
+    errors.push(...validateBranch(parent).map((error) => `stacked parent ${error}`));
+    if (base !== parent) errors.push(`pull-request base ${base} does not match recorded stacked parent ${parent}`);
+    if (head === parent) errors.push("pull-request head and stacked parent must be different branches");
+  }
+  return errors;
 }
 
 function exactSignoff(authorName, authorEmail) {
@@ -52,10 +85,12 @@ export function validateCommit(commit, { requireLocalSignature = false } = {}) {
   return errors;
 }
 
-export function isPlatformGeneratedMerge({ parents, committerName, committerEmail }) {
-  return parents.trim().split(/\s+/u).filter(Boolean).length > 1
-    && committerName === "GitHub"
-    && committerEmail === "noreply@github.com";
+export function isPlatformGeneratedCommit({ parents, committerName, committerEmail, subject }) {
+  if (committerName !== "GitHub" || committerEmail !== "noreply@github.com") return false;
+  const parentCount = parents.trim().split(/\s+/u).filter(Boolean).length;
+  if (parentCount > 1) return true;
+  const squash = SQUASH_SUBJECT.exec(subject);
+  return parentCount === 1 && squash !== null && validateSubject(squash[1]).length === 0;
 }
 
 function git(cwd, args) {
@@ -69,7 +104,7 @@ export function readCommits(base, head, cwd = process.cwd()) {
       "show", "-s", "--format=%an%x00%ae%x00%cn%x00%ce%x00%s%x00%B%x00%G?%x00%P", sha,
     ], { cwd, encoding: "utf8", maxBuffer: 1024 * 1024 });
     const [authorName, authorEmail, committerName, committerEmail, subject, body, signature, parents] = raw.split("\0");
-    const generatedMerge = isPlatformGeneratedMerge({ parents, committerName, committerEmail, subject });
+    const generatedMerge = isPlatformGeneratedCommit({ parents, committerName, committerEmail, subject });
     return { sha, authorName, authorEmail, subject, body, signature, generatedMerge };
   });
 }
@@ -108,6 +143,14 @@ export function run(argv = process.argv.slice(2), {
   if (branch) errors.push(...validateBranch(branch));
   const title = option(argv, "--pr-title");
   if (title) errors.push(...validateSubject(title));
+  const prBase = option(argv, "--pr-base");
+  if (prBase) {
+    errors.push(...validatePullRequestBase({
+      base: prBase,
+      head: branch,
+      body: option(argv, "--pr-body") ?? "",
+    }));
+  }
   const base = option(argv, "--base");
   const head = option(argv, "--head") ?? "HEAD";
   if (!base) errors.push("--base is required for commit-range validation");

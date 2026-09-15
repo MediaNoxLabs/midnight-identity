@@ -178,9 +178,18 @@ function formatDuration(value) {
   return value === null || value === undefined ? "unavailable" : `${(value / 60_000).toFixed(1)} min`;
 }
 
-function markdown(report) {
+export function markdown(report) {
   const online = report.online;
   const stale = online?.packageVersions?.filter((entry) => entry.stale).map((entry) => `${entry.name} ${entry.version} -> ${entry.latest}`) ?? [];
+  const unavailablePackages = online?.packageVersions?.filter((entry) => entry.latest === null)
+    .map((entry) => entry.name) ?? [];
+  const packageVersionSummary = !online
+    ? "online audit disabled"
+    : unavailablePackages.length > 0
+      ? `unavailable (${unavailablePackages.join(", ")})`
+      : stale.length > 0
+        ? stale.join(", ")
+        : "none observed";
   const lines = [
     "# Factory audit",
     "",
@@ -190,7 +199,7 @@ function markdown(report) {
     "| --- | --- |",
     `| Pi packages | ${report.local.packages.map((entry) => `${entry.name}@${entry.version}`).join(", ")} |`,
     `| Disabled Pi packages | ${report.local.packages.filter((entry) => entry.disabled).map((entry) => entry.name).join(", ") || "none observed"} |`,
-    `| Stale Pi packages | ${stale.length ? stale.join(", ") : online ? "none observed" : "online audit disabled"} |`,
+    `| Stale Pi packages | ${packageVersionSummary} |`,
     `| Worktrees / target disk | ${report.local.worktrees.count} / ${report.local.worktrees.totalTargetKiB} KiB |`,
     `| Preservation candidates | ${report.local.worktrees.reviewCandidates.length} |`,
     `| CI median / p90 | ${online?.available ? `${formatDuration(online.ci.medianMs)} / ${formatDuration(online.ci.p90Ms)}` : "unavailable"} |`,

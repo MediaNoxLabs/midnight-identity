@@ -75,10 +75,18 @@ test("workflow pins actions, uses a stable aggregator, and never caches target",
   assert.match(workflow, /name: Required CI/u);
   assert.match(workflow, /base\.ref == 'rust-codegen'/u);
   assert.match(workflow, /actionlint\/cmd\/actionlint@v1\.7\.7/u);
+  assert.match(workflow, /find \.github\/workflows/u);
+  assert.doesNotMatch(workflow, /actionlint@v1\.7\.7 \.github\/workflows\/ci\.yml/u);
   assert.match(workflow, /actions\/cache\/restore@/u);
   assert.match(workflow, /actions\/cache\/save@/u);
   assert.doesNotMatch(workflow, /flakehub|magic[- ]nix[- ]cache/iu);
   assert.doesNotMatch(workflow, /^\s+target\/?\s*$/mu);
+});
+
+test("pull-request template records exact delivery target and stack disposition", async () => {
+  const template = await readFile(path.join(root, ".github", "pull_request_template.md"), "utf8");
+  assert.equal([...template.matchAll(/factory-delivery-target:/gu)].length, 1);
+  assert.equal([...template.matchAll(/factory-stacked-parent:/gu)].length, 1);
 });
 
 test("release verification and publishing include every publishable library crate", async () => {
