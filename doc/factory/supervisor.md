@@ -19,17 +19,24 @@ commands remain authoritative outside Pi.
 2. Run `node scripts/factory/worktree-lifecycle.mjs audit`. Reuse an
    identity-matching issue worktree or create one exact
    `<type>/issue-<number>` worktree from the fetched target.
-3. Admit exactly one `factory-worker` for the issue. Pass the issue, worktree,
-   branch, base, profile, acceptance criteria, and selected target plan.
-4. The worker edits and validates only in that worktree. It may not spawn a
+3. For crystallization/extraction issues, observe every referenced consumer
+   checkout named in `.pi/extraction-policy.json` before delegation: repository
+   identity, origin remote, `origin/develop` SHA, and status. Consumers are
+   read-only; `MediaNoxLabs/midnight-identity` is the only mutation target.
+4. Admit exactly one `factory-worker` for the issue. Pass the issue, worktree,
+   branch, base, profile, acceptance criteria, selected target plan, and any
+   recorded reference-repository observations.
+5. The worker edits and validates only in that worktree. It may not spawn a
    child, enter taskflow, detach a retry loop, merge, or change repository
    settings. It returns a draft candidate to the supervisor.
-5. The supervisor reviews the diff, creates/updates the draft PR when
-   authorized, watches exact-head CI, classifies failures, and permits at most
-   one bounded retry for a repairable implementation/CI failure.
-6. The supervisor posts the run summary plus hidden metric JSON and hands
+6. The supervisor reviews the diff, repeats any reference-repository
+   observations, stops on changed consumer remote/head/status or missing source
+   path/license provenance, creates/updates the draft PR when authorized,
+   watches exact-head CI, classifies failures, and permits at most one bounded
+   retry for a repairable implementation/CI failure.
+7. The supervisor posts the run summary plus hidden metric JSON and hands
    durable-branch merge control to a human.
-7. Only after hosted merged-PR evidence exists, run an audited exact-path
+8. Only after hosted merged-PR evidence exists, run an audited exact-path
    closeout from outside the selected worktree.
 
 One parent session admits only one implementation worker per issue. A separate
