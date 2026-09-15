@@ -24,16 +24,29 @@
 //!
 //! - **Digest packing**: SHA-256 of the payload split into four
 //!   big-endian `u64` limbs (`Vector<4, Field>` in-circuit).
-//! - **Challenge**: `transientHash(ann_x, ann_y, pk_x, pk_y, digest…)`
-//!   truncated **mod 2²⁴⁸** — matching `schnorrVerify`'s in-circuit
-//!   `getSchnorrReduction` quotient check. ⚠️ This differs from
-//!   `midnight_transient_crypto::schnorr` (ledger-8+), which reduces the
-//!   same hash **mod r**; the two schemes are NOT interoperable — do not
-//!   swap one for the other when the ledger pin advances.
+//! - **DID digest challenge**: `transientHash(ann_x, ann_y, pk_x, pk_y,
+//!   digest…)` truncated **mod 2²⁴⁸** — matching `schnorrVerify`'s
+//!   in-circuit `getSchnorrReduction` quotient check.
+//! - **VC issuance-proof challenge primitive**: [`challenge_nonce_from_seed`]
+//!   domain-separates nonce derivation with `:challenge` so a caller can feed
+//!   an application-specific issuance-proof challenge into the same Schnorr
+//!   response equation. It is intentionally not the full issuance-proof
+//!   challenge construction, which belongs to the VC circuits.
 //! - **Deterministic nonces**: `SHA-256("midnight-did:jubjub-schnorr:v1"
-//!   ‖ seed ‖ digest) mod r` for the seed-based signing path.
-//! - **Encoding**: 96-byte signatures (`ann_x ‖ ann_y ‖ response`,
-//!   each 32-byte big-endian).
+//!   ‖ seed ‖ digest) mod r` for the seed-based DID signing path; the
+//!   challenge-domain primitive uses `SHA-256(domain ‖ ":challenge" ‖ seed
+//!   ‖ random_seed) mod r`.
+//! - **Encoding**: DID signatures are 96 bytes (`ann_x ‖ ann_y ‖ response`,
+//!   each 32-byte big-endian). VC issuance-proof point helpers expose the
+//!   separate 64-byte little-endian `x ‖ y` point shape.
+//!
+//! Compatibility table:
+//!
+//! | API / scheme | Challenge reduction | Nonce derivation | Wire shape | Interoperable with `midnight_transient_crypto::schnorr`? |
+//! | --- | --- | --- | --- | --- |
+//! | DID digest signature ([`sign_digest_from_seed`]) | mod 2²⁴⁸ truncation | v1 DID domain over seed + digest | 96-byte big-endian signature | No |
+//! | VC issuance-proof primitive ([`challenge_nonce_from_seed`]) | caller-supplied challenge | v1 `:challenge` domain over seed + random seed | 64-byte little-endian points + 32-byte little-endian scalar | No |
+//! | `midnight_transient_crypto::schnorr` | mod r | ledger implementation-specific | ledger implementation-specific | Only with itself |
 //!
 //! Cross-language parity is pinned by golden vectors generated from the
 //! TS reference (see `tests/ts_parity.rs`).
@@ -80,6 +93,17 @@ pub enum SuiteError {
     /// The point is the identity (no affine coordinates to encode).
     #[error("identity point cannot be encoded")]
     IdentityPoint,
+    /// Text input exceeds the fixed 32-byte Compact field-fragment shape.
+    #[error("text is {actual} bytes, exceeding the {max}-byte limit")]
+    TextTooLong {
+        /// Maximum accepted bytes.
+        max: usize,
+        /// Actual input length.
+        actual: usize,
+    },
+    /// Hex input did not decode to exactly 32 bytes.
+    #[error("hex input must decode to exactly 32 bytes")]
+    BadHex32,
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -92,6 +116,20 @@ pub enum SuiteError {
 /// ones are truncated (TS `ensure32Bytes` semantics).
 pub fn seed_to_secret_scalar(seed: &[u8]) -> EmbeddedFr {
     hash_to_scalar(&Sha256::digest(ensure_32_bytes(seed)))
+}
+
+/// Portal-compatible `seedBytesToJubjubSecretScalar`: `SHA-256(seed32)`
+/// interpreted as a big-endian integer and reduced into the Jubjub scalar
+/// field. Unlike [`seed_to_secret_scalar`], this API requires the caller's
+/// seed to already be exactly 32 bytes.
+pub fn seed_bytes_to_secret_scalar(seed: &[u8; 32]) -> EmbeddedFr {
+    hash_to_scalar(&Sha256::digest(seed))
+}
+
+/// Alias for [`seed_bytes_to_secret_scalar`] using the established consumer
+/// helper name.
+pub fn seed_bytes_to_jubjub_secret_scalar(seed: &[u8; 32]) -> EmbeddedFr {
+    seed_bytes_to_secret_scalar(seed)
 }
 
 /// Public key for a secret scalar: `pk = sk·G`.
@@ -147,6 +185,22 @@ pub fn compute_digest_challenge(
     Ok(EmbeddedFr::from_le_bytes(&le).expect("2^248-truncated value is < r"))
 }
 
+/// Derive the VC issuance-proof/challenge-domain nonce used by Oxid's
+/// `sign_challenge` path: `SHA-256(NONCE_DOMAIN_V1 ‖ ":challenge" ‖
+/// secret_seed32 ‖ random_seed32) mod r`.
+///
+/// This is a named primitive, not a DID digest challenge and not the full VC
+/// issuance-proof challenge construction. Callers must compute their
+/// application challenge separately and then form `s = k + c·x (mod r)`.
+pub fn challenge_nonce_from_seed(secret_seed: &[u8; 32], random_seed: &[u8; 32]) -> EmbeddedFr {
+    let mut preimage = Vec::with_capacity(NONCE_DOMAIN_V1.len() + b":challenge".len() + 64);
+    preimage.extend_from_slice(NONCE_DOMAIN_V1.as_bytes());
+    preimage.extend_from_slice(b":challenge");
+    preimage.extend_from_slice(secret_seed);
+    preimage.extend_from_slice(random_seed);
+    hash_to_scalar(&Sha256::digest(preimage))
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Signing
 // ─────────────────────────────────────────────────────────────────────
@@ -180,7 +234,7 @@ pub fn sign_digest<R: rand::Rng + rand::CryptoRng>(
     digest: &JubjubDigest,
 ) -> Result<JubjubSchnorrSignature, SuiteError> {
     let mut random = [0u8; 32];
-    rng.fill_bytes(&mut random);
+    rand::RngCore::fill_bytes(rng, &mut random);
     let mut nonce_seed = Vec::with_capacity(32 + 32 + 128);
     nonce_seed.extend_from_slice(&scalar_be_bytes(&secret));
     nonce_seed.extend_from_slice(&random);
@@ -251,8 +305,8 @@ pub fn decode_signature(bytes: &[u8]) -> Result<JubjubSchnorrSignature, SuiteErr
     if bytes.len() != SIGNATURE_LENGTH_BYTES {
         return Err(SuiteError::BadSignatureLength);
     }
-    let x = fr_from_be_bytes(&bytes[..32])?;
-    let y = fr_from_be_bytes(&bytes[32..64])?;
+    let x = field_from_be_bytes(&bytes[..32])?;
+    let y = field_from_be_bytes(&bytes[32..64])?;
     let announcement = EmbeddedGroupAffine::new(x, y).ok_or(SuiteError::NotOnCurve)?;
     // `new` runs the input through cofactor clearing (`into_subgroup`),
     // which launders off-curve/off-subgroup inputs into *different*
@@ -265,6 +319,93 @@ pub fn decode_signature(bytes: &[u8]) -> Result<JubjubSchnorrSignature, SuiteErr
     response_le.reverse();
     let response = EmbeddedFr::from_le_bytes(&response_le).ok_or(SuiteError::OutOfField)?;
     Ok(JubjubSchnorrSignature { announcement, response })
+}
+
+/// Draw a fresh random nonce with 64 random bytes reduced via the licensed
+/// curve implementation's wide-reduction API, redrawing the negligible zero
+/// result instead of returning an identity nonce.
+pub fn random_nonce_scalar<R: rand::RngCore + ?Sized>(rng: &mut R) -> EmbeddedFr {
+    loop {
+        let mut wide = [0u8; 64];
+        rng.fill_bytes(&mut wide);
+        let nonce = scalar_from_wide_bytes(&wide);
+        if nonce != EmbeddedFr::from(0u64) {
+            return nonce;
+        }
+    }
+}
+
+/// Reduce 64 little-endian bytes into a Jubjub scalar using the curve
+/// implementation's wide reduction.
+pub fn scalar_from_wide_bytes(wide: &[u8; 64]) -> EmbeddedFr {
+    EmbeddedFr(embedded::Scalar::from_bytes_wide(wide))
+}
+
+/// Convert a Jubjub scalar into a base field element via its canonical
+/// little-endian bytes. This is lossless because the Jubjub scalar modulus is
+/// smaller than the base field modulus.
+pub fn field_from_scalar(scalar: &EmbeddedFr) -> Fr {
+    Fr::from_le_bytes(&scalar.as_le_bytes()).expect("every Jubjub scalar fits in Fr")
+}
+
+/// Reduce a base field element's little-endian bytes into the Jubjub scalar
+/// field.
+pub fn scalar_from_field(field: &Fr) -> EmbeddedFr {
+    reduce_le_bytes_to_scalar(&field.as_le_bytes())
+}
+
+/// Encode a base field element as 32 little-endian bytes.
+pub fn field_to_bytes32_le(field: &Fr) -> [u8; 32] {
+    let mut out = [0u8; 32];
+    let le = field.as_le_bytes();
+    let n = le.len().min(32);
+    out[..n].copy_from_slice(&le[..n]);
+    out
+}
+
+/// Encode a Jubjub point as 64 bytes `x ‖ y`, where both coordinates are
+/// canonical 32-byte little-endian base-field encodings. This consumer proof
+/// shape is deliberately distinct from the DID signature's 96-byte big-endian
+/// encoding.
+pub fn point_to_bytes64_le(point: &EmbeddedGroupAffine) -> Result<[u8; 64], SuiteError> {
+    let (x, y) = coordinates(point)?;
+    let mut out = [0u8; 64];
+    out[..32].copy_from_slice(&field_to_bytes32_le(&x));
+    out[32..].copy_from_slice(&field_to_bytes32_le(&y));
+    Ok(out)
+}
+
+/// Alias for [`point_to_bytes64_le`] using the established consumer helper name.
+pub fn point_to_bytes64(point: &EmbeddedGroupAffine) -> Result<[u8; 64], SuiteError> {
+    point_to_bytes64_le(point)
+}
+
+/// Alias for [`field_to_bytes32_le`] using the established consumer helper name.
+pub fn fr_to_bytes32(field: &Fr) -> [u8; 32] {
+    field_to_bytes32_le(field)
+}
+
+/// Alias for [`field_from_scalar`] using the established consumer helper name.
+pub fn fr_from_scalar(scalar: &EmbeddedFr) -> Fr {
+    field_from_scalar(scalar)
+}
+
+/// UTF-8/text fragment padding helper: right-pad bytes with zeros to 32
+/// bytes and fail closed instead of truncating when the input is longer.
+pub fn pad_text_to_bytes32(bytes: &[u8]) -> Result<[u8; 32], SuiteError> {
+    let mut out = [0u8; 32];
+    let destination = out.get_mut(..bytes.len()).ok_or(SuiteError::TextTooLong {
+        max: 32,
+        actual: bytes.len(),
+    })?;
+    destination.copy_from_slice(bytes);
+    Ok(out)
+}
+
+/// Decode exactly 64 hexadecimal characters into 32 bytes.
+pub fn hex_decode_32(input: &str) -> Result<[u8; 32], SuiteError> {
+    let decoded = hex::decode(input).map_err(|_| SuiteError::BadHex32)?;
+    decoded.try_into().map_err(|_| SuiteError::BadHex32)
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -281,12 +422,15 @@ fn ensure_32_bytes(seed: &[u8]) -> [u8; 32] {
 /// Interpret 32 hash bytes as a big-endian integer mod r
 /// (TS `hashToScalar`).
 fn hash_to_scalar(digest32: &[u8]) -> EmbeddedFr {
-    let mut wide = [0u8; 64];
-    // big-endian bytes → little-endian limbs in the low half.
-    for (i, b) in digest32.iter().rev().enumerate() {
-        wide[i] = *b;
+    let mut le = [0u8; 32];
+    for (slot, byte) in le.iter_mut().zip(digest32.iter().take(32).rev()) {
+        *slot = *byte;
     }
-    EmbeddedFr(embedded::Scalar::from_bytes_wide(&wide))
+    reduce_le_bytes_to_scalar(&le)
+}
+
+fn reduce_le_bytes_to_scalar(bytes: &[u8]) -> EmbeddedFr {
+    EmbeddedFr::from_le_bytes_wide(bytes).expect("callers pass at most 32 little-endian bytes")
 }
 
 fn coordinates(point: &EmbeddedGroupAffine) -> Result<(Fr, Fr), SuiteError> {
@@ -303,7 +447,7 @@ fn fr_be_bytes(fr: &Fr) -> [u8; 32] {
     le.try_into().expect("32 bytes")
 }
 
-fn fr_from_be_bytes(be: &[u8]) -> Result<Fr, SuiteError> {
+fn field_from_be_bytes(be: &[u8]) -> Result<Fr, SuiteError> {
     let mut le: Vec<u8> = be.to_vec();
     le.reverse();
     Fr::from_le_bytes(&le).ok_or(SuiteError::OutOfField)
