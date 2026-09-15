@@ -17,4 +17,5 @@ function run(command, args) {
 
 run(process.execPath, ["--test", "tests/factory/*.test.mjs"]);
 run(process.execPath, ["scripts/factory/check-devloops.mjs"]);
+run(process.execPath, ["scripts/factory/reference-repositories.mjs", "check"]);
 run(process.execPath, ["scripts/factory/audit.mjs", "--format", "summary"]);

@@ -72,6 +72,7 @@ unverified generated signature fails closed.
 
 The implementation worker stops after producing a focused draft candidate and
 returns the issue, PR, exact head, changed paths, selected checks, durations,
-resource observations, and known risks to the supervisor. The supervisor owns
+resource observations, source-reference/provenance evidence for any read-only
+consumer material, and known risks to the supervisor. The supervisor owns
 review triage, CI, retry classification, metrics, and eventual closeout. It
 does not merge durable branches.

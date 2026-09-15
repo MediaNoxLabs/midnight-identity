@@ -107,6 +107,14 @@
           shellHook = factoryShellHook;
         };
 
+        # Lightweight Pi shell for factory supervision. Keep Compact/Rust
+        # materialization on the explicit default/rust shells so `--pi` can
+        # start without constructing unrelated toolchains.
+        pi = pkgs.mkShell {
+          packages = [ pkgs.pi-coding-agent ] ++ factoryPackages;
+          shellHook = factoryShellHook;
+        };
+
         # Interactive factory shell: keep compactc and pi.dev available.
         default = mkWorkspaceShell (
           [

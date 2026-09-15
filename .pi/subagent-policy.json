@@ -2,11 +2,23 @@
   "asyncByDefault": false,
   "forceTopLevelAsync": false,
   "maxSubagentDepth": 1,
-  "maxSubagentSpawnsPerSession": 2,
-  "globalConcurrencyLimit": 2,
+  "maxSubagentSpawnsPerSession": 1,
+  "maxSubagentSpawnsPerRun": 1,
+  "globalConcurrencyLimit": 1,
+  "toolBudget": {
+    "soft": 40,
+    "hard": 60,
+    "block": "*"
+  },
   "turnBudget": {
-    "maxTurns": 20,
+    "maxTurns": 16,
     "graceTurns": 1
+  },
+  "usageBudget": {
+    "tokens": {
+      "soft": 80000,
+      "hard": 120000
+    }
   },
   "parallel": {
     "maxTasks": 1,
