@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+
+set -eu
+repo_root=$(git rev-parse --show-toplevel)
+exec node "$repo_root/scripts/git-hooks/local-policy.mjs" commit-msg "$@"

@@ -20,6 +20,7 @@ release branches.
 | Branches, commits, profiles, and handoff | [`delivery.md`](delivery.md) |
 | Path-to-gate routing and cache policy | [`ci.md`](ci.md) |
 | Pi supervisor and worktree lifecycle | [`supervisor.md`](supervisor.md) |
+| Pinned bootstrap, local hooks, and exact-head L0 receipts | [`local-admission.md`](local-admission.md) |
 | Per-run evidence and periodic audit | [`metrics.md`](metrics.md) |
 | Architecture | [`../architecture.md`](../architecture.md) and [`../adr/`](../adr/) |
 
