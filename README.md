@@ -146,6 +146,12 @@ just coverage          # HTML coverage report (line floor: see justfile)
 An optional [pi.dev operator shell](./doc/pi-development.md) layers the
 `dev-loops` workflow on top of the devshell.
 
+Repository delivery follows the [AI Software Factory](./doc/factory/README.md):
+issue-backed worktrees, `prototype` or `production-ready` profiles,
+path-proportional validation, draft-first pull requests, exact-head metrics,
+and fail-closed worktree cleanup. The repository is the reusable Midnight
+library boundary; application policy and deployment remain in consumers.
+
 **Branch model:** `rust-codegen` is the stable mainline; `develop` is
 the integration branch — PRs target `develop`.
 
