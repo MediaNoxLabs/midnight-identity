@@ -1,26 +1,41 @@
-<!-- Target branch: `develop` (integration). Release-promotion PRs target
-     `rust-codegen` (stable mainline). -->
+<!-- Final delivery target: develop for normal library/factory work; rust-codegen for human release promotion. -->
 
-## Overview
+## Summary
 
-<!-- What does this PR change and why? Link the driving issue. -->
+<!-- What changed and why? -->
+
+## Scope and context
+
+<!-- Name the issue, delivery profile, final target, and any temporary stacked parent. -->
+
+## Acceptance criteria
+
+- [ ] The linked issue's observable acceptance criteria are satisfied.
+
+## Definition of done
+
+- [ ] The immutable target plan was computed from the recorded base and exact head.
+- [ ] Every selected local check and hosted `Required CI` target passes.
+- [ ] The exact-head review findings have visible disposition.
+- [ ] The factory run summary and hidden v1 metrics payload are posted or a transport gap is recorded.
+
+## Non-goals
+
+<!-- List adjacent work that this PR deliberately does not perform. -->
+
+## Validation
+
+<!-- List commands and selected CI targets; do not paste secret-bearing output. -->
 
 ## Submission checklist
 
-- [ ] Description explains the what and the why
-- [ ] Tests added/updated for behavior changes
-- [ ] `nix develop -c just ci` passes locally
-- [ ] Commits are DCO signed-off (`git commit -s`) and GPG-signed (`-S`)
-- [ ] `CHANGELOG.md` updated under `[Unreleased]` (user-visible changes)
-- [ ] Docs/README updated where behavior or interfaces changed
-- [ ] No new TODOs without a tracking issue
-
-## Contract-surface checklist (only if `crates/midnight-did-runtime/src/contract/` changed)
-
-- [ ] `generated.rs` was produced by `just codegen` (no hand edits)
-- [ ] `just codegen-check` passes (no drift against the flake-pinned compactc)
-- [ ] compact input pin change is called out in the description
+- [ ] PR title is a scoped Conventional Commit with an approved type/scope.
+- [ ] Branch is `<type>/issue-<number>` and the PR started as draft.
+- [ ] Commits have exact DCO sign-off and GitHub-verifiable OpenPGP signatures.
+- [ ] Behavior changes include focused tests and public contract documentation.
+- [ ] Compact-generated output was regenerated, never hand-edited, when selected.
+- [ ] No credentials, personal Pi configuration, transcripts, or unexpected generated artifacts are present.
 
 ## Links
 
-<!-- Closes #NNN -->
+Closes #NN

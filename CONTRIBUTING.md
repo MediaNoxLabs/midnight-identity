@@ -4,7 +4,7 @@ Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Contributing to midnight-identity
+# Contributing to midnight-libs
 
 Thank you for considering a contribution! `midnight-identity` is the native
 Rust port of the Midnight DID Method reference implementation (TypeScript:
@@ -19,6 +19,11 @@ Before diving in, please skim:
 - [`doc/adr/`](./doc/adr/) — Architecture Decision Records covering the
   load-bearing choices (async-only API, `Contract<B: Backend>` shape,
   crate layout, private-state trait, codegen gap handling).
+
+The repository is being evolved under the `midnight-libs` mission while its
+GitHub slug remains `MediaNoxLabs/midnight-identity`. The concise operating
+contract is in [`AGENT.md`](./AGENT.md), with detailed delivery and CI rules in
+[`doc/factory/`](./doc/factory/README.md).
 
 The rest of this guide is the practical dev loop and the conventions
 we expect every PR to follow.
@@ -73,10 +78,14 @@ dev loop:
    just lint               # cargo clippy --all-targets -- -D warnings
    ```
 
-   `just ci` runs the full gate (`fmt-check`, `lint`, `build`, `test`)
-   locally — run it before pushing.
+   First compute the affected plan documented in
+   [`doc/factory/ci.md`](./doc/factory/ci.md). Run `just ci` when the plan is
+   full; documentation, CI, and factory-only changes use the policy lane and
+   do not enter the Rust/Nix closure.
 
-5. **Open a PR against `main`.** Keep the diff focused; reference the
+5. **Open a draft PR against the issue's recorded delivery base.** Normal
+   library and factory work targets `develop`; release promotion targets
+   `rust-codegen`. Keep the diff focused; reference the
    ADR(s) you touched (or argue for a new one if you're changing a
    load-bearing decision).
 
@@ -89,9 +98,13 @@ regenerated `generated.rs` + keys in the same PR.
 
 ## Branching and commit conventions
 
-- **Branch off `main`.** Topic branches use conventional-commit-style
-  names where possible: `feat/<short-desc>`, `fix/<short-desc>`,
-  `docs/<short-desc>`, `chore/<short-desc>`, `refactor/<short-desc>`.
+- **Start from the explicit delivery base in an isolated worktree.** Topic
+  branches are issue-backed and use exactly `<type>/issue-<number>`, where
+  type is `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, or `chore`.
+- **Use scoped Conventional Commits.** Allowed scopes are `factory`, `ci`,
+  `docs`, `did`, `vc`, `compact`, `runtime`, `domain`, `method`, `api`,
+  `resolver`, `indexer`, `cli`, `ffi`, `deps`, and `release`. Pull-request
+  titles follow the same grammar.
 - **Do not force-push** to a PR branch under review — reviewers lose
   their place. Push fixup commits and let the maintainer squash on
   merge.

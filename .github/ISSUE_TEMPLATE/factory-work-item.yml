@@ -1,0 +1,63 @@
+name: Factory work item
+description: Propose one bounded AI Software Factory increment
+title: "chore(factory): "
+labels:
+  - enhancement
+  - area:infra
+body:
+  - type: markdown
+    attributes:
+      value: "Factory work is issue-backed, draft-first, exact-head, and human-merged to durable branches."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe observed friction, incident evidence, or a measured regression.
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: State one reviewable outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use a checklist with observable completion conditions.
+      placeholder: "- [ ] One observable result"
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: Name adjacent work that must stay outside this increment.
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Delivery profile
+      options:
+        - production-ready
+        - prototype
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: Delivery target
+      description: Factory work normally targets develop; never infer this from the default branch.
+      value: develop
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: List the narrow deterministic commands and expected CI lanes.
+    validations:
+      required: true
