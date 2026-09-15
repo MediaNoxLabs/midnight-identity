@@ -92,11 +92,15 @@ function remoteSha(cwd, baseRef) {
   return matches[0][0];
 }
 
-export function validateBaseTarget(baseRef, deliveryTarget) {
+export function validateBaseTarget(baseRef, deliveryTarget, branch = null) {
+  const errors = [];
   if (DURABLE_BASE_REF.test(baseRef) && baseRef !== `origin/${deliveryTarget}`) {
-    return [`durable base ${baseRef} does not match delivery target ${deliveryTarget}`];
+    errors.push(`durable base ${baseRef} does not match delivery target ${deliveryTarget}`);
   }
-  return [];
+  if (branch && baseRef === `origin/${branch}`) {
+    errors.push(`issue branch ${branch} cannot use itself as its receipt base`);
+  }
+  return errors;
 }
 
 function requireOpenPgpConfig(cwd) {
@@ -122,7 +126,7 @@ export function validateReceipt(receipt, {
   if (receipt.issue !== issueFromBranch(receipt.branch ?? "")) errors.push("receipt issue does not match its branch");
   if (!DELIVERY_TARGET.test(receipt.deliveryTarget ?? "")) errors.push("receipt delivery target is not durable");
   if (!RECEIPT_BASE_REF.test(receipt.baseRef ?? "")) errors.push("receipt base ref is not an approved origin branch");
-  else errors.push(...validateBaseTarget(receipt.baseRef, receipt.deliveryTarget));
+  else errors.push(...validateBaseTarget(receipt.baseRef, receipt.deliveryTarget, receipt.branch));
   if (!SHA.test(receipt.baseSha ?? "")) errors.push("receipt base SHA is invalid");
   if (!SHA.test(receipt.headSha ?? "")) errors.push("receipt head SHA is invalid");
   if (!Number.isFinite(Date.parse(receipt.createdAt ?? ""))) errors.push("receipt timestamp is invalid");
@@ -161,7 +165,7 @@ function runGate(argv, cwd, stdout) {
   const deliveryTarget = option(argv, "--delivery-target");
   if (!DELIVERY_TARGET.test(deliveryTarget ?? "")) throw new Error("--delivery-target must be develop or rust-codegen");
   const baseRef = canonicalRemoteBaseRef(option(argv, "--base") ?? deliveryTarget);
-  const baseTargetErrors = validateBaseTarget(baseRef, deliveryTarget);
+  const baseTargetErrors = validateBaseTarget(baseRef, deliveryTarget, branch);
   if (baseTargetErrors.length > 0) throw new Error(baseTargetErrors.join("; "));
   if (git(cwd, ["status", "--porcelain"])) throw new Error("worktree must be clean before creating an exact-head receipt");
   requireOpenPgpConfig(cwd);

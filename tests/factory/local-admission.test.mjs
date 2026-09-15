@@ -60,6 +60,9 @@ test("local gate receipt binds exact repository, branch, base, head, plan, and c
   assert.ok(validateReceipt({
     ...receipt, baseRef: "origin/rust-codegen", deliveryTarget: "develop",
   }, options).length > 0);
+  assert.ok(validateReceipt({
+    ...receipt, baseRef: "origin/chore/issue-63",
+  }, options).length > 0);
 });
 
 test("local gate canonicalizes every selected base to a remote-tracking ref", () => {
@@ -70,6 +73,10 @@ test("local gate canonicalizes every selected base to a remote-tracking ref", ()
   assert.deepEqual(validateBaseTarget("origin/develop", "develop"), []);
   assert.deepEqual(validateBaseTarget("origin/fix/issue-58", "develop"), []);
   assert.match(validateBaseTarget("origin/rust-codegen", "develop").join("\n"), /does not match/u);
+  assert.match(
+    validateBaseTarget("origin/chore/issue-63", "develop", "chore/issue-63").join("\n"),
+    /cannot use itself/u,
+  );
 });
 
 test("pre-push parsing preserves branch updates and permits deletion and tag records", () => {

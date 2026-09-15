@@ -46,7 +46,8 @@ For an explicitly stacked candidate, add its temporary diff base:
 
 The gate requires a clean issue-backed worktree and a signed/DCO-valid commit
 range. A durable base must match the named delivery target; only an
-issue-backed base is accepted as a temporary stack parent. Authored signatures
+issue-backed base other than the current topic branch is accepted as a
+temporary stack parent. Authored signatures
 must contain an OpenPGP commit envelope in addition to Git's successful local
 verification. The gate runs the repository factory contracts, contribution policy,
 added-line secret scan, and `git diff --check`, then records the immutable
