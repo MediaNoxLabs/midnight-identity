@@ -49,9 +49,12 @@ directory in `midnight-identity-factory/local-gates-v1`; it is shared by the
 clone's linked worktrees but never committed.
 
 The pre-push hook verifies the receipt against the pushed branch/head and the
-current exact base ref. A changed head, advanced base, wrong branch, malformed
-record, missing/failed check, or unavailable ancestry invalidates it. Rerun the
-gate instead of editing the receipt.
+current exact base ref. Authored commits must verify in the local OpenPGP
+keyring. A GitHub update-branch merge is instead checked against GitHub's
+verified commit record, because the forge key need not be valid in the local
+keyring. A changed head, advanced base, wrong branch, malformed record,
+missing/failed check, unavailable ancestry, or unavailable signature evidence
+invalidates the receipt. Rerun the gate instead of editing it.
 
 This is local L0 evidence, not a substitute for hosted CI. The receipt records
 the planner's affected Rust, WASM, coverage, and Compact targets; GitHub runs

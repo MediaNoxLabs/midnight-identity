@@ -92,7 +92,7 @@ test("authored commits require one exact author signoff and a good local signatu
   assert.equal(validateCommit({ ...commit, body: commit.body.replace("Ada", "Grace") }).length, 1);
 });
 
-test("the narrow GitHub-generated merge exception does not exempt signature verification", () => {
+test("GitHub-generated commits use hosted verification instead of a local keyring", () => {
   const commit = {
     sha: "b".repeat(40),
     authorName: "GitHub",
@@ -103,5 +103,5 @@ test("the narrow GitHub-generated merge exception does not exempt signature veri
     generatedMerge: true,
   };
   assert.deepEqual(validateCommit(commit, { requireLocalSignature: true }), []);
-  assert.equal(validateCommit({ ...commit, signature: "N" }, { requireLocalSignature: true }).length, 1);
+  assert.deepEqual(validateCommit({ ...commit, signature: "E" }, { requireLocalSignature: true }), []);
 });

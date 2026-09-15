@@ -124,7 +124,8 @@ function runGate(argv, cwd, stdout) {
   runCommand(process.execPath, ["scripts/factory/check.mjs"], cwd);
   runCommand(process.execPath, [
     "scripts/factory/contribution-policy.mjs", "--base", baseSha, "--head", headSha,
-    "--branch", branch, "--local-signatures",
+    "--branch", branch, "--local-signatures", "--repo", REPOSITORY,
+    "--github-generated-signatures",
   ], cwd);
   runCommand(process.execPath, ["scripts/factory/secret-scan.mjs", "--base", baseSha, "--head", headSha], cwd);
   runCommand("git", ["diff", "--check", `${baseSha}...${headSha}`], cwd);
