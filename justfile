@@ -159,6 +159,7 @@ coverage_floor := "87"
 # Coverage scope: every first-party crate; excludes the codegen artifact
 # (gated by codegen-check, not tests) and service/demo bin entrypoints.
 coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-runtime"
+coverage_features := "--features midnight-vc-families/digital-passport"
 # `contract/generated\.rs` is the DID codegen artifact; the three
 # `contract/{credentials,iso_registry,same_holder}\.rs` files are the VC ones.
 # Generated code is gated by `codegen-check` / `codegen-vc-check`, not by tests;
@@ -169,6 +170,7 @@ coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/is
 coverage:
     cargo llvm-cov --locked \
         {{coverage_crates}} \
+        {{coverage_features}} \
         --ignore-filename-regex '{{coverage_exclude}}' \
         --html --open
 
@@ -176,6 +178,7 @@ coverage:
 coverage-gate:
     cargo llvm-cov --locked \
         {{coverage_crates}} \
+        {{coverage_features}} \
         --ignore-filename-regex '{{coverage_exclude}}' \
         --summary-only --fail-under-lines {{coverage_floor}}
 
@@ -183,6 +186,7 @@ coverage-gate:
 coverage-lcov:
     cargo llvm-cov --locked \
         {{coverage_crates}} \
+        {{coverage_features}} \
         --ignore-filename-regex '{{coverage_exclude}}' \
         --lcov --output-path target/lcov.info
 
