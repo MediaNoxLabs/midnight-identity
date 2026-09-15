@@ -34,6 +34,11 @@ test("affected crate plans expand to known compatibility dependents", () => {
   assert.ok(!plan.packages.includes("midnight-vc-domain"));
 });
 
+test("method-only changes enforce the WASM-clean contract", () => {
+  const plan = makeTargetPlan(["crates/midnight-did-method/src/lib.rs"]);
+  assert.ok(plan.targets.includes(Target.WASM));
+});
+
 test("prototype keeps directly affected checks but omits broad compatibility lanes", () => {
   const plan = makeTargetPlan(["crates/midnight-vc-domain/src/lib.rs"], {
     deliveryProfile: DeliveryProfile.PROTOTYPE,

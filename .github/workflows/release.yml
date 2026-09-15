@@ -5,10 +5,10 @@
 # Release / publish pipeline. Trigger: pushing a `v*` tag (e.g. v0.5.1)
 # or manual dispatch with dry_run.
 #
-# Publishable set (dependency order). Today only midnight-did-domain can
-# reach crates.io — every other crate depends on the unpublished
-# midnight-ledger crates and/or compact-runtime (path deps). When those
-# publish upstream, extend PUBLISH_CRATES below in dependency order:
+# Publishable set (dependency order). Today midnight-did-domain and
+# midnight-did-method can reach crates.io. The remaining DID crates depend on
+# unpublished midnight-ledger crates and/or compact-runtime path dependencies.
+# When those publish upstream, extend PUBLISH_CRATES below in dependency order:
 #   midnight-did-domain -> midnight-did-method -> midnight-did-runtime
 #   -> midnight-did-api -> midnight-did
 # midnight-did-cli and midnight-did-uniffi stay `publish = false` by design.
@@ -36,7 +36,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   # Dependency-ordered, space-separated list of crates to publish.
-  PUBLISH_CRATES: "midnight-did-domain"
+  PUBLISH_CRATES: "midnight-did-domain midnight-did-method"
 
 jobs:
   verify:
@@ -112,8 +112,28 @@ jobs:
                 continue
               fi
               if [ "$DRY_RUN" = "true" ]; then
-                cargo publish -p "$crate" --locked --dry-run
+                if [ "$crate" = "midnight-did-method" ]; then
+                  # The matching domain version is published earlier during a real
+                  # release. Patch it locally so a first-release dry run can still
+                  # verify the packaged method crate before that version exists.
+                  cargo publish -p "$crate" --locked --dry-run \
+                    --config patch.crates-io.midnight-did-domain.path=\"crates/midnight-did-domain\"
+                else
+                  cargo publish -p "$crate" --locked --dry-run
+                fi
               else
+                if [ "$crate" = "midnight-did-method" ]; then
+                  for attempt in {1..12}; do
+                    if cargo info "midnight-did-domain@${version}" >/dev/null 2>&1; then
+                      break
+                    fi
+                    if [ "$attempt" -eq 12 ]; then
+                      echo "::error::midnight-did-domain ${version} is not visible on crates.io"
+                      exit 1
+                    fi
+                    sleep 10
+                  done
+                fi
                 cargo publish -p "$crate" --locked
               fi
             done
