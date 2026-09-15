@@ -5,9 +5,10 @@
 # Release / publish pipeline. Trigger: pushing a `v*` tag (e.g. v0.5.1)
 # or manual dispatch with dry_run.
 #
-# Publishable set (dependency order). Today midnight-did-domain and
-# midnight-did-method can reach crates.io. The remaining DID crates depend on
-# unpublished midnight-ledger crates and/or compact-runtime path dependencies.
+# Publishable set (dependency order). Today midnight-did-domain,
+# midnight-did-method, and midnight-passport-vault-source can reach crates.io.
+# The remaining DID crates depend on unpublished midnight-ledger crates and/or
+# compact-runtime path dependencies.
 # When those publish upstream, extend PUBLISH_CRATES below in dependency order:
 #   midnight-did-domain -> midnight-did-method -> midnight-did-runtime
 #   -> midnight-did-api -> midnight-did
@@ -36,7 +37,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   # Dependency-ordered, space-separated list of crates to publish.
-  PUBLISH_CRATES: "midnight-did-domain midnight-did-method"
+  PUBLISH_CRATES: "midnight-did-domain midnight-did-method midnight-passport-vault-source"
 
 jobs:
   verify:

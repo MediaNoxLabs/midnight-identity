@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "package": "midnight-passport-vault-source",
+  "contract": {
+    "name": "passport-vault",
+    "path": "contract/passport-vault.compact",
+    "bytes": 23776,
+    "sha256": "2ebc5b34dd440bc9a9736408f29f5003e7a78f26a564b392be2af36de69102f4",
+    "languageConstraint": ">=0.20",
+    "license": "Apache-2.0"
+  },
+  "includeClosure": {
+    "algorithm": "sha256-concat-utf8-sorted-paths-v1",
+    "bytes": 68290,
+    "sha256": "76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127",
+    "files": [
+      "contract/vendored/credentials.compact",
+      "contract/vendored/credentials/composable.compact",
+      "contract/vendored/credentials/holder-bindings.compact",
+      "contract/vendored/credentials/issue.compact",
+      "contract/vendored/credentials/present.compact",
+      "contract/vendored/credentials/proofs.compact",
+      "contract/vendored/credentials/protocols.compact",
+      "contract/vendored/credentials/relations.compact",
+      "contract/vendored/credentials/status-bindings.compact",
+      "contract/vendored/credentials/types.compact",
+      "contract/vendored/credentials/vc.compact",
+      "contract/vendored/credentials/vp.compact",
+      "contract/vendored/digital-passport-credential.compact",
+      "contract/vendored/digital-passport-credential/claims.compact",
+      "contract/vendored/digital-passport-credential/helpers.compact",
+      "contract/vendored/digital-passport-credential/model.compact",
+      "contract/vendored/digital-passport-credential/protocol-model.compact",
+      "contract/vendored/digital-passport-credential/validation.compact"
+    ]
+  },
+  "provenance": {
+    "originalRepository": "https://github.com/midnightntwrk/midnight-identity-solution-examples",
+    "originalRevision": "e4a92a6be2cc6dc34f68261f10c19c9312043807",
+    "originalPath": "packages/contracts/vault/src/passport-vault.compact",
+    "reviewedDistributionRepository": "https://github.com/MediaNoxLabs/oxid",
+    "reviewedDistributionPath": "contracts/passport-vault/passport-vault.compact",
+    "byteIdentical": true
+  },
+  "compatibility": {
+    "ledgerLine": "8.x",
+    "compactCliVersion": "0.5.1",
+    "compilerRevision": "05b237a5e51f9c22853b424e7d4236dfa9384c24",
+    "compilerVersion": "0.30.0",
+    "generatedLanguageVersion": "0.22.0",
+    "generatedRuntimeVersion": "0.15.0"
+  },
+  "circuits": [
+    { "name": "setTrustedIssuer", "k": 13, "rows": 5416 },
+    { "name": "createLock", "k": 11, "rows": 1823 },
+    { "name": "depositToLock", "k": 10, "rows": 834 },
+    { "name": "claimFromLock", "k": 17, "rows": 124785 },
+    { "name": "withdrawFromLock", "k": 11, "rows": 1212 }
+  ]
+}

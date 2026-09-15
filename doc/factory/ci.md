@@ -16,7 +16,7 @@ manual full runs execute the complete matrix.
 | --- | --- |
 | Docs, factory policy/tooling, or CI only | `policy` only; no Rust/Nix closure |
 | Rust crate | `policy`, focused format/lint/compile, affected unit tests, coverage |
-| Wasm-clean domain crate | Rust targets plus `wasm` |
+| WASM-clean library crate | Rust targets plus `wasm` |
 | DID Compact input/generated artifacts | Rust targets plus `did-codegen` |
 | VC Compact input/generated artifacts | Rust targets plus `vc-codegen` |
 | Cargo/Nix/lock/toolchain or unknown | Full production matrix |

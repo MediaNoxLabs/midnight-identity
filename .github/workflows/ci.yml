@@ -248,12 +248,13 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-sources-v1-${{ hashFiles('Cargo.lock') }}
 
-      - name: Build wasm-clean domain crates
+      - name: Build WASM-clean crates
         run: |
           nix develop .#rust --command cargo build --locked \
             --target wasm32-unknown-unknown \
             -p midnight-did-domain \
             -p midnight-did-method \
+            -p midnight-passport-vault-source \
             -p midnight-vc-domain
 
   coverage:

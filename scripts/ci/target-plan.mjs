@@ -35,6 +35,7 @@ export const ALL_PACKAGES = Object.freeze([
   "midnight-did-resolver",
   "midnight-did-uniffi",
   "midnight-did-jubjub-schnorr",
+  "midnight-passport-vault-source",
   "midnight-vc-domain",
   "midnight-vc-runtime",
 ]);
@@ -65,6 +66,7 @@ const DEPENDENTS = Object.freeze({
   "midnight-did-resolver": ["midnight-did-resolver"],
   "midnight-did-uniffi": ["midnight-did-uniffi"],
   "midnight-did-jubjub-schnorr": ["midnight-did-jubjub-schnorr"],
+  "midnight-passport-vault-source": ["midnight-passport-vault-source"],
   "midnight-vc-domain": ["midnight-vc-domain"],
   "midnight-vc-runtime": ["midnight-vc-runtime"],
 });
@@ -144,7 +146,12 @@ export function makeTargetPlan(paths, {
   if (full || areas.includes("did-codegen")) targets.add(Target.DID_CODEGEN);
   if (full || areas.includes("vc-codegen")) targets.add(Target.VC_CODEGEN);
   const wasmChanged = full || classified.some(({ package: name }) =>
-    ["midnight-did-domain", "midnight-did-method", "midnight-vc-domain"].includes(name));
+    [
+      "midnight-did-domain",
+      "midnight-did-method",
+      "midnight-passport-vault-source",
+      "midnight-vc-domain",
+    ].includes(name));
   if (deliveryProfile === DeliveryProfile.PRODUCTION_READY) {
     if (wasmChanged) targets.add(Target.WASM);
     if (rustChanged) targets.add(Target.COVERAGE);

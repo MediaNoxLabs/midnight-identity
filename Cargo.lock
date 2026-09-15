@@ -2488,6 +2488,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-passport-vault-source"
+version = "0.5.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "midnight-proofs"
 version = "0.7.99"
 source = "git+https://github.com/yshyn-iohk/midnight-zk.git?rev=cf60e3ccb87f2de40b1307f7e78abdcb4c696c91#cf60e3ccb87f2de40b1307f7e78abdcb4c696c91"

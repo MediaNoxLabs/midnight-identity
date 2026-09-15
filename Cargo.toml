@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-vc-domain", "crates/midnight-vc-runtime" ]
+members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-runtime" ]
 
 [workspace.package]
 version      = "0.5.0"
@@ -52,8 +52,9 @@ midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 # VC layer (issue #13). `vc-domain` is pure data and publishable on its own
 # cadence (hence the `=` version pin, same rationale as midnight-did-domain);
 # `vc-runtime` is the codegen target and stays unpublished.
-midnight-vc-domain  = { path = "crates/midnight-vc-domain", version = "=0.5.0" }
-midnight-vc-runtime = { path = "crates/midnight-vc-runtime" }
+midnight-vc-domain             = { path = "crates/midnight-vc-domain", version = "=0.5.0" }
+midnight-vc-runtime            = { path = "crates/midnight-vc-runtime" }
+midnight-passport-vault-source = { path = "crates/midnight-passport-vault-source", version = "=0.5.0" }
 
 # ---- Patch crates.io's `midnight-proofs` with the local fork ----
 #

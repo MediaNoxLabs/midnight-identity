@@ -39,6 +39,14 @@ test("method-only changes enforce the WASM-clean contract", () => {
   assert.ok(plan.targets.includes(Target.WASM));
 });
 
+test("Passport Vault source changes select its Rust, WASM, and coverage gates", () => {
+  const plan = makeTargetPlan(["crates/midnight-passport-vault-source/src/lib.rs"]);
+  assert.deepEqual(plan.packages, ["midnight-passport-vault-source"]);
+  assert.deepEqual(plan.targets, [
+    Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE,
+  ]);
+});
+
 test("prototype keeps directly affected checks but omits broad compatibility lanes", () => {
   const plan = makeTargetPlan(["crates/midnight-vc-domain/src/lib.rs"], {
     deliveryProfile: DeliveryProfile.PROTOTYPE,

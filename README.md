@@ -41,6 +41,7 @@ Compact contracts now ship as `midnight-vc-domain` and
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
 | `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
 | `midnight-vc-runtime` | `compactc --rust` codegen target for the VC contracts (credentials / iso-registry / same-holder bindings) | no (`publish = false`)² |
+| `midnight-passport-vault-source` | Authenticated Passport Vault Compact source, provenance, and circuit baselines (no runtime dependencies) | yes |
 
 ¹ crates.io publication is blocked until the upstream `midnight-ledger`
 crates and `compact-runtime` are published; consume via git until then.
