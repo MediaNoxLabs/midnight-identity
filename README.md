@@ -156,8 +156,9 @@ fmt + clippy (`-D warnings`), tests on Linux + macOS,
 a `wasm32-unknown-unknown` build of the wasm-clean `midnight-did-domain`
 crate, a line-coverage floor (cargo-llvm-cov) over every first-party
 crate, and the DID and VC codegen drift-checks in the full shell against
-the flake-pinned compactc. Magic Nix Cache is reserved for those heavy codegen
-jobs; light jobs use the public binary caches plus their explicit Cargo cache.
+the flake-pinned compactc. All jobs use public binary caches; light jobs also
+use their explicit Cargo cache. No CI or release gate requires a FlakeHub
+account.
 
 ## Community
 

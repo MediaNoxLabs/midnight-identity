@@ -43,7 +43,8 @@ dev loop:
    invoke the Compact compiler, use `nix develop .#rust`. It keeps the same
    pinned Rust tools and third-party source mounts without constructing the
    heavy `compactc`/proving/Node closure. CI uses this light shell for those
-   gates and reserves the default shell and Magic Nix Cache for code generation.
+   gates and reserves the default shell for code generation. CI uses only
+   public Nix binary caches and does not require a FlakeHub account.
 
 2. **Regenerate the contract crate** from `did.compact`:
 

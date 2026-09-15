@@ -18,8 +18,8 @@ and the project adheres to [SemVer](https://semver.org/).
   and coverage jobs now use `nix develop .#rust`, which preserves the pinned
   Rust toolchain and third-party mounts without constructing the unrelated
   Compact compiler, proving, and Node dependency closure. Those jobs also avoid
-  the throttled Magic Nix Cache write path; codegen drift jobs continue to use
-  the full default shell and its Nix cache.
+  private cache authentication; codegen drift jobs continue to use
+  the full default shell with public Nix binary caches.
 
 ### Added
 
