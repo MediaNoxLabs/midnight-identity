@@ -12,6 +12,15 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Light CI shell (issue #54)** — ordinary formatting, clippy, test, WASM,
+  and coverage jobs now use `nix develop .#rust`, which preserves the pinned
+  Rust toolchain and third-party mounts without constructing the unrelated
+  Compact compiler, proving, and Node dependency closure. Those jobs also avoid
+  private cache authentication; codegen drift jobs continue to use
+  the full default shell with public Nix binary caches.
+
 ### Added
 
 - **Passport Vault source ownership, slice 1 (issue #47)** — new
@@ -172,6 +181,12 @@ and the project adheres to [SemVer](https://semver.org/).
   9 crates audited (all pass), #8 to absorb `midnight-did-indexer`.
 
 ### Changed
+
+- **Runtime-independent DID method layer (issue #12)** —
+  `midnight-did-method` now owns pure 32-byte contract-address and off-chain
+  hash types instead of re-exporting Ledger/Compact types. The default method
+  dependency graph no longer activates Ledger, Compact runtime, Halo2 or
+  `blst`, and the method crate joins the WASM and publishable-core gates.
 
 - compact pin bumped to the promoted stable `codegen-rust` head
   (toolchain **0.31.111** = A29 chunked scaffold + A30 alignment-aware

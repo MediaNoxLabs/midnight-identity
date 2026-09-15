@@ -9,6 +9,34 @@
     "languageConstraint": ">=0.20",
     "license": "Apache-2.0"
   },
+  "includeClosure": {
+    "algorithm": "sha256-concat-utf8-sorted-paths-v1",
+    "bytes": 68897,
+    "sha256": "9a6045b513ca32587b309cf5c36c43e50f0788506d1f028f09795224712f1635",
+    "files": [
+      "contract/vendored/credentials.compact",
+      "contract/vendored/credentials/bindings.compact",
+      "contract/vendored/credentials/composable.compact",
+      "contract/vendored/credentials/holder-bindings.compact",
+      "contract/vendored/credentials/issue.compact",
+      "contract/vendored/credentials/present.compact",
+      "contract/vendored/credentials/proofs.compact",
+      "contract/vendored/credentials/protocol-support.compact",
+      "contract/vendored/credentials/protocols.compact",
+      "contract/vendored/credentials/relations.compact",
+      "contract/vendored/credentials/status-bindings.compact",
+      "contract/vendored/credentials/types.compact",
+      "contract/vendored/credentials/vc-support.compact",
+      "contract/vendored/credentials/vc.compact",
+      "contract/vendored/credentials/vp.compact",
+      "contract/vendored/digital-passport-credential.compact",
+      "contract/vendored/digital-passport-credential/claims.compact",
+      "contract/vendored/digital-passport-credential/helpers.compact",
+      "contract/vendored/digital-passport-credential/model.compact",
+      "contract/vendored/digital-passport-credential/protocol-model.compact",
+      "contract/vendored/digital-passport-credential/validation.compact"
+    ]
+  },
   "provenance": {
     "originalRepository": "https://github.com/midnightntwrk/midnight-identity-solution-examples",
     "originalRevision": "e4a92a6be2cc6dc34f68261f10c19c9312043807",
@@ -33,4 +61,3 @@
     { "name": "withdrawFromLock", "k": 11, "rows": 1212 }
   ]
 }
-

@@ -169,7 +169,7 @@ Current state (5 crates, all green):
 | --- | --- | --- |
 | Mobile wallet (Dioxus) | `midnight-did` (umbrella) → re-exports all four | Single dependency, stable namespace. |
 | DID resolver | `midnight-did-domain` + `midnight-did-method` | Skips api + runtime entirely. |
-| Web / wasm | `midnight-did-domain` + `midnight-did-method` (resolver path) or + `midnight-did-api` (write side) | The two layered crates are gated on `wasm32-unknown-unknown` in CI. |
+| Web / wasm | `midnight-did-domain` + `midnight-did-method` (resolver path) | The two runtime-independent crates are gated on `wasm32-unknown-unknown` in CI; the write-side API remains runtime-bound. |
 | Write-side CLI / library | `midnight-did-api` (transitively pulls domain + method + runtime) | What the reference CLI does today. |
 | UniFFI binding | `midnight-did-uniffi` → depends on `midnight-did-api` + `uniffi` runtime | UniFFI wrapper deliberately targets the api layer, not the umbrella, to keep the FFI surface focused on operation builders. |
 
@@ -259,9 +259,9 @@ The R1 type-safety sweep (ADR 0007) progressively eliminated
   `VerificationMethod`, `Service`, `PublicKeyJwk`. Validating
   `Deserialize` for `PublicKeyJwk` via `#[serde(try_from)]`. New
   `DidKeyId` / `FragmentId` / `ServiceId` newtypes in
-  `midnight_did_domain::ids`. Re-export of upstream
-  `ContractAddress` / `HashOutput` (drop the `pub String` shadow
-  newtypes). Domain-grouped error enums.
+  `midnight_did_domain::ids`. Initial reuse of upstream
+  `ContractAddress` / `HashOutput` in place of stringly typed
+  identifiers. Domain-grouped error enums.
 - **v0.3.0** — closed steps 4b + 4c (commits `0b875a8` + `65ed7f6`):
   privatized inner fields on `VerificationMethod` / `Service` /
   `PublicKeyJwk` / `DidString` / `DidUrl` / `RelativeUrl`, retired
@@ -269,6 +269,11 @@ The R1 type-safety sweep (ADR 0007) progressively eliminated
   migrated ~17 remaining struct-literal sites to `::new(NewX)?`.
   After v0.3.0 the only way to construct these types is the
   validating constructor or the validating `Deserialize` path.
+- **v0.5.0** — the method parser owns byte-exact, runtime-independent
+  `ContractAddress` / `OffchainStateHashHex` values. The runtime crate
+  performs the explicit conversion to and from Compact/Ledger address
+  types. DID parsing therefore remains usable without compiling the
+  proof-system dependency graph.
 
 ### 4.2 Pure-data crate is dep-free of `midnight-*`
 
@@ -390,7 +395,7 @@ clippy -D warnings`, and `cargo test` on the workspace including the
 runtime crate.
 
 **Wasm build gate.** A third CI job builds `midnight-did-domain` +
-`midnight-did-api` against `wasm32-unknown-unknown` on every PR. This
+`midnight-did-method` against `wasm32-unknown-unknown` on every PR. This
 turns the architecture-doc claim "both crates are wasm-clean" from a
 promise into an enforced invariant: the moment a transitive dep
 regresses wasm support (e.g. someone pulls in a crate that uses
@@ -434,7 +439,7 @@ Status of the five open questions originally captured in the
   fixtures once `LiveBackend::submit_tx` lands.
 - Add the UniFFI wrapper crate `midnight-did-uniffi`.
 - ~~Add a wasm-target build proof~~ — done (CI `wasm-build` job
-  builds `midnight-did-domain` + `midnight-did-api` against
+  builds `midnight-did-domain` + `midnight-did-method` against
   `wasm32-unknown-unknown` on every PR). Future work: a thin
   browser-side wrapper crate (wasm-bindgen + serde-wasm-bindgen)
   exposing the resolver path to JS.

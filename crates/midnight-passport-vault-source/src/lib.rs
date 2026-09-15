@@ -35,6 +35,109 @@ pub const CONTRACT_SHA256: &str = "2ebc5b34dd440bc9a9736408f29f5003e7a78f26a564b
 /// Size in bytes of [`CONTRACT_SOURCE`].
 pub const CONTRACT_BYTES: usize = 23_776;
 
+/// One source file in the contract's authenticated transitive include closure.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AuthenticatedSource {
+    /// Stable path relative to the published crate root.
+    pub path: &'static str,
+    /// Byte-identical Compact source at [`Self::path`].
+    pub source: &'static str,
+}
+
+/// Transitive Compact sources required by [`CONTRACT_SOURCE`], in canonical path order.
+pub const INCLUDE_CLOSURE: &[AuthenticatedSource] = &[
+    AuthenticatedSource {
+        path: "contract/vendored/credentials.compact",
+        source: include_str!("../contract/vendored/credentials.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/bindings.compact",
+        source: include_str!("../contract/vendored/credentials/bindings.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/composable.compact",
+        source: include_str!("../contract/vendored/credentials/composable.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/holder-bindings.compact",
+        source: include_str!("../contract/vendored/credentials/holder-bindings.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/issue.compact",
+        source: include_str!("../contract/vendored/credentials/issue.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/present.compact",
+        source: include_str!("../contract/vendored/credentials/present.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/proofs.compact",
+        source: include_str!("../contract/vendored/credentials/proofs.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/protocol-support.compact",
+        source: include_str!("../contract/vendored/credentials/protocol-support.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/protocols.compact",
+        source: include_str!("../contract/vendored/credentials/protocols.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/relations.compact",
+        source: include_str!("../contract/vendored/credentials/relations.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/status-bindings.compact",
+        source: include_str!("../contract/vendored/credentials/status-bindings.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/types.compact",
+        source: include_str!("../contract/vendored/credentials/types.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/vc-support.compact",
+        source: include_str!("../contract/vendored/credentials/vc-support.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/vc.compact",
+        source: include_str!("../contract/vendored/credentials/vc.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/credentials/vp.compact",
+        source: include_str!("../contract/vendored/credentials/vp.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/digital-passport-credential.compact",
+        source: include_str!("../contract/vendored/digital-passport-credential.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/digital-passport-credential/claims.compact",
+        source: include_str!("../contract/vendored/digital-passport-credential/claims.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/digital-passport-credential/helpers.compact",
+        source: include_str!("../contract/vendored/digital-passport-credential/helpers.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/digital-passport-credential/model.compact",
+        source: include_str!("../contract/vendored/digital-passport-credential/model.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/digital-passport-credential/protocol-model.compact",
+        source: include_str!("../contract/vendored/digital-passport-credential/protocol-model.compact"),
+    },
+    AuthenticatedSource {
+        path: "contract/vendored/digital-passport-credential/validation.compact",
+        source: include_str!("../contract/vendored/digital-passport-credential/validation.compact"),
+    },
+];
+
+/// SHA-256 of the include sources concatenated in [`INCLUDE_CLOSURE`] order.
+pub const INCLUDE_CLOSURE_SHA256: &str = "9a6045b513ca32587b309cf5c36c43e50f0788506d1f028f09795224712f1635";
+
+/// Total bytes in the authenticated transitive include closure.
+pub const INCLUDE_CLOSURE_BYTES: usize = 68_897;
+
 /// Machine-readable source provenance and compatibility manifest.
 pub const SOURCE_MANIFEST: &str = include_str!("../manifest.json");
 
@@ -99,11 +202,78 @@ mod tests {
     }
 
     #[test]
+    fn include_closure_is_complete_and_authenticated() {
+        use std::collections::HashSet;
+        use std::path::{Component, Path};
+
+        let mut digest = Sha256::new();
+        let paths: HashSet<_> = INCLUDE_CLOSURE.iter().map(|file| file.path).collect();
+        for file in INCLUDE_CLOSURE {
+            digest.update(file.source);
+        }
+        assert_eq!(
+            INCLUDE_CLOSURE.iter().map(|file| file.source.len()).sum::<usize>(),
+            INCLUDE_CLOSURE_BYTES
+        );
+        assert_eq!(format!("{:x}", digest.finalize()), INCLUDE_CLOSURE_SHA256);
+
+        for file in std::iter::once(AuthenticatedSource {
+            path: CONTRACT_PATH,
+            source: CONTRACT_SOURCE,
+        })
+        .chain(INCLUDE_CLOSURE.iter().copied())
+        {
+            for line in file.source.lines().map(str::trim) {
+                let Some(include) = line
+                    .strip_prefix("include \"")
+                    .and_then(|line| line.strip_suffix("\";"))
+                else {
+                    continue;
+                };
+                let candidate = Path::new(file.path)
+                    .parent()
+                    .unwrap()
+                    .join(include)
+                    .with_extension("compact");
+                let mut normalized = Vec::new();
+                for component in candidate.components() {
+                    match component {
+                        Component::Normal(part) => normalized.push(part.to_str().unwrap()),
+                        Component::ParentDir => {
+                            normalized.pop();
+                        }
+                        Component::CurDir => {}
+                        _ => panic!("unsupported include path in {}: {include}", file.path),
+                    }
+                }
+                let resolved = normalized.join("/");
+                assert!(
+                    paths.contains(resolved.as_str()),
+                    "missing include {resolved} from {}",
+                    file.path
+                );
+            }
+        }
+    }
+
+    #[test]
     fn manifest_matches_public_constants() {
         let manifest: serde_json::Value = serde_json::from_str(SOURCE_MANIFEST).unwrap();
         assert_eq!(manifest["contract"]["path"], CONTRACT_PATH);
         assert_eq!(manifest["contract"]["sha256"], CONTRACT_SHA256);
         assert_eq!(manifest["contract"]["bytes"], CONTRACT_BYTES);
+        assert_eq!(manifest["includeClosure"]["sha256"], INCLUDE_CLOSURE_SHA256);
+        assert_eq!(manifest["includeClosure"]["bytes"], INCLUDE_CLOSURE_BYTES);
+        let manifest_paths: Vec<_> = manifest["includeClosure"]["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect();
+        assert_eq!(
+            manifest_paths,
+            INCLUDE_CLOSURE.iter().map(|file| file.path).collect::<Vec<_>>()
+        );
         let manifest_circuits = manifest["circuits"].as_array().unwrap();
         assert_eq!(manifest_circuits.len(), CIRCUIT_BASELINES.len());
         for (manifest_circuit, baseline) in manifest_circuits.iter().zip(CIRCUIT_BASELINES) {

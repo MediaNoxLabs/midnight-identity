@@ -79,8 +79,8 @@ trait methods.
   `wasm` feature on the cores. UniFFI and WASM leaves are siblings over
   the same cores (the matrix-rust-sdk shape).
 - **Wasm-clean core set** is enforced by CI's wasm32 build job. Today:
-  `domain`. Restoring `method` (and the domain-shape slice of `api`) to
-  that set is issue #12 and *raises the value of every future binding*.
+  `domain` and `method`. Issue #12 removed method parsing's dependency on
+  Ledger/Compact types; the domain-shape slice of `api` remains future work.
 - **Publishing is deliberate** (doc/publishing.md): internal/blocked
   crates stay `publish = false`; the umbrella (`midnight-did`) is the
   one-dependency entry point for app consumers and stays a pure
@@ -91,7 +91,7 @@ trait methods.
 | Crate | LoC | Split reason | Verdict |
 |---|---|---|---|
 | `midnight-did-domain` | 2852 | 1 (wasm-clean, zero midnight deps) + 2 (publishable) | keep |
-| `midnight-did-method` | 1881 | 2 (VC-consumable seam) — currently fails rule 1 (drags base-crypto); #12 fixes | keep |
+| `midnight-did-method` | 1881 | 1 (wasm-clean, no Ledger/Compact deps) + 2 (VC-consumable seam) | keep |
 | `midnight-did-api` | 2769 | 6 (operations over `Backend`) | keep |
 | `midnight-did-runtime` | 6513 | 1 (halo2/arkworks; ADR 0006) + codegen target | keep |
 | `midnight-did-indexer` | 270 | 1 (reqwest/tokio) + 6 (backend impl) | keep; **candidate to merge into the #8 providers crate when it exists** — two trait-backend crates this small don't both survive the test |
