@@ -373,16 +373,14 @@ pub trait CompactValueCodec {
 
 /// Compute the off-chain state hash from a raw MOD1 frame.
 ///
-/// v0.2.0: `OffchainStateHashHex` is now an alias for
-/// [`midnight_base_crypto::hash::HashOutput`] — the in-memory shape is
-/// the 32-byte digest directly, so the `hex::encode(...)` round-trip
-/// the prior String-wrapped shadow needed is gone.
+/// The in-memory shape is the 32-byte digest directly and remains independent
+/// of ledger/runtime hash types.
 pub fn bytes_to_state_hash(bytes: &[u8]) -> OffchainStateHash {
     let mut hasher = Blake2s::<U32>::new();
     hasher.update(bytes);
     let digest = hasher.finalize();
-    // Blake2s::<U32>::finalize() yields a GenericArray<u8, U32> — the
-    // <U32, [u8; 32]> conversion is From-impl'd upstream.
+    // Blake2s::<U32>::finalize() yields a GenericArray<u8, U32> with a
+    // lossless conversion into the method-layer byte array.
     OffchainStateHashHex(digest.into())
 }
 
@@ -481,9 +479,7 @@ fn validate_state_shape(state: &OffchainMidnightDidState) -> Result<(), Offchain
 
 /// Build a `did:midnight:offchain:<hash>` short-form string.
 ///
-/// v0.2.0: `OffchainStateHash` is now the upstream
-/// [`midnight_base_crypto::hash::HashOutput`] type; hex rendering goes
-/// through [`crate::hex_ext::HashOutputExt::to_hex`].
+/// Hex rendering goes through [`crate::hex_ext::HashOutputExt::to_hex`].
 pub fn create_offchain_midnight_did_string(state_hash: &OffchainStateHash) -> MidnightDidString {
     create_midnight_did_string(&state_hash.to_hex(), MidnightNetwork::Offchain)
 }

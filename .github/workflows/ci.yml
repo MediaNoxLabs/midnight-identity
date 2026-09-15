@@ -253,6 +253,7 @@ jobs:
           nix develop .#rust --command cargo build --locked \
             --target wasm32-unknown-unknown \
             -p midnight-did-domain \
+            -p midnight-did-method \
             -p midnight-vc-domain
 
   coverage:

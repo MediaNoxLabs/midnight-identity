@@ -175,6 +175,12 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **Runtime-independent DID method layer (issue #12)** —
+  `midnight-did-method` now owns pure 32-byte contract-address and off-chain
+  hash types instead of re-exporting Ledger/Compact types. The default method
+  dependency graph no longer activates Ledger, Compact runtime, Halo2 or
+  `blst`, and the method crate joins the WASM and publishable-core gates.
+
 - compact pin bumped to the promoted stable `codegen-rust` head
   (toolchain **0.31.111** = A29 chunked scaffold + A30 alignment-aware
   decode + G1 trapping-arith projection). Verified: **zero** codegen

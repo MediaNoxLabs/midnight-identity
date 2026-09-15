@@ -80,3 +80,10 @@ test("workflow pins actions, uses a stable aggregator, and never caches target",
   assert.doesNotMatch(workflow, /flakehub|magic[- ]nix[- ]cache/iu);
   assert.doesNotMatch(workflow, /^\s+target\/?\s*$/mu);
 });
+
+test("release verification and publishing include every publishable DID crate", async () => {
+  const workflow = await readFile(path.join(root, ".github", "workflows", "release.yml"), "utf8");
+  assert.match(workflow, /PUBLISH_CRATES: "midnight-did-domain midnight-did-method"/u);
+  assert.match(workflow, /patch\.crates-io\.midnight-did-domain\.path/u);
+  assert.match(workflow, /midnight-did-domain@\$\{version\}/u);
+});

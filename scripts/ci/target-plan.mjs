@@ -144,7 +144,7 @@ export function makeTargetPlan(paths, {
   if (full || areas.includes("did-codegen")) targets.add(Target.DID_CODEGEN);
   if (full || areas.includes("vc-codegen")) targets.add(Target.VC_CODEGEN);
   const wasmChanged = full || classified.some(({ package: name }) =>
-    name === "midnight-did-domain" || name === "midnight-vc-domain");
+    ["midnight-did-domain", "midnight-did-method", "midnight-vc-domain"].includes(name));
   if (deliveryProfile === DeliveryProfile.PRODUCTION_READY) {
     if (wasmChanged) targets.add(Target.WASM);
     if (rustChanged) targets.add(Target.COVERAGE);
