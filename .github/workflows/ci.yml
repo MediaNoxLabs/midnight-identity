@@ -157,15 +157,7 @@ jobs:
       - name: Check selected packages
         env:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
-        run: |
-          nix develop .#rust --command bash -euo pipefail -c '
-            IFS=, read -r -a packages <<< "$PACKAGES_CSV"
-            args=()
-            for package in "${packages[@]}"; do args+=(-p "$package"); done
-            cargo fmt "${args[@]}" -- --check
-            cargo clippy --locked "${args[@]}" --all-targets -- -D warnings
-            cargo check --locked "${args[@]}" --all-targets
-          '
+        run: nix develop .#rust --command bash scripts/ci/rust-target.sh check
 
       - name: Save trusted Cargo source cache
         if: ${{ github.event_name == 'push' && steps.cargo-cache.outputs.cache-hit != 'true' }}
@@ -214,13 +206,7 @@ jobs:
       - name: Test selected packages
         env:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
-        run: |
-          nix develop .#rust --command bash -euo pipefail -c '
-            IFS=, read -r -a packages <<< "$PACKAGES_CSV"
-            args=()
-            for package in "${packages[@]}"; do args+=(-p "$package"); done
-            cargo test --locked "${args[@]}"
-          '
+        run: nix develop .#rust --command bash scripts/ci/rust-target.sh test
 
       - name: Save trusted macOS Cargo source cache
         if: ${{ github.event_name == 'push' && matrix.os == 'macos-latest' && steps.cargo-cache.outputs.cache-hit != 'true' }}

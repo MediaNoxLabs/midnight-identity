@@ -68,6 +68,7 @@ test("factory Markdown relative links resolve", async () => {
 
 test("workflow pins actions, uses a stable aggregator, and never caches target", async () => {
   const workflow = await readFile(path.join(root, ".github", "workflows", "ci.yml"), "utf8");
+  await access(path.join(root, "scripts", "ci", "rust-target.sh"));
   for (const match of workflow.matchAll(/^\s*uses:\s*[^@\s]+@([^\s#]+)/gmu)) {
     assert.match(match[1], /^[0-9a-f]{40}$/u, match[0]);
   }
