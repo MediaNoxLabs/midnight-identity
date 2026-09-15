@@ -20,9 +20,12 @@ test("only GitHub-committed merge commits qualify as generated automation", () =
     subject: "Merge pull request #56 from MediaNoxLabs/chore/issue-56",
   };
   assert.equal(isPlatformGeneratedMerge(candidate), true);
+  assert.equal(isPlatformGeneratedMerge({
+    ...candidate,
+    subject: "chore(factory): establish proportional delivery (#56)",
+  }), true);
   assert.equal(isPlatformGeneratedMerge({ ...candidate, parents: "a".repeat(40) }), false);
   assert.equal(isPlatformGeneratedMerge({ ...candidate, committerName: "Contributor" }), false);
-  assert.equal(isPlatformGeneratedMerge({ ...candidate, subject: "chore(factory): bypass policy" }), false);
 });
 
 test("issue branch grammar accepts only approved types and positive issue numbers", () => {

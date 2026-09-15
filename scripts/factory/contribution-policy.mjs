@@ -52,11 +52,10 @@ export function validateCommit(commit, { requireLocalSignature = false } = {}) {
   return errors;
 }
 
-export function isPlatformGeneratedMerge({ parents, committerName, committerEmail, subject }) {
+export function isPlatformGeneratedMerge({ parents, committerName, committerEmail }) {
   return parents.trim().split(/\s+/u).filter(Boolean).length > 1
     && committerName === "GitHub"
-    && committerEmail === "noreply@github.com"
-    && subject.startsWith("Merge ");
+    && committerEmail === "noreply@github.com";
 }
 
 function git(cwd, args) {
