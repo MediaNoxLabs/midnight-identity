@@ -124,6 +124,33 @@ impl MidnightSubjectId {
 #[serde(transparent)]
 pub struct MidnightDidString(pub String);
 
+/// Parsed four-segment `did:midnight:<network>:<hex64>` DID parts.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParsedMidnightDid {
+    /// Recognised Midnight network.
+    pub network: MidnightNetwork,
+    /// 64-character lowercase/canonical subject identifier.
+    pub identifier: String,
+}
+
+/// Parsed `did:midnight:<network>:<hex64>#<fragment>` key id parts.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParsedMidnightKeyId {
+    /// Recognised Midnight network.
+    pub network: MidnightNetwork,
+    /// 64-character lowercase/canonical subject identifier.
+    pub identifier: String,
+    /// Bare DID before the last `#` separator.
+    pub did: MidnightDidString,
+    /// Fragment retained with the leading `#`.
+    pub fragment: String,
+    /// Original complete key id.
+    pub key_id: String,
+}
+
+/// Maximum accepted Midnight DID/DID-URL input length.
+pub const MAX_MIDNIGHT_DID_CHARACTERS: usize = 8_192;
+
 /// Errors returned while parsing Midnight DID strings.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum MidnightDidError {
@@ -133,9 +160,15 @@ pub enum MidnightDidError {
     /// Offchain state hash was not lowercase 64-hex.
     #[error("Offchain state hash must use lowercase hex")]
     BadOffchainStateHash,
+    /// Input exceeded [`MAX_MIDNIGHT_DID_CHARACTERS`].
+    #[error("Midnight DID input is too long")]
+    TooLong,
     /// String did not start with `did:midnight:`.
     #[error("Invalid Midnight DID format")]
     BadFormat,
+    /// Input contained leading/trailing whitespace, embedded whitespace, or a control character.
+    #[error("Midnight DID input contains whitespace or control characters")]
+    InvalidCharacters,
     /// Network token did not match a known network.
     #[error("Unknown network in Midnight DID")]
     UnknownNetwork,
@@ -148,6 +181,12 @@ pub enum MidnightDidError {
     /// Offchain state segment was not unpadded base64url.
     #[error("Invalid offchain Midnight DID state encoding")]
     BadOffchainStateEncoding,
+    /// DID URL key id did not contain a `#fragment` delimiter.
+    #[error("Midnight DID key id must include a fragment")]
+    MissingFragment,
+    /// DID URL key id contained an empty `#fragment`.
+    #[error("Midnight DID key id fragment must be non-empty")]
+    EmptyFragment,
 }
 
 fn is_hex64(s: &str) -> bool {
@@ -160,6 +199,16 @@ fn is_lowercase_hex64(s: &str) -> bool {
 
 fn is_base64url_segment(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') && s.len() % 4 != 1
+}
+
+fn validate_midnight_did_input(input: &str) -> Result<(), MidnightDidError> {
+    if input.len() > MAX_MIDNIGHT_DID_CHARACTERS {
+        return Err(MidnightDidError::TooLong);
+    }
+    if input.trim() != input || input.chars().any(|c| c.is_control() || c.is_whitespace()) {
+        return Err(MidnightDidError::InvalidCharacters);
+    }
+    Ok(())
 }
 
 /// Validate a 32-byte hex contract address (case-insensitive).
@@ -203,6 +252,7 @@ pub fn create_midnight_did_string(id: &str, network: MidnightNetwork) -> Midnigh
 
 /// Validate a candidate `did:midnight:...` string.
 pub fn parse_midnight_did_string(input: &str) -> Result<MidnightDidString, MidnightDidError> {
+    validate_midnight_did_input(input)?;
     if !input.starts_with("did:midnight:") {
         return Err(MidnightDidError::BadFormat);
     }
@@ -231,6 +281,46 @@ pub fn parse_midnight_did_string(input: &str) -> Result<MidnightDidString, Midni
         }
     }
     Ok(MidnightDidString(input.to_owned()))
+}
+
+/// Parse a strict four-segment `did:midnight:<network>:<hex64>` DID.
+///
+/// The network must be one of the method's recognised wire networks. On-chain
+/// identifiers accept mixed-case hex and return the canonical lowercase form;
+/// off-chain identifiers must already be lowercase.
+pub fn parse_midnight_did_parts(input: &str) -> Result<ParsedMidnightDid, MidnightDidError> {
+    let did = parse_midnight_did_string(input)?;
+    if did.0.split(':').count() != 4 {
+        return Err(MidnightDidError::BadFormat);
+    }
+    let parts: Vec<&str> = did.0.split(':').collect();
+    let network = MidnightNetwork::from_wire_str(parts[2]).ok_or(MidnightDidError::UnknownNetwork)?;
+    Ok(ParsedMidnightDid {
+        network,
+        identifier: parts[3].to_ascii_lowercase(),
+    })
+}
+
+/// Parse a Midnight DID-URL key id, splitting on the last `#` and retaining it.
+///
+/// The bare DID before the last `#` is validated with
+/// [`parse_midnight_did_parts`]. The returned [`ParsedMidnightKeyId::fragment`]
+/// keeps its leading `#`, matching portal method-id padding callers.
+pub fn parse_midnight_key_id(input: &str) -> Result<ParsedMidnightKeyId, MidnightDidError> {
+    validate_midnight_did_input(input)?;
+    let hash_idx = input.rfind('#').ok_or(MidnightDidError::MissingFragment)?;
+    let (did, fragment) = input.split_at(hash_idx);
+    if fragment == "#" {
+        return Err(MidnightDidError::EmptyFragment);
+    }
+    let parsed = parse_midnight_did_parts(did)?;
+    Ok(ParsedMidnightKeyId {
+        network: parsed.network,
+        identifier: parsed.identifier,
+        did: MidnightDidString(did.to_owned()),
+        fragment: fragment.to_owned(),
+        key_id: input.to_owned(),
+    })
 }
 
 /// Decompose a Midnight DID string into its `(network, subject_id)` pair.

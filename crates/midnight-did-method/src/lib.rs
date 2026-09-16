@@ -52,9 +52,10 @@ pub mod offchain;
 
 // Re-exports — common method-profile surface.
 pub use midnight_did::{
-    ContractAddress, MidnightDidError, MidnightDidString, MidnightNetwork, MidnightSubjectId, OffchainStateHashHex,
-    create_midnight_did_string, parse_contract_address, parse_midnight_did, parse_midnight_did_string,
-    parse_offchain_state_hash,
+    ContractAddress, MAX_MIDNIGHT_DID_CHARACTERS, MidnightDidError, MidnightDidString, MidnightNetwork,
+    MidnightSubjectId, OffchainStateHashHex, ParsedMidnightDid, ParsedMidnightKeyId, create_midnight_did_string,
+    parse_contract_address, parse_midnight_did, parse_midnight_did_parts, parse_midnight_did_string,
+    parse_midnight_key_id, parse_offchain_state_hash,
 };
 pub use network_mapping::{DomainToRuntime, RuntimeNetworkId, RuntimeToDomain, domain_to_runtime, runtime_to_domain};
 pub use offchain::{
