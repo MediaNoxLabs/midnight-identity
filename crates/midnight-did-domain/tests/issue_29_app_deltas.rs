@@ -438,3 +438,70 @@ fn service_endpoint_node_budget_is_shared_across_array_entries() {
         .is_err()
     );
 }
+
+#[test]
+fn absolute_uri_fields_reject_malformed_remainders() {
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": "https://exa mple.com/context",
+            "id": "did:example:alice"
+        }))
+        .is_err()
+    );
+
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": "https://www.w3.org/ns/did/v1",
+            "id": "did:example:alice",
+            "alsoKnownAs": ["https://exa mple.com/alice"]
+        }))
+        .is_err()
+    );
+
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": "https://exa mple.com/endpoint"
+        }))
+        .is_err()
+    );
+}
+
+#[test]
+fn service_endpoint_uri_array_entries_count_toward_shared_node_budget() {
+    let object_entries = (0..102)
+        .map(|index| json!({ "items": [index, index, index, index, index, index, index, index] }))
+        .collect::<Vec<_>>();
+
+    let mut just_within_budget = object_entries.clone();
+    just_within_budget.extend([
+        json!("https://example.com/one"),
+        json!("https://example.com/two"),
+        json!("https://example.com/three"),
+    ]);
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": just_within_budget
+        }))
+        .is_ok()
+    );
+
+    let mut over_budget = object_entries;
+    over_budget.extend([
+        json!("https://example.com/one"),
+        json!("https://example.com/two"),
+        json!("https://example.com/three"),
+        json!("https://example.com/four"),
+    ]);
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": over_budget
+        }))
+        .is_err()
+    );
+}

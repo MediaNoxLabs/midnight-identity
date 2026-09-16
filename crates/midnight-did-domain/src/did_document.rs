@@ -116,19 +116,9 @@ fn collect_bounded_text_issue(value: &str, maximum: usize, message: &'static str
     }
 }
 
-fn valid_uri_scheme(value: &str) -> bool {
-    let Some((scheme, _)) = value.split_once(':') else {
-        return false;
-    };
-    !scheme.is_empty()
-        && scheme.bytes().enumerate().all(|(index, byte)| {
-            byte.is_ascii_alphabetic() || (index > 0 && (byte.is_ascii_digit() || matches!(byte, b'+' | b'-' | b'.')))
-        })
-}
-
 fn validate_uri_text(value: &str, message: &'static str) -> Result<(), ValidationError> {
     validate_bounded_text(value, MAX_DID_DOCUMENT_TEXT_BYTES, message)?;
-    if valid_uri_scheme(value) {
+    if url::Url::parse(value).is_ok() {
         Ok(())
     } else {
         Err(ValidationError::from_issues(vec![ValidationIssue::new(message)]))
@@ -1045,6 +1035,16 @@ fn validate_service_endpoint_uri(value: &str) -> Result<(), ValidationError> {
     validate_uri_text(value, "serviceEndpoint URI is invalid")
 }
 
+fn validate_service_endpoint_uri_with_budget(value: &str, nodes: &mut usize) -> Result<(), ValidationError> {
+    *nodes = nodes.saturating_add(1);
+    if *nodes > MAX_SERVICE_ENDPOINT_NODES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint contains too many JSON nodes",
+        )]));
+    }
+    validate_service_endpoint_uri(value)
+}
+
 fn validate_endpoint_object_value(value: &JsonValue, depth: usize, nodes: &mut usize) -> Result<(), ValidationError> {
     *nodes = nodes.saturating_add(1);
     if *nodes > MAX_SERVICE_ENDPOINT_NODES {
@@ -1128,7 +1128,7 @@ fn validate_service_endpoint(endpoint: &ServiceEndpoint) -> Result<(), Validatio
 
 fn validate_service_endpoint_with_budget(endpoint: &ServiceEndpoint, nodes: &mut usize) -> Result<(), ValidationError> {
     match endpoint {
-        ServiceEndpoint::Uri(value) => validate_service_endpoint_uri(value),
+        ServiceEndpoint::Uri(value) => validate_service_endpoint_uri_with_budget(value, nodes),
         ServiceEndpoint::Object(map) => validate_endpoint_object_map(map, 0, nodes),
         ServiceEndpoint::Array(items) => {
             *nodes = nodes.saturating_add(1);
@@ -1144,7 +1144,7 @@ fn validate_service_endpoint_with_budget(endpoint: &ServiceEndpoint, nodes: &mut
             }
             for item in items {
                 match item {
-                    ServiceEndpointArrayEntry::Uri(value) => validate_service_endpoint_uri(value)?,
+                    ServiceEndpointArrayEntry::Uri(value) => validate_service_endpoint_uri_with_budget(value, nodes)?,
                     ServiceEndpointArrayEntry::Object(map) => validate_endpoint_object_map(map, 1, nodes)?,
                 }
             }
