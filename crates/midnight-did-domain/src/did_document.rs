@@ -101,6 +101,10 @@ pub const MAX_DID_DOCUMENT_ENTRIES: usize = 128;
 pub const MAX_DID_DOCUMENT_EXTENSION_DEPTH: usize = 32;
 /// Maximum JSON nodes accepted inside one service endpoint value.
 pub const MAX_SERVICE_ENDPOINT_NODES: usize = 1_024;
+/// Maximum JSON nodes accepted across DID document extension values.
+pub const MAX_DID_DOCUMENT_EXTENSION_NODES: usize = 1_024;
+/// Maximum UTF-8 bytes accepted across DID document extension keys and string values.
+pub const MAX_DID_DOCUMENT_EXTENSION_BYTES: usize = 1024 * 1024;
 
 fn validate_bounded_text(value: &str, maximum: usize, message: &'static str) -> Result<(), ValidationError> {
     if value.is_empty() || value.len() > maximum || value.trim() != value || value.chars().any(char::is_control) {
@@ -125,18 +129,54 @@ fn validate_uri_text(value: &str, message: &'static str) -> Result<(), Validatio
     }
 }
 
-fn validate_extension_value(value: &JsonValue, depth: usize) -> Result<(), ValidationError> {
+#[derive(Debug, Clone, Copy, Default)]
+struct ExtensionBudget {
+    nodes: usize,
+    bytes: usize,
+}
+
+impl ExtensionBudget {
+    fn count_node(&mut self) -> Result<(), ValidationError> {
+        self.nodes = self.nodes.saturating_add(1);
+        if self.nodes > MAX_DID_DOCUMENT_EXTENSION_NODES {
+            return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                "DID document extension JSON contains too many nodes",
+            )]));
+        }
+        Ok(())
+    }
+
+    fn count_bytes(&mut self, value: &str) -> Result<(), ValidationError> {
+        self.bytes = self.bytes.saturating_add(value.len());
+        if self.bytes > MAX_DID_DOCUMENT_EXTENSION_BYTES {
+            return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                "DID document extension JSON contains too many bytes",
+            )]));
+        }
+        Ok(())
+    }
+}
+
+fn validate_extension_value(
+    value: &JsonValue,
+    depth: usize,
+    budget: &mut ExtensionBudget,
+) -> Result<(), ValidationError> {
+    budget.count_node()?;
     if depth > MAX_DID_DOCUMENT_EXTENSION_DEPTH {
         return Err(ValidationError::from_issues(vec![ValidationIssue::new(
             "DID document extension JSON is too deeply nested",
         )]));
     }
     match value {
-        JsonValue::String(s) => validate_bounded_text(
-            s,
-            MAX_DID_DOCUMENT_TEXT_BYTES,
-            "DID document extension string is invalid",
-        ),
+        JsonValue::String(s) => {
+            validate_bounded_text(
+                s,
+                MAX_DID_DOCUMENT_TEXT_BYTES,
+                "DID document extension string is invalid",
+            )?;
+            budget.count_bytes(s)
+        }
         JsonValue::Array(items) => {
             if items.len() > MAX_DID_DOCUMENT_ENTRIES {
                 return Err(ValidationError::from_issues(vec![ValidationIssue::new(
@@ -144,7 +184,7 @@ fn validate_extension_value(value: &JsonValue, depth: usize) -> Result<(), Valid
                 )]));
             }
             for item in items {
-                validate_extension_value(item, depth + 1)?;
+                validate_extension_value(item, depth + 1, budget)?;
             }
             Ok(())
         }
@@ -160,7 +200,8 @@ fn validate_extension_value(value: &JsonValue, depth: usize) -> Result<(), Valid
                     MAX_DID_DOCUMENT_TEXT_BYTES,
                     "DID document extension key is invalid",
                 )?;
-                validate_extension_value(item, depth + 1)?;
+                budget.count_bytes(key)?;
+                validate_extension_value(item, depth + 1, budget)?;
             }
             Ok(())
         }
@@ -168,7 +209,11 @@ fn validate_extension_value(value: &JsonValue, depth: usize) -> Result<(), Valid
     }
 }
 
-fn validate_extensions(values: &BTreeMap<String, JsonValue>, reserved: &[&str]) -> Result<(), ValidationError> {
+fn validate_extensions_with_budget(
+    values: &BTreeMap<String, JsonValue>,
+    reserved: &[&str],
+    budget: &mut ExtensionBudget,
+) -> Result<(), ValidationError> {
     if values.len() > MAX_DID_DOCUMENT_ENTRIES {
         return Err(ValidationError::from_issues(vec![ValidationIssue::new(
             "DID document contains too many extension entries",
@@ -185,7 +230,8 @@ fn validate_extensions(values: &BTreeMap<String, JsonValue>, reserved: &[&str]) 
             MAX_DID_DOCUMENT_TEXT_BYTES,
             "DID document extension key is invalid",
         )?;
-        validate_extension_value(value, 0)?;
+        budget.count_bytes(key)?;
+        validate_extension_value(value, 0, budget)?;
     }
     Ok(())
 }
@@ -703,13 +749,19 @@ impl PublicKeyJwk {
     /// issues from several values into one error.
     #[must_use]
     pub fn collect_issues(&self) -> Vec<ValidationIssue> {
+        self.collect_issues_with_budget(&mut ExtensionBudget::default())
+    }
+
+    fn collect_issues_with_budget(&self, extension_budget: &mut ExtensionBudget) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
         if self.extensions.contains_key("d") {
             issues.push(ValidationIssue::new(
                 "publicKeyJwk must not include private key material",
             ));
         }
-        if let Err(error) = validate_extensions(&self.extensions, &["kty", "crv", "x", "y"]) {
+        if let Err(error) =
+            validate_extensions_with_budget(&self.extensions, &["kty", "crv", "x", "y"], extension_budget)
+        {
             issues.extend(error.issues);
         }
         // OKP-curve restrictions.
@@ -936,8 +988,13 @@ impl VerificationMethod {
         if !is_did_string(self.controller.as_str()) {
             issues.push(ValidationIssue::new("Invalid DID format"));
         }
-        issues.extend(self.public_key_jwk.collect_issues());
-        if let Err(error) = validate_extensions(&self.extensions, &["id", "type", "controller", "publicKeyJwk"]) {
+        let mut extension_budget = ExtensionBudget::default();
+        issues.extend(self.public_key_jwk.collect_issues_with_budget(&mut extension_budget));
+        if let Err(error) = validate_extensions_with_budget(
+            &self.extensions,
+            &["id", "type", "controller", "publicKeyJwk"],
+            &mut extension_budget,
+        ) {
             issues.extend(error.issues);
         }
         if issues.is_empty() {
@@ -1486,7 +1543,15 @@ impl DidDocument {
     /// service endpoint array contains duplicate entries.
     pub fn validate(&self) -> Result<(), ValidationError> {
         let mut issues = Vec::new();
-        validate_extensions(
+        validate_document_context(&self.context, &mut issues);
+        validate_also_known_as(&self.also_known_as, &mut issues);
+        validate_controller(&self.controller, &mut issues);
+        let normalized = self.clone().with_normalized_service_endpoints();
+
+        let empty: Vec<VerificationMethod> = Vec::new();
+        let vms: &[VerificationMethod] = normalized.verification_method.as_deref().unwrap_or(&empty);
+        let mut extension_budget = ExtensionBudget::default();
+        validate_extensions_with_budget(
             &self.extra,
             &[
                 "@context",
@@ -1501,14 +1566,18 @@ impl DidDocument {
                 "capabilityDelegation",
                 "service",
             ],
+            &mut extension_budget,
         )?;
-        validate_document_context(&self.context, &mut issues);
-        validate_also_known_as(&self.also_known_as, &mut issues);
-        validate_controller(&self.controller, &mut issues);
-        let normalized = self.clone().with_normalized_service_endpoints();
-
-        let empty: Vec<VerificationMethod> = Vec::new();
-        let vms: &[VerificationMethod] = normalized.verification_method.as_deref().unwrap_or(&empty);
+        for vm in vms {
+            if let Err(error) = validate_extensions_with_budget(
+                vm.extensions(),
+                &["id", "type", "controller", "publicKeyJwk"],
+                &mut extension_budget,
+            ) {
+                issues.extend(error.issues);
+            }
+            issues.extend(vm.public_key_jwk().collect_issues_with_budget(&mut extension_budget));
+        }
         if vms.len() > MAX_DID_DOCUMENT_ENTRIES {
             issues.push(ValidationIssue::new(
                 "DID document contains too many verification methods",

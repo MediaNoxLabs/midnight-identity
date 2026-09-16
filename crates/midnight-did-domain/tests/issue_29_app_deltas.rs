@@ -505,3 +505,118 @@ fn service_endpoint_uri_array_entries_count_toward_shared_node_budget() {
         .is_err()
     );
 }
+
+fn extension_node_payload() -> serde_json::Value {
+    json!(
+        (0..MAX_DID_DOCUMENT_ENTRIES)
+            .map(|index| json!([format!("leaf-{index}")]))
+            .collect::<Vec<_>>()
+    )
+}
+
+fn extension_byte_payload() -> serde_json::Value {
+    let chunk = "x".repeat(midnight_did_domain::MAX_DID_DOCUMENT_TEXT_BYTES);
+    json!((0..33).map(|_| json!(chunk)).collect::<Vec<_>>())
+}
+
+#[test]
+fn document_extension_nodes_are_bounded_across_all_extension_containers() {
+    let payload = extension_node_payload();
+    assert!(
+        serde_json::from_value::<VerificationMethod>(json!({
+            "id": "did:example:alice#key-1",
+            "type": "JsonWebKey",
+            "controller": "did:example:alice",
+            "publicKeyJwk": {
+                "kty": "OKP",
+                "crv": "Ed25519",
+                "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "jwkExt": payload.clone()
+            },
+            "vmExt": payload.clone()
+        }))
+        .is_ok()
+    );
+
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": "https://www.w3.org/ns/did/v1",
+            "id": "did:example:alice",
+            "docExt": payload.clone(),
+            "verificationMethod": [{
+                "id": "did:example:alice#key-1",
+                "type": "JsonWebKey",
+                "controller": "did:example:alice",
+                "publicKeyJwk": {
+                    "kty": "OKP",
+                    "crv": "Ed25519",
+                    "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                    "jwkExt": payload.clone()
+                },
+                "vmExt": payload.clone()
+            }, {
+                "id": "did:example:alice#key-2",
+                "type": "JsonWebKey",
+                "controller": "did:example:alice",
+                "publicKeyJwk": {
+                    "kty": "OKP",
+                    "crv": "Ed25519",
+                    "x": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                },
+                "vmExt": payload
+            }]
+        }))
+        .is_err()
+    );
+}
+
+#[test]
+fn document_extension_bytes_are_bounded_across_all_extension_containers() {
+    let payload = extension_byte_payload();
+    assert!(
+        serde_json::from_value::<VerificationMethod>(json!({
+            "id": "did:example:alice#key-1",
+            "type": "JsonWebKey",
+            "controller": "did:example:alice",
+            "publicKeyJwk": {
+                "kty": "OKP",
+                "crv": "Ed25519",
+                "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "jwkExt": payload.clone()
+            },
+            "vmExt": payload.clone()
+        }))
+        .is_ok()
+    );
+
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": "https://www.w3.org/ns/did/v1",
+            "id": "did:example:alice",
+            "docExt": payload.clone(),
+            "verificationMethod": [{
+                "id": "did:example:alice#key-1",
+                "type": "JsonWebKey",
+                "controller": "did:example:alice",
+                "publicKeyJwk": {
+                    "kty": "OKP",
+                    "crv": "Ed25519",
+                    "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                    "jwkExt": payload.clone()
+                },
+                "vmExt": payload.clone()
+            }, {
+                "id": "did:example:alice#key-2",
+                "type": "JsonWebKey",
+                "controller": "did:example:alice",
+                "publicKeyJwk": {
+                    "kty": "OKP",
+                    "crv": "Ed25519",
+                    "x": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                },
+                "vmExt": payload
+            }]
+        }))
+        .is_err()
+    );
+}
