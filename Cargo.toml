@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-runtime" ]
+members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-proof", "crates/midnight-vc-runtime" ]
 
 [workspace.package]
 version      = "0.5.0"
@@ -45,8 +45,9 @@ midnight-did-method = { path = "crates/midnight-did-method", version = "=0.5.0" 
 # api crate — consumed by the reference CLI + (future) downstream tooling
 midnight-did-api = { path = "crates/midnight-did-api", version = "=0.5.0" }
 # runtime crate — codegen target (currently blocked on upstream halo2 skew).
-midnight-did-runtime = { path = "crates/midnight-did-runtime", version = "=0.5.0" }
-midnight-did-indexer = { path = "crates/midnight-did-indexer" }
+midnight-did-runtime        = { path = "crates/midnight-did-runtime", version = "=0.5.0" }
+midnight-did-indexer        = { path = "crates/midnight-did-indexer" }
+midnight-did-jubjub-schnorr = { path = "crates/midnight-did-jubjub-schnorr", version = "=0.5.0" }
 # umbrella crate — re-exports the full 4-crate stack for monolithic consumers.
 midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 # VC layer (issue #13). `vc-domain` is pure data and publishable on its own
@@ -54,6 +55,7 @@ midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 # `vc-runtime` is the codegen target and stays unpublished.
 midnight-vc-domain             = { path = "crates/midnight-vc-domain", version = "=0.5.0" }
 midnight-vc-families           = { path = "crates/midnight-vc-families" }
+midnight-vc-proof              = { path = "crates/midnight-vc-proof" }
 midnight-vc-runtime            = { path = "crates/midnight-vc-runtime" }
 midnight-passport-vault-source = { path = "crates/midnight-passport-vault-source", version = "=0.5.0" }
 

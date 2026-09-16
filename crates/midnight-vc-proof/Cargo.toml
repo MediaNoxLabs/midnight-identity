@@ -1,0 +1,26 @@
+# This file is part of MediaNoxLabs/midnight-identity.
+# Copyright (C) 2026 Midnight Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name                   = "midnight-vc-proof"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+description            = "Stable Midnight VC issuance-proof signing, detached proof parsing, and structured verification over generated Compact runtime semantics."
+publish                = false
+
+[dependencies]
+midnight-did-jubjub-schnorr = { workspace = true }
+midnight-transient-crypto   = { workspace = true }
+midnight-vc-families        = { workspace = true, features = [ "digital-passport" ] }
+midnight-vc-runtime         = { workspace = true }
+rand                        = "0.8"
+thiserror                   = "2"
+
+[dev-dependencies]
+base64 = "0.22"

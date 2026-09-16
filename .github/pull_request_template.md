@@ -19,6 +19,7 @@
 - [ ] The immutable target plan was computed from the recorded base and exact head.
 - [ ] Every selected local check and hosted `Required CI` target passes.
 - [ ] The exact-head review findings have visible disposition.
+- [ ] No review thread remains unresolved before readiness is claimed.
 - [ ] The factory run summary and hidden v1 metrics payload are posted or a transport gap is recorded.
 
 ## Non-goals

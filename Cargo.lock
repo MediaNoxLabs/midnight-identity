@@ -2699,6 +2699,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-vc-proof"
+version = "0.5.0"
+dependencies = [
+ "base64 0.22.1",
+ "midnight-did-jubjub-schnorr",
+ "midnight-transient-crypto",
+ "midnight-vc-families",
+ "midnight-vc-runtime",
+ "rand 0.8.6",
+ "thiserror",
+]
+
+[[package]]
 name = "midnight-vc-runtime"
 version = "0.5.0"
 dependencies = [
