@@ -38,6 +38,7 @@ export const ALL_PACKAGES = Object.freeze([
   "midnight-passport-vault-source",
   "midnight-vc-domain",
   "midnight-vc-families",
+  "midnight-vc-proof",
   "midnight-vc-runtime",
 ]);
 
@@ -66,11 +67,12 @@ const DEPENDENTS = Object.freeze({
   "midnight-did-cli": ["midnight-did-cli"],
   "midnight-did-resolver": ["midnight-did-resolver"],
   "midnight-did-uniffi": ["midnight-did-uniffi"],
-  "midnight-did-jubjub-schnorr": ["midnight-did-jubjub-schnorr"],
+  "midnight-did-jubjub-schnorr": ["midnight-did-jubjub-schnorr", "midnight-vc-proof"],
   "midnight-passport-vault-source": ["midnight-passport-vault-source"],
   "midnight-vc-domain": ["midnight-vc-domain"],
-  "midnight-vc-families": ["midnight-vc-families"],
-  "midnight-vc-runtime": ["midnight-vc-runtime"],
+  "midnight-vc-families": ["midnight-vc-families", "midnight-vc-proof"],
+  "midnight-vc-proof": ["midnight-vc-proof"],
+  "midnight-vc-runtime": ["midnight-vc-proof", "midnight-vc-runtime"],
 });
 
 const DOC_FILE = /(?:^|\/)(?:README|CONTRIBUTING|CHANGELOG|SECURITY|CODE_OF_CONDUCT)\.md$|\.md$/u;

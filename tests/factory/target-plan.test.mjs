@@ -59,6 +59,7 @@ test("Compact inputs select only their affected generation family", () => {
   assert.ok(did.targets.includes(Target.DID_CODEGEN));
   assert.ok(!did.targets.includes(Target.VC_CODEGEN));
   const vc = makeTargetPlan(["crates/midnight-vc-runtime/src/contract/credentials.rs"]);
+  assert.ok(vc.packages.includes("midnight-vc-proof"));
   assert.ok(vc.targets.includes(Target.VC_CODEGEN));
   assert.ok(!vc.targets.includes(Target.DID_CODEGEN));
 });
@@ -69,7 +70,7 @@ test("Digital Passport sources and bindings select the family codegen gate", () 
     "crates/midnight-vc-families/src/contract/digital_passport.rs",
   ]) {
     const plan = makeTargetPlan([path]);
-    assert.deepEqual(plan.packages, ["midnight-vc-families"]);
+    assert.deepEqual(plan.packages, ["midnight-vc-families", "midnight-vc-proof"]);
     assert.ok(plan.targets.includes(Target.VC_CODEGEN));
     assert.ok(!plan.targets.includes(Target.DID_CODEGEN));
   }
@@ -80,6 +81,26 @@ test("the Rust target compiles credential families with their opt-in features", 
     readFile(new URL("../../scripts/ci/rust-target.sh", import.meta.url), "utf8"));
   assert.match(script, /midnight-vc-families/u);
   assert.match(script, /--all-features/u);
+});
+
+test("midnight-vc-proof paths and dependencies select focused proof targets", () => {
+  const proof = makeTargetPlan(["crates/midnight-vc-proof/src/lib.rs"]);
+  assert.equal(proof.mode, "affected");
+  assert.deepEqual(proof.packages, ["midnight-vc-proof"]);
+  assert.deepEqual(proof.targets, [Target.POLICY, Target.RUST, Target.UNIT, Target.COVERAGE]);
+  assert.ok(!proof.targets.includes(Target.WASM));
+  assert.ok(!proof.targets.includes(Target.DID_CODEGEN));
+  assert.ok(!proof.targets.includes(Target.VC_CODEGEN));
+
+  for (const [path, dependent] of [
+    ["crates/midnight-vc-runtime/src/lib.rs", "midnight-vc-runtime"],
+    ["crates/midnight-vc-families/src/lib.rs", "midnight-vc-families"],
+    ["crates/midnight-did-jubjub-schnorr/src/lib.rs", "midnight-did-jubjub-schnorr"],
+  ]) {
+    const plan = makeTargetPlan([path]);
+    assert.ok(plan.packages.includes(dependent), path);
+    assert.ok(plan.packages.includes("midnight-vc-proof"), path);
+  }
 });
 
 test("build, unknown, and empty diff states fail closed", () => {

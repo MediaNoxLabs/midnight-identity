@@ -48,6 +48,13 @@ and stop without remote mutation. In production-ready mode, create or update a
 draft PR only when authorized, run one bounded correctness review, supervise
 required exact-head CI, perform one security review, classify failures, and
 permit no more than one repair retry.
+
+Review triage must follow `.pi/delivery-profiles.json`: filter status,
+summary, duplicate, and stale automated noise; classify each actionable finding
+as fixed in the same PR or linked to a newly created follow-up issue. Use
+follow-ups only for bounded nonblocking polish. Acceptance, correctness,
+security, provenance, required-test, and CI findings are same-PR fixes. Never
+claim readiness while any review thread remains unresolved.
 A new head invalidates prior review/CI evidence.
 
 Post one readable metric summary with one hidden canonical v1 payload. Hand

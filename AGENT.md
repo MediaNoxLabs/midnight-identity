@@ -105,6 +105,12 @@ Before pushing, verify the intended diff, clean status, commit convention,
 DCO trailer, good GPG signature, selected local gates, no personal config or
 credentials, and no unexpected generated artifacts.
 
+Review triage filters status/summary/duplicate/stale automated noise. Every
+actionable finding is fixed in the same PR or linked to a newly created
+follow-up issue; follow-ups are only for bounded nonblocking polish.
+Acceptance, correctness, security, provenance, required-test, and CI findings
+are fixed in the same PR. Never claim readiness with unresolved review threads.
+
 Audit worktrees before creating or closing one. Cleanup requires one exact
 path, expected head SHA, and merged-PR evidence. Unknown, dirty, locked,
 active, mismatched, or unmerged worktrees are preserved.

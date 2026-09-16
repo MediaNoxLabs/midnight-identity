@@ -33,7 +33,12 @@ commands remain authoritative outside Pi.
    observations, stops on changed consumer remote/head/status or missing source
    path/license provenance, creates/updates the draft PR when authorized,
    watches exact-head CI, classifies failures, and permits at most one bounded
-   retry for a repairable implementation/CI failure.
+   retry for a repairable implementation/CI failure. Review triage filters
+   status/summary/duplicate/stale automated noise; every actionable finding is
+   fixed in the same PR or linked to a newly created follow-up issue. Follow-up
+   is only for bounded nonblocking polish. Acceptance, correctness, security,
+   provenance, required-test, and CI findings are same-PR fixes, and readiness
+   is forbidden while any review thread is unresolved.
 7. The supervisor posts the run summary plus hidden metric JSON and hands
    durable-branch merge control to a human.
 8. Only after hosted merged-PR evidence exists, run an audited exact-path
