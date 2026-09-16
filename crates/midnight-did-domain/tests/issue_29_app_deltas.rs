@@ -157,3 +157,195 @@ fn did_resolution_error_http_status_classifier_matches_identus_mapping() {
     }
     assert_eq!(KnownDidResolutionErrorCode::UnsupportedPublicKeyType.http_status(), 501);
 }
+
+#[test]
+fn document_public_text_limits_are_exact_and_control_safe() {
+    let exact_did = format!(
+        "did:example:{}",
+        "a".repeat(MAX_DID_STRING_BYTES - "did:example:".len())
+    );
+    assert!(midnight_did_domain::parse_did(&exact_did).is_ok());
+    assert!(midnight_did_domain::parse_did(&format!("{exact_did}x")).is_err());
+
+    let exact_context = format!("x:{}", "a".repeat(midnight_did_domain::MAX_DID_DOCUMENT_TEXT_BYTES - 2));
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": exact_context,
+            "id": "did:example:alice"
+        }))
+        .is_ok()
+    );
+
+    for bad_context in [
+        "",
+        " https://www.w3.org/ns/did/v1",
+        "https://www.w3.org/ns/did/v1\n",
+        "not-a-uri",
+    ] {
+        assert!(
+            serde_json::from_value::<DidDocument>(json!({
+                "@context": bad_context,
+                "id": "did:example:alice"
+            }))
+            .is_err(),
+            "context={bad_context:?}"
+        );
+    }
+
+    for bad_alias in ["", " did:example:alias", "did:example:alias\n", "not-a-uri"] {
+        assert!(
+            serde_json::from_value::<DidDocument>(json!({
+                "@context": "https://www.w3.org/ns/did/v1",
+                "id": "did:example:alice",
+                "alsoKnownAs": [bad_alias]
+            }))
+            .is_err(),
+            "alias={bad_alias:?}"
+        );
+    }
+}
+
+#[test]
+fn document_list_cardinality_is_enforced_for_context_aliases_and_controller() {
+    let max_contexts = (0..MAX_DID_DOCUMENT_ENTRIES)
+        .map(|index| format!("https://example.com/context/{index}"))
+        .collect::<Vec<_>>();
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": max_contexts,
+            "id": "did:example:alice"
+        }))
+        .is_ok()
+    );
+
+    let too_many_contexts = (0..=MAX_DID_DOCUMENT_ENTRIES)
+        .map(|index| format!("https://example.com/context/{index}"))
+        .collect::<Vec<_>>();
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": too_many_contexts,
+            "id": "did:example:alice"
+        }))
+        .is_err()
+    );
+
+    let too_many_aliases = (0..=MAX_DID_DOCUMENT_ENTRIES)
+        .map(|index| format!("did:example:alias{index}"))
+        .collect::<Vec<_>>();
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": "https://www.w3.org/ns/did/v1",
+            "id": "did:example:alice",
+            "alsoKnownAs": too_many_aliases
+        }))
+        .is_err()
+    );
+
+    let too_many_controllers = (0..=MAX_DID_DOCUMENT_ENTRIES)
+        .map(|index| format!("did:example:controller{index}"))
+        .collect::<Vec<_>>();
+    assert!(
+        serde_json::from_value::<DidDocument>(json!({
+            "@context": "https://www.w3.org/ns/did/v1",
+            "id": "did:example:alice",
+            "controller": too_many_controllers
+        }))
+        .is_err()
+    );
+
+    for field in ["@context", "alsoKnownAs", "controller"] {
+        let mut doc = json!({ "@context": "https://www.w3.org/ns/did/v1", "id": "did:example:alice" });
+        doc[field] = json!([]);
+        assert!(serde_json::from_value::<DidDocument>(doc).is_err(), "field={field}");
+    }
+}
+
+#[test]
+fn service_endpoint_uri_boundaries_and_invalid_text_are_rejected() {
+    let exact_uri = format!("x:{}", "a".repeat(midnight_did_domain::MAX_DID_DOCUMENT_TEXT_BYTES - 2));
+    assert!(
+        Service::new(NewService {
+            id: "#svc".to_owned(),
+            type_: ServiceType::One("LinkedDomains".to_owned()),
+            service_endpoint: ServiceEndpoint::Uri(exact_uri),
+        })
+        .is_ok()
+    );
+
+    for bad in ["", " https://example.com", "https://example.com\n", "not-a-uri"] {
+        assert!(
+            Service::new(NewService {
+                id: "#svc".to_owned(),
+                type_: ServiceType::One("LinkedDomains".to_owned()),
+                service_endpoint: ServiceEndpoint::Uri(bad.to_owned()),
+            })
+            .is_err(),
+            "endpoint={bad:?}"
+        );
+    }
+
+    let overlong = format!("x:{}", "a".repeat(midnight_did_domain::MAX_DID_DOCUMENT_TEXT_BYTES - 1));
+    assert!(
+        Service::new(NewService {
+            id: "#svc".to_owned(),
+            type_: ServiceType::One("LinkedDomains".to_owned()),
+            service_endpoint: ServiceEndpoint::Uri(overlong),
+        })
+        .is_err()
+    );
+}
+
+#[test]
+fn service_endpoint_array_and_nested_json_are_bounded_and_control_safe() {
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": []
+        }))
+        .is_err()
+    );
+
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": ["https://example.com/one", "not-a-uri"]
+        }))
+        .is_err()
+    );
+
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": {
+                "uri": "https://example.com/endpoint",
+                "routingKeys": ["did:example:alice#key-1"],
+                "nested": { "label": "ok" }
+            }
+        }))
+        .is_ok()
+    );
+
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": { "label": "bad\nvalue" }
+        }))
+        .is_err()
+    );
+
+    let oversized = (0..=MAX_DID_DOCUMENT_ENTRIES)
+        .map(|index| (format!("k{index}"), json!(index)))
+        .collect::<serde_json::Map<_, _>>();
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": oversized
+        }))
+        .is_err()
+    );
+}

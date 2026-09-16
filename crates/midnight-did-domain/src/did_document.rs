@@ -99,6 +99,8 @@ pub const MAX_DID_STRING_BYTES: usize = 8 * 1024;
 pub const MAX_DID_DOCUMENT_ENTRIES: usize = 128;
 /// Maximum nested JSON depth accepted inside extension values.
 pub const MAX_DID_DOCUMENT_EXTENSION_DEPTH: usize = 32;
+/// Maximum JSON nodes accepted inside one service endpoint value.
+pub const MAX_SERVICE_ENDPOINT_NODES: usize = 1_024;
 
 fn validate_bounded_text(value: &str, maximum: usize, message: &'static str) -> Result<(), ValidationError> {
     if value.is_empty() || value.len() > maximum || value.trim() != value || value.chars().any(char::is_control) {
@@ -111,6 +113,25 @@ fn validate_bounded_text(value: &str, maximum: usize, message: &'static str) -> 
 fn collect_bounded_text_issue(value: &str, maximum: usize, message: &'static str, issues: &mut Vec<ValidationIssue>) {
     if value.is_empty() || value.len() > maximum || value.trim() != value || value.chars().any(char::is_control) {
         issues.push(ValidationIssue::new(message));
+    }
+}
+
+fn valid_uri_scheme(value: &str) -> bool {
+    let Some((scheme, _)) = value.split_once(':') else {
+        return false;
+    };
+    !scheme.is_empty()
+        && scheme.bytes().enumerate().all(|(index, byte)| {
+            byte.is_ascii_alphabetic() || (index > 0 && (byte.is_ascii_digit() || matches!(byte, b'+' | b'-' | b'.')))
+        })
+}
+
+fn validate_uri_text(value: &str, message: &'static str) -> Result<(), ValidationError> {
+    validate_bounded_text(value, MAX_DID_DOCUMENT_TEXT_BYTES, message)?;
+    if valid_uri_scheme(value) {
+        Ok(())
+    } else {
+        Err(ValidationError::from_issues(vec![ValidationIssue::new(message)]))
     }
 }
 
@@ -1017,6 +1038,98 @@ pub struct NewService {
     pub service_endpoint: ServiceEndpoint,
 }
 
+fn validate_service_endpoint_uri(value: &str) -> Result<(), ValidationError> {
+    validate_uri_text(value, "serviceEndpoint URI is invalid")
+}
+
+fn validate_endpoint_object_value(value: &JsonValue, depth: usize, nodes: &mut usize) -> Result<(), ValidationError> {
+    *nodes = nodes.saturating_add(1);
+    if *nodes > MAX_SERVICE_ENDPOINT_NODES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint contains too many JSON nodes",
+        )]));
+    }
+    if depth > MAX_DID_DOCUMENT_EXTENSION_DEPTH {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint JSON is too deeply nested",
+        )]));
+    }
+    match value {
+        JsonValue::String(value) => validate_bounded_text(
+            value,
+            MAX_DID_DOCUMENT_TEXT_BYTES,
+            "serviceEndpoint string value is invalid",
+        ),
+        JsonValue::Array(items) => {
+            if items.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint array contains too many entries",
+                )]));
+            }
+            for item in items {
+                validate_endpoint_object_value(item, depth + 1, nodes)?;
+            }
+            Ok(())
+        }
+        JsonValue::Object(map) => {
+            if map.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint object contains too many entries",
+                )]));
+            }
+            for (key, item) in map {
+                validate_bounded_text(
+                    key,
+                    MAX_DID_DOCUMENT_TEXT_BYTES,
+                    "serviceEndpoint object key is invalid",
+                )?;
+                validate_endpoint_object_value(item, depth + 1, nodes)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_service_endpoint(endpoint: &ServiceEndpoint) -> Result<(), ValidationError> {
+    match endpoint {
+        ServiceEndpoint::Uri(value) => validate_service_endpoint_uri(value),
+        ServiceEndpoint::Object(map) => {
+            if map.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint object contains too many entries",
+                )]));
+            }
+            let mut nodes = 1;
+            for (key, value) in map {
+                validate_bounded_text(
+                    key,
+                    MAX_DID_DOCUMENT_TEXT_BYTES,
+                    "serviceEndpoint object key is invalid",
+                )?;
+                validate_endpoint_object_value(value, 1, &mut nodes)?;
+            }
+            Ok(())
+        }
+        ServiceEndpoint::Array(items) => {
+            if items.is_empty() || items.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint array must be non-empty and bounded",
+                )]));
+            }
+            for item in items {
+                match item {
+                    ServiceEndpointArrayEntry::Uri(value) => validate_service_endpoint_uri(value)?,
+                    ServiceEndpointArrayEntry::Object(map) => {
+                        validate_service_endpoint(&ServiceEndpoint::Object(map.clone()))?;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
+}
+
 impl Service {
     /// Construct a `Service` from raw inputs, running the W3C
     /// structural validation (id is a DID URL or relative reference,
@@ -1100,6 +1213,9 @@ impl Service {
                 issues.push(ValidationIssue::new("service type must not be empty"))
             }
             _ => {}
+        }
+        if let Err(error) = validate_service_endpoint(&self.service_endpoint) {
+            issues.extend(error.issues);
         }
         if issues.is_empty() {
             Ok(())
@@ -1273,6 +1389,68 @@ impl TryFrom<DidDocumentWire> for DidDocument {
     }
 }
 
+fn validate_document_context(context: &DocumentContext, issues: &mut Vec<ValidationIssue>) {
+    match context {
+        DocumentContext::One(value) => {
+            if validate_uri_text(value, "@context value is invalid").is_err() {
+                issues.push(ValidationIssue::new("@context value is invalid"));
+            }
+        }
+        DocumentContext::Many(values) => {
+            if values.is_empty() || values.len() > MAX_DID_DOCUMENT_ENTRIES {
+                issues.push(ValidationIssue::new("@context must be a non-empty bounded list"));
+            }
+            let mut seen = HashSet::new();
+            for value in values {
+                if validate_uri_text(value, "@context value is invalid").is_err() {
+                    issues.push(ValidationIssue::new("@context value is invalid"));
+                }
+                if !seen.insert(value) {
+                    issues.push(ValidationIssue::new("@context values must be unique"));
+                }
+            }
+        }
+    }
+}
+
+fn validate_also_known_as(values: &Option<Vec<String>>, issues: &mut Vec<ValidationIssue>) {
+    let Some(values) = values else {
+        return;
+    };
+    if values.is_empty() || values.len() > MAX_DID_DOCUMENT_ENTRIES {
+        issues.push(ValidationIssue::new("alsoKnownAs must be a non-empty bounded list"));
+    }
+    let mut seen = HashSet::new();
+    for value in values {
+        if validate_uri_text(value, "alsoKnownAs value is invalid").is_err() {
+            issues.push(ValidationIssue::new("alsoKnownAs value is invalid"));
+        }
+        if !seen.insert(value) {
+            issues.push(ValidationIssue::new("alsoKnownAs values must be unique"));
+        }
+    }
+}
+
+fn validate_controller(controller: &Option<Controller>, issues: &mut Vec<ValidationIssue>) {
+    let Some(controller) = controller else {
+        return;
+    };
+    match controller {
+        Controller::One(_) => {}
+        Controller::Many(values) => {
+            if values.is_empty() || values.len() > MAX_DID_DOCUMENT_ENTRIES {
+                issues.push(ValidationIssue::new("controller must be a non-empty bounded list"));
+            }
+            let mut seen = HashSet::new();
+            for value in values {
+                if !seen.insert(value.as_str()) {
+                    issues.push(ValidationIssue::new("controller values must be unique"));
+                }
+            }
+        }
+    }
+}
+
 impl DidDocument {
     /// Run W3C DID Core cross-consistency validation. Returns a structured
     /// list of issues; the message text matches the TS port.
@@ -1301,6 +1479,9 @@ impl DidDocument {
                 "service",
             ],
         )?;
+        validate_document_context(&self.context, &mut issues);
+        validate_also_known_as(&self.also_known_as, &mut issues);
+        validate_controller(&self.controller, &mut issues);
         let normalized = self.clone().with_normalized_service_endpoints();
 
         let empty: Vec<VerificationMethod> = Vec::new();

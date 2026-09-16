@@ -59,8 +59,8 @@ pub use did_document::{
     CurveType, DidDocument, DidDocumentBuilder, DidDocumentMetadata, DidKeyId, DidResolutionErrorCode,
     DidResolutionResult, DidString, DidUrl, KeyType, KnownDidMediaType, KnownDidResolutionErrorCode,
     MAX_DID_DOCUMENT_ENTRIES, MAX_DID_DOCUMENT_EXTENSION_DEPTH, MAX_DID_DOCUMENT_TEXT_BYTES, MAX_DID_STRING_BYTES,
-    NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk, RelativeUrl, Service, ServiceEndpoint,
-    ServiceEndpointArrayEntry, ServiceType, ValidationError, ValidationIssue, VerificationMethod,
+    MAX_SERVICE_ENDPOINT_NODES, NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk, RelativeUrl, Service,
+    ServiceEndpoint, ServiceEndpointArrayEntry, ServiceType, ValidationError, ValidationIssue, VerificationMethod,
     VerificationMethodRelation, VerificationMethodType, create_did_document, parse_did, parse_did_document,
     parse_did_key_id, parse_did_url, parse_service, parse_verification_method,
 };

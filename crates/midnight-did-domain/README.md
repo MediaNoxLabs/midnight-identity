@@ -47,9 +47,14 @@ shape in [ADR 0003][adr3].
   permit invalid DID strings, dangling verification relationships, private JWK
   material, duplicate services, or malformed service shapes.
 - Shared hardening limits are intentionally transport-neutral and wasm-clean:
-  DID/DID URL strings are capped at 8 KiB; document lists and extension object
-  members are capped at 128 entries; extension JSON nesting is capped at 32;
-  public text values reject leading/trailing whitespace and control characters.
+  DID/DID URL strings are capped at 8 KiB; DID document public text values
+  (`@context`, `alsoKnownAs`, service ids/types/endpoints, and extension
+  string values/keys) are capped at 8 KiB and reject empty,
+  leading/trailing-whitespace, or control-character text. Document lists and
+  extension/service endpoint object members are capped at 128 entries;
+  extension and service endpoint JSON nesting is capped at 32; service endpoint
+  JSON is capped at 1,024 visited nodes. URI-valued document fields and
+  service endpoint URI entries require a syntactically valid URI scheme.
 - `DidResolutionErrorCode::http_status()` and
   `KnownDidResolutionErrorCode::http_status()` expose the numeric HTTP status
   classifier without depending on an HTTP framework: `invalidDid`,
