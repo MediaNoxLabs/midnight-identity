@@ -342,20 +342,62 @@ pub fn verify_digital_passport(credential_bytes: &[u8], detached_proof: &[u8]) -
         }
     };
     let generated_proof = passport_proof(&proof);
-    if passport::pure_circuits::assert_valid_issuance_context_proof(body_root, generated_proof.clone()).is_err() {
-        return report(
+    let signature_valid =
+        passport::pure_circuits::assert_valid_issuance_context_proof(body_root, generated_proof.clone()).is_ok();
+    let credential_valid =
+        passport::pure_circuits::assert_valid_digital_passport_credential(credential, generated_proof).is_ok();
+    match (credential_valid, signature_valid) {
+        (true, true) => valid_report(),
+        (true, false) => report(
             VerificationOutcome::Invalid,
             VerificationStageName::Signature,
             "invalid_issuance_signature",
-        );
-    }
-    match passport::pure_circuits::assert_valid_digital_passport_credential(credential, generated_proof) {
-        Ok(()) => valid_report(),
-        Err(_) => report(
-            VerificationOutcome::Invalid,
-            VerificationStageName::Structure,
-            "credential_semantics_invalid",
         ),
+        (false, true) => digital_passport_invalid_report(
+            VerificationStageStatus::Failed,
+            Some("credential_semantics_invalid"),
+            VerificationStageStatus::Passed,
+            None,
+        ),
+        (false, false) => digital_passport_invalid_report(
+            VerificationStageStatus::NotChecked,
+            None,
+            VerificationStageStatus::Failed,
+            Some("invalid_issuance_signature"),
+        ),
+    }
+}
+
+fn digital_passport_invalid_report(
+    structure_status: VerificationStageStatus,
+    structure_reason: Option<&'static str>,
+    signature_status: VerificationStageStatus,
+    signature_reason: Option<&'static str>,
+) -> VerificationReport {
+    VerificationReport {
+        outcome: VerificationOutcome::Invalid,
+        stages: vec![
+            VerificationStage {
+                name: VerificationStageName::Parse,
+                status: VerificationStageStatus::Passed,
+                reason: None,
+            },
+            VerificationStage {
+                name: VerificationStageName::Structure,
+                status: structure_status,
+                reason: structure_reason,
+            },
+            VerificationStage {
+                name: VerificationStageName::Challenge,
+                status: VerificationStageStatus::Passed,
+                reason: None,
+            },
+            VerificationStage {
+                name: VerificationStageName::Signature,
+                status: signature_status,
+                reason: signature_reason,
+            },
+        ],
     }
 }
 

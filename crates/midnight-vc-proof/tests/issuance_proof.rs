@@ -159,6 +159,21 @@ fn digital_passport_rejects_attacker_signed_proof_with_mismatched_issuer() {
 }
 
 #[test]
+fn digital_passport_does_not_pass_structure_when_semantics_and_signature_are_invalid() {
+    let mut chunks = parse_mcv1(&fixture(OXID_STANDALONE_BODY_B64));
+    chunks[0] = vec![2];
+    let invalid_body = encode_mcv1(&chunks);
+    let report = verify_digital_passport(&invalid_body, &fixture(OXID_STANDALONE_PROOF_B64));
+
+    assert_eq!(report.outcome, VerificationOutcome::Invalid);
+    assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
+    assert_ne!(report.stages[1].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[2].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[3].status, VerificationStageStatus::Failed);
+    assert_eq!(report.stages[3].reason, Some("invalid_issuance_signature"));
+}
+
+#[test]
 fn digital_passport_rejects_correctly_signed_mismatched_claim_root() {
     let attacker_vmr = verification_method_ref([0x44; 32], b"#attacker-key").expect("vmr");
     let body = credential_with_attacker_issuer_and_chunk(attacker_vmr, 17, vec![0x99; 32]);
