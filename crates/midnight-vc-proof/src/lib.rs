@@ -341,12 +341,20 @@ pub fn verify_digital_passport(credential_bytes: &[u8], detached_proof: &[u8]) -
             );
         }
     };
-    match passport::pure_circuits::assert_valid_issuance_context_proof(body_root, passport_proof(&proof)) {
-        Ok(()) => valid_report(),
-        Err(_) => report(
+    let generated_proof = passport_proof(&proof);
+    if passport::pure_circuits::assert_valid_issuance_context_proof(body_root, generated_proof.clone()).is_err() {
+        return report(
             VerificationOutcome::Invalid,
             VerificationStageName::Signature,
             "invalid_issuance_signature",
+        );
+    }
+    match passport::pure_circuits::assert_valid_digital_passport_credential(credential, generated_proof) {
+        Ok(()) => valid_report(),
+        Err(_) => report(
+            VerificationOutcome::Invalid,
+            VerificationStageName::Structure,
+            "credential_semantics_invalid",
         ),
     }
 }

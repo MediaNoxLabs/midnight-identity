@@ -159,6 +159,43 @@ fn digital_passport_rejects_attacker_signed_proof_with_mismatched_issuer() {
 }
 
 #[test]
+fn digital_passport_rejects_correctly_signed_mismatched_claim_root() {
+    let attacker_vmr = verification_method_ref([0x44; 32], b"#attacker-key").expect("vmr");
+    let body = credential_with_attacker_issuer_and_chunk(attacker_vmr, 17, vec![0x99; 32]);
+    let proof = proof_for_credential(&body, attacker_vmr);
+
+    assert_eq!(
+        verify_body_root(
+            digital_passport_body_root(&body).expect("body root"),
+            &encode_detached_proof(&proof).expect("proof")
+        )
+        .outcome,
+        VerificationOutcome::Valid,
+        "the proof is correctly signed over the malformed credential body"
+    );
+    let report = verify_digital_passport(&body, &encode_detached_proof(&proof).expect("proof"));
+    assert_eq!(report.outcome, VerificationOutcome::Invalid);
+    assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[1].name, VerificationStageName::Structure);
+    assert_eq!(report.stages[1].status, VerificationStageStatus::Failed);
+    assert_eq!(report.stages[1].reason, Some("credential_semantics_invalid"));
+}
+
+#[test]
+fn digital_passport_rejects_correctly_signed_invalid_credential_version() {
+    let attacker_vmr = verification_method_ref([0x45; 32], b"#attacker-key").expect("vmr");
+    let body = credential_with_attacker_issuer_and_chunk(attacker_vmr, 0, vec![2]);
+    let proof = proof_for_credential(&body, attacker_vmr);
+
+    let report = verify_digital_passport(&body, &encode_detached_proof(&proof).expect("proof"));
+    assert_eq!(report.outcome, VerificationOutcome::Invalid);
+    assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[1].name, VerificationStageName::Structure);
+    assert_eq!(report.stages[1].status, VerificationStageStatus::Failed);
+    assert_eq!(report.stages[1].reason, Some("credential_semantics_invalid"));
+}
+
+#[test]
 fn lace_portal_fixed_challenge_vector_matches_generated_runtime() {
     let mut method_id = [0u8; 32];
     method_id[..b"#key-assert".len()].copy_from_slice(b"#key-assert");
@@ -256,6 +293,51 @@ impl RngCore for ScriptedCryptoRng {
 }
 
 impl CryptoRng for ScriptedCryptoRng {}
+
+fn credential_with_attacker_issuer_and_chunk(vmr: VerificationMethodRef, index: usize, value: Vec<u8>) -> Vec<u8> {
+    let mut chunks = parse_mcv1(&fixture(OXID_STANDALONE_BODY_B64));
+    chunks[5] = canonical_chunk(&vmr.did_contract_address);
+    chunks[6] = canonical_chunk(&vmr.method_id);
+    chunks[index] = value;
+    encode_mcv1(&chunks)
+}
+
+fn proof_for_credential(body: &[u8], signer: VerificationMethodRef) -> IssuanceProof {
+    let mut nonce = [0u8; 64];
+    nonce[0] = 0x61;
+    let mut rng = ScriptedCryptoRng::new(vec![nonce]);
+    let material = IssuerKeyMaterial::from_secret_scalar(EmbeddedFr::from(44_444u64));
+    sign_with_rng(
+        &mut rng,
+        &material,
+        signer,
+        digital_passport_body_root(body).expect("body root"),
+        1_700_000_000,
+        [0x55; 32],
+    )
+    .expect("proof")
+}
+
+fn parse_mcv1(bytes: &[u8]) -> Vec<Vec<u8>> {
+    assert_eq!(&bytes[..4], b"MCV1");
+    let count = u32::from_be_bytes(bytes[4..8].try_into().expect("count")) as usize;
+    let mut offset = 8usize;
+    let mut chunks = Vec::with_capacity(count);
+    for _ in 0..count {
+        let length_end = offset + 4;
+        let length = u32::from_be_bytes(bytes[offset..length_end].try_into().expect("length")) as usize;
+        offset = length_end;
+        chunks.push(bytes[offset..offset + length].to_vec());
+        offset += length;
+    }
+    assert_eq!(offset, bytes.len());
+    chunks
+}
+
+fn canonical_chunk(bytes: &[u8]) -> Vec<u8> {
+    let length = bytes.iter().rposition(|byte| *byte != 0).map_or(0, |index| index + 1);
+    bytes[..length].to_vec()
+}
 
 fn encode_mcv1(chunks: &[Vec<u8>]) -> Vec<u8> {
     let mut output = Vec::new();
