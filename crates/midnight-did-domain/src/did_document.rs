@@ -1675,12 +1675,6 @@ pub enum KnownDidResolutionErrorCode {
     InvalidDid,
     /// Resolver hit an unexpected internal error.
     InternalError,
-    /// The supplied DID URL was syntactically invalid.
-    InvalidDidUrl,
-    /// One or more resolution options were invalid.
-    InvalidOptions,
-    /// DID document is deactivated.
-    Deactivated,
     /// The supplied public key was invalid.
     InvalidPublicKey,
     /// The supplied public key length was invalid.
@@ -1728,13 +1722,16 @@ impl<'de> Deserialize<'de> for DidResolutionErrorCode {
 }
 
 impl KnownDidResolutionErrorCode {
-    /// Transport-neutral HTTP numeric status for this DID-resolution error keyword.
+    /// Transport-neutral HTTP numeric status for existing known enum variants.
+    ///
+    /// Additional standardized keywords that are not variants of this exhaustive
+    /// enum (for example `invalidDidUrl`, `invalidOptions`, and `deactivated`)
+    /// are classified by [`DidResolutionErrorCode::http_status`].
     #[must_use]
     pub const fn http_status(self) -> u16 {
         match self {
-            Self::InvalidDid | Self::InvalidDidUrl | Self::InvalidOptions => 400,
+            Self::InvalidDid => 400,
             Self::NotFound => 404,
-            Self::Deactivated => 410,
             Self::RepresentationNotSupported => 406,
             Self::MethodNotSupported | Self::UnsupportedPublicKeyType => 501,
             _ => 500,

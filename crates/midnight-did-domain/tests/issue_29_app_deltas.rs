@@ -155,7 +155,23 @@ fn did_resolution_error_http_status_classifier_matches_identus_mapping() {
     for (code, status) in cases {
         assert_eq!(DidResolutionErrorCode(code.to_owned()).http_status(), status, "{code}");
     }
-    assert_eq!(KnownDidResolutionErrorCode::UnsupportedPublicKeyType.http_status(), 501);
+
+    for (known, status) in [
+        (KnownDidResolutionErrorCode::InvalidDid, 400),
+        (KnownDidResolutionErrorCode::NotFound, 404),
+        (KnownDidResolutionErrorCode::RepresentationNotSupported, 406),
+        (KnownDidResolutionErrorCode::MethodNotSupported, 501),
+        (KnownDidResolutionErrorCode::UnsupportedPublicKeyType, 501),
+        (KnownDidResolutionErrorCode::InternalError, 500),
+    ] {
+        assert_eq!(known.http_status(), status, "{known:?}");
+    }
+
+    // These standardized keywords are intentionally generic-only so the
+    // exhaustive known enum remains source-compatible for downstream matches.
+    for generic_only in ["invalidDidUrl", "invalidOptions", "deactivated"] {
+        assert!(serde_json::from_value::<KnownDidResolutionErrorCode>(json!(generic_only)).is_err());
+    }
 }
 
 #[test]

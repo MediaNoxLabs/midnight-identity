@@ -55,19 +55,21 @@ shape in [ADR 0003][adr3].
   extension and service endpoint JSON nesting is capped at 32; service endpoint
   JSON is capped at 1,024 visited nodes. URI-valued document fields and
   service endpoint URI entries require a syntactically valid URI scheme.
-- `DidResolutionErrorCode::http_status()` and
-  `KnownDidResolutionErrorCode::http_status()` expose the numeric HTTP status
-  classifier without depending on an HTTP framework: `invalidDid`,
+- `DidResolutionErrorCode::http_status()` exposes the complete numeric HTTP
+  status classifier without depending on an HTTP framework: `invalidDid`,
   `invalidDidUrl`, and `invalidOptions` map to 400; `notFound` to 404;
   `deactivated` to 410; `representationNotSupported` to 406;
   `methodNotSupported` and `unsupportedPublicKeyType` to 501; all other known
   or extension codes map to 500. The wire form remains the existing camelCase
-  keyword dialect.
+  keyword dialect. The exhaustive `KnownDidResolutionErrorCode` enum has no new
+  variants for `invalidDidUrl`, `invalidOptions`, or `deactivated`; use the
+  generic string wrapper for those additional standardized keywords.
 
 ## Migration and compatibility
 
-This release is additive for ordinary callers. Existing constructors continue to
-build values without extensions. Call `VerificationMethod::new_with_extensions`
+This release is additive for ordinary callers and does not add variants to the
+exhaustive known resolution error enum. Existing constructors continue to build
+values without extensions. Call `VerificationMethod::new_with_extensions`
 when native construction must retain verification-method extension members;
 serde and `parse_verification_method` retain them automatically. Direct serde
 loading of DID document types is now a validated entry point, so previously
