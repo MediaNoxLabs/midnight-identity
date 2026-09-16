@@ -17,9 +17,10 @@ use base64::Engine as _;
 use base64::engine::general_purpose;
 use midnight_transient_crypto::curve::{EmbeddedFr, EmbeddedGroupAffine};
 use midnight_vc_proof::{
-    IssuanceProof, IssuerKeyMaterial, VerificationMethodRef, VerificationOutcome, VerificationStageName,
-    VerificationStageStatus, decode_detached_proof, digital_passport_body_root, encode_detached_proof,
-    issuance_challenge, sign_with_rng, verification_method_ref, verify_body_root, verify_digital_passport,
+    IssuanceProof, IssuerKeyMaterial, ResolvedIssuer, VerificationMethodRef, VerificationOutcome,
+    VerificationStageName, VerificationStageStatus, decode_detached_proof, digital_passport_body_root,
+    encode_detached_proof, issuance_challenge, sign_with_rng, verification_method_ref, verify_body_root,
+    verify_digital_passport,
 };
 use rand::{CryptoRng, RngCore};
 
@@ -52,13 +53,26 @@ fn fixture(value: &str) -> Vec<u8> {
         .expect("base64 fixture")
 }
 
+fn oxid_resolved_issuer() -> ResolvedIssuer {
+    let proof = decode_detached_proof(&fixture(OXID_STANDALONE_PROOF_B64)).expect("oxid proof");
+    ResolvedIssuer::new(proof.signer, proof.public_key)
+}
+
+fn issuer_for_attacker_vmr(vmr: VerificationMethodRef) -> ResolvedIssuer {
+    ResolvedIssuer::new(vmr, attacker_material().public_key())
+}
+
+fn attacker_material() -> IssuerKeyMaterial {
+    IssuerKeyMaterial::from_secret_scalar(EmbeddedFr::from(44_444u64))
+}
+
 #[test]
 fn oxid_fixture_body_root_and_issuance_proof_verify() {
     let body = fixture(OXID_STANDALONE_BODY_B64);
     let proof = fixture(OXID_STANDALONE_PROOF_B64);
 
     assert_eq!(digital_passport_body_root(&body).expect("body root"), OXID_BODY_ROOT);
-    let report = verify_digital_passport(&body, &proof);
+    let report = verify_digital_passport(&body, &proof, &oxid_resolved_issuer());
     assert_eq!(report.outcome, VerificationOutcome::Valid);
     assert!(
         report
@@ -103,13 +117,17 @@ fn verification_report_distinguishes_parse_and_signature_failures() {
 
 #[test]
 fn digital_passport_reports_parse_before_malformed_credential_structure() {
-    let malformed = verify_digital_passport(b"bad-credential", b"bad-proof");
+    let malformed = verify_digital_passport(b"bad-credential", b"bad-proof", &oxid_resolved_issuer());
     assert_eq!(malformed.outcome, VerificationOutcome::Invalid);
     assert_eq!(malformed.stages[0].name, VerificationStageName::Parse);
     assert_eq!(malformed.stages[0].status, VerificationStageStatus::Failed);
     assert_eq!(malformed.stages[1].status, VerificationStageStatus::NotChecked);
 
-    let structurally_bad_credential = verify_digital_passport(b"bad-credential", &fixture(OXID_STANDALONE_PROOF_B64));
+    let structurally_bad_credential = verify_digital_passport(
+        b"bad-credential",
+        &fixture(OXID_STANDALONE_PROOF_B64),
+        &oxid_resolved_issuer(),
+    );
     assert_eq!(structurally_bad_credential.outcome, VerificationOutcome::Invalid);
     assert_eq!(
         structurally_bad_credential.stages[0].status,
@@ -149,7 +167,11 @@ fn digital_passport_rejects_attacker_signed_proof_with_mismatched_issuer() {
         "generic body-root verification proves why the digital-passport wrapper must bind issuer VMR"
     );
 
-    let report = verify_digital_passport(&body, &encode_detached_proof(&attacker_proof).expect("encode"));
+    let report = verify_digital_passport(
+        &body,
+        &encode_detached_proof(&attacker_proof).expect("encode"),
+        &oxid_resolved_issuer(),
+    );
     assert_eq!(report.outcome, VerificationOutcome::Invalid);
     assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
     assert_eq!(report.stages[1].name, VerificationStageName::Structure);
@@ -159,11 +181,53 @@ fn digital_passport_rejects_attacker_signed_proof_with_mismatched_issuer() {
 }
 
 #[test]
+fn digital_passport_rejects_trusted_issuer_reference_signed_by_attacker_key() {
+    let body = fixture(OXID_STANDALONE_BODY_B64);
+    let body_root = digital_passport_body_root(&body).expect("body root");
+    let trusted_issuer = oxid_resolved_issuer();
+    let mut nonce = [0u8; 64];
+    nonce[0] = 0x44;
+    let mut rng = ScriptedCryptoRng::new(vec![nonce]);
+    let attacker_proof = sign_with_rng(
+        &mut rng,
+        &attacker_material(),
+        trusted_issuer.verification_method,
+        body_root,
+        1_700_000_000,
+        [0x55; 32],
+    )
+    .expect("attacker proof over trusted issuer method");
+    assert_ne!(attacker_proof.public_key, trusted_issuer.public_key);
+    assert_eq!(attacker_proof.signer, trusted_issuer.verification_method);
+    assert_eq!(
+        verify_body_root(body_root, &encode_detached_proof(&attacker_proof).expect("encode")).outcome,
+        VerificationOutcome::Valid,
+        "generic body-root verification is self-contained and does not authenticate the signer reference"
+    );
+
+    let report = verify_digital_passport(
+        &body,
+        &encode_detached_proof(&attacker_proof).expect("encode"),
+        &trusted_issuer,
+    );
+    assert_eq!(report.outcome, VerificationOutcome::Invalid);
+    assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[1].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[2].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[3].status, VerificationStageStatus::Failed);
+    assert_eq!(report.stages[3].reason, Some("issuer_public_key_mismatch"));
+}
+
+#[test]
 fn digital_passport_does_not_pass_structure_when_semantics_and_signature_are_invalid() {
     let mut chunks = parse_mcv1(&fixture(OXID_STANDALONE_BODY_B64));
     chunks[0] = vec![2];
     let invalid_body = encode_mcv1(&chunks);
-    let report = verify_digital_passport(&invalid_body, &fixture(OXID_STANDALONE_PROOF_B64));
+    let report = verify_digital_passport(
+        &invalid_body,
+        &fixture(OXID_STANDALONE_PROOF_B64),
+        &oxid_resolved_issuer(),
+    );
 
     assert_eq!(report.outcome, VerificationOutcome::Invalid);
     assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
@@ -188,7 +252,11 @@ fn digital_passport_rejects_correctly_signed_mismatched_claim_root() {
         VerificationOutcome::Valid,
         "the proof is correctly signed over the malformed credential body"
     );
-    let report = verify_digital_passport(&body, &encode_detached_proof(&proof).expect("proof"));
+    let report = verify_digital_passport(
+        &body,
+        &encode_detached_proof(&proof).expect("proof"),
+        &issuer_for_attacker_vmr(attacker_vmr),
+    );
     assert_eq!(report.outcome, VerificationOutcome::Invalid);
     assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
     assert_eq!(report.stages[1].name, VerificationStageName::Structure);
@@ -202,7 +270,11 @@ fn digital_passport_rejects_correctly_signed_invalid_credential_version() {
     let body = credential_with_attacker_issuer_and_chunk(attacker_vmr, 0, vec![2]);
     let proof = proof_for_credential(&body, attacker_vmr);
 
-    let report = verify_digital_passport(&body, &encode_detached_proof(&proof).expect("proof"));
+    let report = verify_digital_passport(
+        &body,
+        &encode_detached_proof(&proof).expect("proof"),
+        &issuer_for_attacker_vmr(attacker_vmr),
+    );
     assert_eq!(report.outcome, VerificationOutcome::Invalid);
     assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
     assert_eq!(report.stages[1].name, VerificationStageName::Structure);
@@ -321,10 +393,9 @@ fn proof_for_credential(body: &[u8], signer: VerificationMethodRef) -> IssuanceP
     let mut nonce = [0u8; 64];
     nonce[0] = 0x61;
     let mut rng = ScriptedCryptoRng::new(vec![nonce]);
-    let material = IssuerKeyMaterial::from_secret_scalar(EmbeddedFr::from(44_444u64));
     sign_with_rng(
         &mut rng,
-        &material,
+        &attacker_material(),
         signer,
         digital_passport_body_root(body).expect("body root"),
         1_700_000_000,

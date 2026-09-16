@@ -76,6 +76,31 @@ pub struct VerificationMethodRef {
     pub method_id: [u8; 32],
 }
 
+/// Caller-resolved issuer verification method expected for an authenticated credential.
+///
+/// This crate does not resolve DID documents or apply trust policy. Callers must
+/// resolve the issuer verification method through their own DID/trust boundary
+/// and pass both the expected method reference and the Jubjub public key that
+/// belongs to that method.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct ResolvedIssuer {
+    /// Expected issuer verification method reference.
+    pub verification_method: VerificationMethodRef,
+    /// Expected issuer public key material for the verification method.
+    pub public_key: EmbeddedGroupAffine,
+}
+
+impl ResolvedIssuer {
+    /// Construct a caller-resolved issuer verification method.
+    #[must_use]
+    pub fn new(verification_method: VerificationMethodRef, public_key: EmbeddedGroupAffine) -> Self {
+        Self {
+            verification_method,
+            public_key,
+        }
+    }
+}
+
 /// Issuance proof payload carried as a detached Compact value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IssuanceProof {
@@ -258,6 +283,13 @@ pub fn decode_detached_proof(bytes: &[u8]) -> Result<IssuanceProof, ProofError> 
 }
 
 /// Verify a detached proof against a precomputed credential body root.
+///
+/// This only verifies the self-contained cryptographic proof: the body root,
+/// challenge metadata, signer reference, embedded public key, and signature
+/// equation are internally consistent. It does **not** authenticate that the
+/// signer reference resolves to the embedded public key or to any trusted issuer
+/// key material. Use [`verify_digital_passport`] with a caller-resolved
+/// [`ResolvedIssuer`] when accepting a credential from a trusted issuer.
 pub fn verify_body_root(body_root: [u8; 32], detached_proof: &[u8]) -> VerificationReport {
     let proof = match decode_detached_proof(detached_proof) {
         Ok(proof) => proof,
@@ -300,8 +332,17 @@ pub fn digital_passport_body_root(credential_bytes: &[u8]) -> Result<[u8; 32], P
         .map_err(|_| ProofError::ChallengeUnavailable)
 }
 
-/// Verify a digital-passport credential/proof pair with generated body-root and challenge semantics.
-pub fn verify_digital_passport(credential_bytes: &[u8], detached_proof: &[u8]) -> VerificationReport {
+/// Verify a digital-passport credential/proof pair against a caller-resolved issuer.
+///
+/// Callers must resolve the expected issuer verification method and public key
+/// before calling this function. The verifier checks that the credential issuer
+/// method, proof signer method, and proof public key all match the supplied
+/// [`ResolvedIssuer`] before accepting the generated full credential validation.
+pub fn verify_digital_passport(
+    credential_bytes: &[u8],
+    detached_proof: &[u8],
+    expected_issuer: &ResolvedIssuer,
+) -> VerificationReport {
     let proof = match decode_detached_proof(detached_proof) {
         Ok(proof) => proof,
         Err(_) => {
@@ -322,8 +363,10 @@ pub fn verify_digital_passport(credential_bytes: &[u8], detached_proof: &[u8]) -
             );
         }
     };
-    if credential.issuerVerificationMethodRef.didContractAddress.bytes != proof.signer.did_contract_address
-        || credential.issuerVerificationMethodRef.methodId != proof.signer.method_id
+    if credential.issuerVerificationMethodRef.didContractAddress.bytes
+        != expected_issuer.verification_method.did_contract_address
+        || credential.issuerVerificationMethodRef.methodId != expected_issuer.verification_method.method_id
+        || proof.signer != expected_issuer.verification_method
     {
         return report(
             VerificationOutcome::Invalid,
@@ -342,22 +385,34 @@ pub fn verify_digital_passport(credential_bytes: &[u8], detached_proof: &[u8]) -
         }
     };
     let generated_proof = passport_proof(&proof);
-    let signature_valid =
+    let self_signature_valid =
         passport::pure_circuits::assert_valid_issuance_context_proof(body_root, generated_proof.clone()).is_ok();
+    let issuer_key_matches = proof.public_key == expected_issuer.public_key;
+    let authenticated_signature_valid = self_signature_valid && issuer_key_matches;
     let credential_valid =
         passport::pure_circuits::assert_valid_digital_passport_credential(credential, generated_proof).is_ok();
-    match (credential_valid, signature_valid) {
+    match (credential_valid, authenticated_signature_valid) {
         (true, true) => valid_report(),
         (true, false) => report(
             VerificationOutcome::Invalid,
             VerificationStageName::Signature,
-            "invalid_issuance_signature",
+            if issuer_key_matches {
+                "invalid_issuance_signature"
+            } else {
+                "issuer_public_key_mismatch"
+            },
         ),
         (false, true) => digital_passport_invalid_report(
             VerificationStageStatus::Failed,
             Some("credential_semantics_invalid"),
             VerificationStageStatus::Passed,
             None,
+        ),
+        (false, false) if self_signature_valid => digital_passport_invalid_report(
+            VerificationStageStatus::Failed,
+            Some("credential_semantics_invalid"),
+            VerificationStageStatus::Failed,
+            Some("issuer_public_key_mismatch"),
         ),
         (false, false) => digital_passport_invalid_report(
             VerificationStageStatus::NotChecked,

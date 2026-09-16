@@ -25,3 +25,14 @@ OpenID transport, and generic VC/VP orchestration. That keeps the future
 chain-neutral SDK seam conceptual and adapter-owned while Midnight generated
 codecs, body roots, Jubjub equations, and Compact challenge construction remain
 inside this repository.
+
+`verify_body_root` verifies only the self-contained cryptographic proof: the
+body root, signer method reference, embedded public key, challenge, and Schnorr
+equation are internally consistent. It does **not** prove that the signer method
+reference resolves to the embedded public key or to any issuer trusted by the
+caller. Digital-passport acceptance therefore uses `verify_digital_passport`
+with a caller-supplied resolved issuer containing both the expected verification
+method reference and its resolved Jubjub public key. DID resolution and trust
+policy remain caller-owned; this crate only checks that the credential issuer,
+proof signer, and proof key match the caller-resolved issuer before delegating
+to the generated full credential validator.
