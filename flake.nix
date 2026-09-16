@@ -15,12 +15,13 @@
     # at the `dioxus-vc-demo` prototype branch (591a3170); the maintained line
     # is what the branch scheme says a consumer should pin, and the swap was
     # proven first: check, test (48 suites) and the wasm build all green.
-    # rev 16b451e7 is the head of `ledger-8-patched` as of 2026-09-15.
+    # rev b85f5d8e is the head of `ledger-8-patched` as of 2026-09-16 (CompanionCache,
+    # upstream PR #758 merged in).
     midnight-ledger = {
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "midnight-ledger";
-      rev   = "16b451e7da024d4fae3c668e13f1d7041c30cd5f";
+      rev   = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65";
       flake = false;
     };
     # midnight-zk fork providing the patched `midnight-proofs` crate that
@@ -34,12 +35,13 @@
     # same rev or the flake-materialised source and the cargo-built crate
     # diverge. Until 2026-09-15 this was the pre-scheme `feat/v0.7-h-poly-
     # streaming` branch at cf60e3cc.
-    # rev 083c8282 is the head of `proofs-0.7-patched` as of 2026-09-15.
+    # rev 532629b0 is the head of `proofs-0.7-patched` as of 2026-09-16 (aggregator
+    # changelog entry only since 083c8282).
     midnight-zk = {
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "midnight-zk";
-      rev   = "083c82824dc5979fd7d509229e6f6b362d5b1ebf";
+      rev   = "532629b044a88473a7175f4a96c2511c91156136";
       flake = false;
     };
     compact = {

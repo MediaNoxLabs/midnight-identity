@@ -81,7 +81,7 @@ midnight-passport-vault-source = { path = "crates/midnight-passport-vault-source
 # Pinning by rev keeps reproducibility independent of branch movement.
 # See `doc/adr/0006-runtime-crate-halo2-block.md` for the full story.
 [patch.crates-io]
-midnight-proofs = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "083c82824dc5979fd7d509229e6f6b362d5b1ebf" }
+midnight-proofs = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
 
 [profile.dev]
 debug = "limited"
