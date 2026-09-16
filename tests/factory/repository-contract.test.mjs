@@ -33,6 +33,14 @@ test("Pi settings and delivery profiles enforce bounded exact-pinned operation",
   assert.equal(profiles.profiles.prototype.targets.hostedCi, false);
   assert.equal(profiles.profiles["production-ready"].qualityBudget.targetPercent, 70);
   assert.equal(profiles.profiles["production-ready"].qualityBudget.mandatoryInvariantsPercent, 100);
+  assert.equal(profiles.reviewTriage.machineReadable, true);
+  assert.deepEqual(profiles.reviewTriage.ignoreKinds, ["status-summary", "duplicate", "stale-automated-noise"]);
+  assert.deepEqual(profiles.reviewTriage.actionableDisposition, ["same-pr-fix", "follow-up-issue"]);
+  assert.deepEqual(profiles.reviewTriage.samePrRequiredFor, [
+    "acceptance", "correctness", "security", "provenance", "required-test", "ci",
+  ]);
+  assert.equal(profiles.reviewTriage.followUpAllowedFor, "bounded-nonblocking-polish-only");
+  assert.equal(profiles.reviewTriage.readinessBlockedByUnresolvedThreads, true);
   assert.equal(subagents.maxSubagentDepth, 1);
   assert.equal(subagents.maxSubagentSpawnsPerSession, 1);
   assert.equal(subagents.maxSubagentSpawnsPerRun, 1);
@@ -94,6 +102,9 @@ test("supervisor owns delegation and the worker cannot create nested agents", as
   ]);
   assert.match(supervisor, /tools: .*subagent/u);
   assert.match(supervisor, /exactly one `factory-worker`/u);
+  assert.match(supervisor, /filter status,\s+summary, duplicate, and stale automated noise/u);
+  assert.match(supervisor, /Acceptance, correctness,\s+security, provenance, required-test, and CI findings are same-PR fixes/u);
+  assert.match(supervisor, /Never\s+claim readiness while any review thread remains unresolved/u);
   assert.doesNotMatch(worker.split("---", 3)[1], /\bsubagent\b/u);
   assert.match(worker, /maxSubagentDepth: 0/u);
 });
@@ -104,6 +115,7 @@ test("the constitution stays concise and protects repository boundaries", async 
   for (const contract of [
     "reusable Midnight-specific libraries", "Chain-neutral protocols", "one isolated worktree per issue",
     "prototype", "production-ready", "70%", "GitHub-verifiable OpenPGP", "human",
+    "Review triage filters", "Never claim readiness with unresolved review threads",
   ]) assert.ok(source.includes(contract), contract);
 });
 
@@ -150,6 +162,7 @@ test("pull-request template records exact delivery target and stack disposition"
   const template = await readFile(path.join(root, ".github", "pull_request_template.md"), "utf8");
   assert.equal([...template.matchAll(/factory-delivery-target:/gu)].length, 1);
   assert.equal([...template.matchAll(/factory-stacked-parent:/gu)].length, 1);
+  assert.match(template, /No review thread remains unresolved before readiness is claimed/u);
 });
 
 test("release verification and publishing include every publishable library crate", async () => {

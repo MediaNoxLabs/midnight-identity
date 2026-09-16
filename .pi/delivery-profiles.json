@@ -47,5 +47,27 @@
     "acceptance-correctness-security-provenance",
     "process-ownership",
     "disk-bounds"
-  ]
+  ],
+  "reviewTriage": {
+    "machineReadable": true,
+    "ignoreKinds": [
+      "status-summary",
+      "duplicate",
+      "stale-automated-noise"
+    ],
+    "actionableDisposition": [
+      "same-pr-fix",
+      "follow-up-issue"
+    ],
+    "samePrRequiredFor": [
+      "acceptance",
+      "correctness",
+      "security",
+      "provenance",
+      "required-test",
+      "ci"
+    ],
+    "followUpAllowedFor": "bounded-nonblocking-polish-only",
+    "readinessBlockedByUnresolvedThreads": true
+  }
 }

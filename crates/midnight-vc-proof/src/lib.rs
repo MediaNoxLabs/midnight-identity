@@ -302,7 +302,36 @@ pub fn digital_passport_body_root(credential_bytes: &[u8]) -> Result<[u8; 32], P
 
 /// Verify a digital-passport credential/proof pair with generated body-root and challenge semantics.
 pub fn verify_digital_passport(credential_bytes: &[u8], detached_proof: &[u8]) -> VerificationReport {
-    let body_root = match digital_passport_body_root(credential_bytes) {
+    let proof = match decode_detached_proof(detached_proof) {
+        Ok(proof) => proof,
+        Err(_) => {
+            return report(
+                VerificationOutcome::Invalid,
+                VerificationStageName::Parse,
+                "detached_proof_malformed",
+            );
+        }
+    };
+    let credential = match decode_digital_passport_credential(credential_bytes) {
+        Ok(credential) => credential,
+        Err(_) => {
+            return report(
+                VerificationOutcome::Invalid,
+                VerificationStageName::Structure,
+                "credential_malformed",
+            );
+        }
+    };
+    if credential.issuerVerificationMethodRef.didContractAddress.bytes != proof.signer.did_contract_address
+        || credential.issuerVerificationMethodRef.methodId != proof.signer.method_id
+    {
+        return report(
+            VerificationOutcome::Invalid,
+            VerificationStageName::Structure,
+            "issuer_method_mismatch",
+        );
+    }
+    let body_root = match passport::pure_circuits::digital_passport_credential_body_root(credential.clone()) {
         Ok(body_root) => body_root,
         Err(_) => {
             return report(
@@ -312,7 +341,14 @@ pub fn verify_digital_passport(credential_bytes: &[u8], detached_proof: &[u8]) -
             );
         }
     };
-    verify_body_root(body_root, detached_proof)
+    match passport::pure_circuits::assert_valid_issuance_context_proof(body_root, passport_proof(&proof)) {
+        Ok(()) => valid_report(),
+        Err(_) => report(
+            VerificationOutcome::Invalid,
+            VerificationStageName::Signature,
+            "invalid_issuance_signature",
+        ),
+    }
 }
 
 /// Build a verification method reference from a 32-byte contract address and fragment bytes.
@@ -390,6 +426,24 @@ fn passport_vmr(address: &[u8], method: &[u8]) -> Result<passport::VerificationM
         },
         methodId: fixed_32(method)?,
     })
+}
+
+fn passport_proof(proof: &IssuanceProof) -> passport::Proof {
+    passport::Proof {
+        signerVerificationMethodRef: passport::VerificationMethodRef {
+            didContractAddress: passport::ContractAddress {
+                bytes: proof.signer.did_contract_address,
+            },
+            methodId: proof.signer.method_id,
+        },
+        createdAt: proof.created_at,
+        challengeHash: proof.challenge_hash,
+        publicKey: proof.public_key,
+        signature: passport::Signature {
+            r: proof.announcement,
+            s: field_from_scalar(&proof.response),
+        },
+    }
 }
 
 fn runtime_proof(proof: &IssuanceProof, response: EmbeddedFr) -> core::Proof {

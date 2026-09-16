@@ -102,6 +102,63 @@ fn verification_report_distinguishes_parse_and_signature_failures() {
 }
 
 #[test]
+fn digital_passport_reports_parse_before_malformed_credential_structure() {
+    let malformed = verify_digital_passport(b"bad-credential", b"bad-proof");
+    assert_eq!(malformed.outcome, VerificationOutcome::Invalid);
+    assert_eq!(malformed.stages[0].name, VerificationStageName::Parse);
+    assert_eq!(malformed.stages[0].status, VerificationStageStatus::Failed);
+    assert_eq!(malformed.stages[1].status, VerificationStageStatus::NotChecked);
+
+    let structurally_bad_credential = verify_digital_passport(b"bad-credential", &fixture(OXID_STANDALONE_PROOF_B64));
+    assert_eq!(structurally_bad_credential.outcome, VerificationOutcome::Invalid);
+    assert_eq!(
+        structurally_bad_credential.stages[0].status,
+        VerificationStageStatus::Passed
+    );
+    assert_eq!(
+        structurally_bad_credential.stages[1].name,
+        VerificationStageName::Structure
+    );
+    assert_eq!(
+        structurally_bad_credential.stages[1].status,
+        VerificationStageStatus::Failed
+    );
+}
+
+#[test]
+fn digital_passport_rejects_attacker_signed_proof_with_mismatched_issuer() {
+    let body = fixture(OXID_STANDALONE_BODY_B64);
+    let body_root = digital_passport_body_root(&body).expect("body root");
+    let attacker_material = IssuerKeyMaterial::from_secret_scalar(EmbeddedFr::from(44_444u64));
+    let attacker_vmr = verification_method_ref([0x44; 32], b"#attacker-key").expect("vmr");
+    let mut nonce = [0u8; 64];
+    nonce[0] = 0x33;
+    let mut rng = ScriptedCryptoRng::new(vec![nonce]);
+    let attacker_proof = sign_with_rng(
+        &mut rng,
+        &attacker_material,
+        attacker_vmr,
+        body_root,
+        1_700_000_000,
+        [0x55; 32],
+    )
+    .expect("attacker proof over body root");
+    assert_eq!(
+        verify_body_root(body_root, &encode_detached_proof(&attacker_proof).expect("encode")).outcome,
+        VerificationOutcome::Valid,
+        "generic body-root verification proves why the digital-passport wrapper must bind issuer VMR"
+    );
+
+    let report = verify_digital_passport(&body, &encode_detached_proof(&attacker_proof).expect("encode"));
+    assert_eq!(report.outcome, VerificationOutcome::Invalid);
+    assert_eq!(report.stages[0].status, VerificationStageStatus::Passed);
+    assert_eq!(report.stages[1].name, VerificationStageName::Structure);
+    assert_eq!(report.stages[1].status, VerificationStageStatus::Failed);
+    assert_eq!(report.stages[1].reason, Some("issuer_method_mismatch"));
+    assert_eq!(report.stages[2].status, VerificationStageStatus::NotChecked);
+}
+
+#[test]
 fn lace_portal_fixed_challenge_vector_matches_generated_runtime() {
     let mut method_id = [0u8; 32];
     method_id[..b"#key-assert".len()].copy_from_slice(b"#key-assert");
