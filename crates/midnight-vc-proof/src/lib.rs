@@ -215,7 +215,7 @@ pub fn sign_with_rng<R: RngCore + CryptoRng + ?Sized>(
     challenge_hash: [u8; 32],
 ) -> Result<IssuanceProof, ProofError> {
     let nonce = random_nonce_scalar(rng);
-    sign_with_nonce_for_tests(material, signer, body_root, created_at, challenge_hash, nonce)
+    sign_with_nonce(material, signer, body_root, created_at, challenge_hash, nonce)
 }
 
 /// Compute the generated VC issuance challenge for a partial proof.
@@ -331,8 +331,7 @@ pub fn verification_method_ref(
     })
 }
 
-#[doc(hidden)]
-pub fn sign_with_nonce_for_tests(
+fn sign_with_nonce(
     material: &IssuerKeyMaterial,
     signer: VerificationMethodRef,
     body_root: [u8; 32],
@@ -593,5 +592,23 @@ fn report(outcome: VerificationOutcome, failed: VerificationStageName, reason: &
             }
         })
         .collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn private_fixed_nonce_helper_round_trips_for_internal_tests_only() {
+        let material = IssuerKeyMaterial::from_secret_scalar(EmbeddedFr::from(123_456_789u64));
+        let signer = verification_method_ref([0x11; 32], b"#key-assert").expect("vmr");
+        let proof = sign_with_nonce(&material, signer, [1u8; 32], 123, [2u8; 32], EmbeddedFr::from(11u64))
+            .expect("fixed nonce signing is available only inside this module");
+        let encoded = encode_detached_proof(&proof).expect("canonical proof");
+        assert_eq!(
+            verify_body_root([1u8; 32], &encoded).outcome,
+            VerificationOutcome::Valid
+        );
     }
 }
