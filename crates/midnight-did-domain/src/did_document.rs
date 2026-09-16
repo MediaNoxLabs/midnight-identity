@@ -719,6 +719,9 @@ impl PublicKeyJwk {
                 "publicKeyJwk must not include private key material",
             ));
         }
+        if let Err(error) = validate_extensions(&self.extensions, &["kty", "crv", "x", "y"]) {
+            issues.extend(error.issues);
+        }
         // OKP-curve restrictions.
         let okp_curves = matches!(
             self.crv,
@@ -1091,27 +1094,49 @@ fn validate_endpoint_object_value(value: &JsonValue, depth: usize, nodes: &mut u
     }
 }
 
+fn validate_endpoint_object_map(
+    map: &serde_json::Map<String, JsonValue>,
+    depth: usize,
+    nodes: &mut usize,
+) -> Result<(), ValidationError> {
+    *nodes = nodes.saturating_add(1);
+    if *nodes > MAX_SERVICE_ENDPOINT_NODES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint contains too many JSON nodes",
+        )]));
+    }
+    if map.len() > MAX_DID_DOCUMENT_ENTRIES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint object contains too many entries",
+        )]));
+    }
+    for (key, value) in map {
+        validate_bounded_text(
+            key,
+            MAX_DID_DOCUMENT_TEXT_BYTES,
+            "serviceEndpoint object key is invalid",
+        )?;
+        validate_endpoint_object_value(value, depth + 1, nodes)?;
+    }
+    Ok(())
+}
+
 fn validate_service_endpoint(endpoint: &ServiceEndpoint) -> Result<(), ValidationError> {
+    let mut nodes = 0;
+    validate_service_endpoint_with_budget(endpoint, &mut nodes)
+}
+
+fn validate_service_endpoint_with_budget(endpoint: &ServiceEndpoint, nodes: &mut usize) -> Result<(), ValidationError> {
     match endpoint {
         ServiceEndpoint::Uri(value) => validate_service_endpoint_uri(value),
-        ServiceEndpoint::Object(map) => {
-            if map.len() > MAX_DID_DOCUMENT_ENTRIES {
+        ServiceEndpoint::Object(map) => validate_endpoint_object_map(map, 0, nodes),
+        ServiceEndpoint::Array(items) => {
+            *nodes = nodes.saturating_add(1);
+            if *nodes > MAX_SERVICE_ENDPOINT_NODES {
                 return Err(ValidationError::from_issues(vec![ValidationIssue::new(
-                    "serviceEndpoint object contains too many entries",
+                    "serviceEndpoint contains too many JSON nodes",
                 )]));
             }
-            let mut nodes = 1;
-            for (key, value) in map {
-                validate_bounded_text(
-                    key,
-                    MAX_DID_DOCUMENT_TEXT_BYTES,
-                    "serviceEndpoint object key is invalid",
-                )?;
-                validate_endpoint_object_value(value, 1, &mut nodes)?;
-            }
-            Ok(())
-        }
-        ServiceEndpoint::Array(items) => {
             if items.is_empty() || items.len() > MAX_DID_DOCUMENT_ENTRIES {
                 return Err(ValidationError::from_issues(vec![ValidationIssue::new(
                     "serviceEndpoint array must be non-empty and bounded",
@@ -1120,9 +1145,7 @@ fn validate_service_endpoint(endpoint: &ServiceEndpoint) -> Result<(), Validatio
             for item in items {
                 match item {
                     ServiceEndpointArrayEntry::Uri(value) => validate_service_endpoint_uri(value)?,
-                    ServiceEndpointArrayEntry::Object(map) => {
-                        validate_service_endpoint(&ServiceEndpoint::Object(map.clone()))?;
-                    }
+                    ServiceEndpointArrayEntry::Object(map) => validate_endpoint_object_map(map, 1, nodes)?,
                 }
             }
             Ok(())

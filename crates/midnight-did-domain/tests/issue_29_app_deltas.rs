@@ -365,3 +365,76 @@ fn service_endpoint_array_and_nested_json_are_bounded_and_control_safe() {
         .is_err()
     );
 }
+
+#[test]
+fn public_key_jwk_extensions_are_bounded_at_construction_and_deserialization() {
+    let overlong = "a".repeat(midnight_did_domain::MAX_DID_DOCUMENT_TEXT_BYTES + 1);
+    assert!(
+        PublicKeyJwk::new(NewPublicKeyJwk {
+            kty: midnight_did_domain::KeyType::OKP,
+            crv: CurveType::Ed25519,
+            x: "A".repeat(43),
+            y: None,
+            extensions: BTreeMap::from([("extension".to_owned(), json!(overlong))]),
+        })
+        .is_err()
+    );
+
+    let too_many = (0..=MAX_DID_DOCUMENT_ENTRIES)
+        .map(|index| (format!("k{index}"), json!(index)))
+        .collect::<BTreeMap<_, _>>();
+    assert!(
+        PublicKeyJwk::new(NewPublicKeyJwk {
+            kty: midnight_did_domain::KeyType::OKP,
+            crv: CurveType::Ed25519,
+            x: "A".repeat(43),
+            y: None,
+            extensions: too_many,
+        })
+        .is_err()
+    );
+
+    let nested =
+        (0..=midnight_did_domain::MAX_DID_DOCUMENT_EXTENSION_DEPTH).fold(json!("leaf"), |value, _| json!([value]));
+    assert!(
+        serde_json::from_value::<VerificationMethod>(json!({
+            "id": "did:example:alice#key-1",
+            "type": "JsonWebKey",
+            "controller": "did:example:alice",
+            "publicKeyJwk": {
+                "kty": "OKP",
+                "crv": "Ed25519",
+                "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "extension": nested
+            }
+        }))
+        .is_err()
+    );
+}
+
+#[test]
+fn service_endpoint_node_budget_is_shared_across_array_entries() {
+    let valid_entries = (0..100)
+        .map(|index| json!({ "items": [index, index, index, index, index, index, index, index] }))
+        .collect::<Vec<_>>();
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": valid_entries
+        }))
+        .is_ok()
+    );
+
+    let too_many_nodes = (0..=102)
+        .map(|index| json!({ "items": [index, index, index, index, index, index, index, index] }))
+        .collect::<Vec<_>>();
+    assert!(
+        serde_json::from_value::<Service>(json!({
+            "id": "#svc",
+            "type": "DIDCommMessaging",
+            "serviceEndpoint": too_many_nodes
+        }))
+        .is_err()
+    );
+}
