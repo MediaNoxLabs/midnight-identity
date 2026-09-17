@@ -40,5 +40,5 @@ Ported material is derived from the Apache-2.0 upstream Passport repository at
 
 The sibling `midnight-passport-account-source` crate preserves the
 byte-identical upstream Compact snapshot as `contract/account.upstream.compact`
-and exposes `contract/account.compact` with documented downstream k256
-envelope hardening for activation and public construction helpers.
+and exposes `contract/account.compact` with documented downstream device-key
+and k256 envelope hardening for activation and public construction helpers.

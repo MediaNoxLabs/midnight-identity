@@ -348,7 +348,9 @@ export circuit activate_initial_device_with_k256(
 
 // Arm jubjub: DST_BOOT = "midnight:account:boot:v1".
 export pure circuit derive_boot_commitment_with_jubjub(salt: Bytes<32>, pk: JubjubPoint): Bytes<32> {
-  return persistentHash<[Bytes<32>, Bytes<32>, JubjubPoint]>(
+  assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),
+         "device key has small order");
+  return persistentHash<[Bytes<32>, Bytes<32>, JubjubPoint](
     [pad(32, "midnight:account:boot:v1"), salt, pk]
   );
 }
@@ -388,6 +390,8 @@ export pure circuit derive_device_entry_with_jubjub(
   epoch:     Uint<32>,
   counter:   Uint<64>,
 ): Bytes<32> {
+  assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),
+         "device key has small order");
   return persistentHash<[Bytes<32>, ContractAddress, JubjubPoint, Uint<32>, Uint<64>]>(
     [pad(32, "midnight:account:device:v1"), self_addr, pk, epoch, counter]
   );

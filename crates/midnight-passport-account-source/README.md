@@ -12,10 +12,10 @@ account-custody reference contract implementing MIP-0012 and MIP-0013.
 `contract/account.upstream.compact` is the byte-identical Apache-2.0 snapshot
 from `midnightntwrk/passport@40072709e3f5ac5d9b89f9d92d02a4413cbe05cc`.
 `contract/account.compact` applies auditable downstream hardening patches on
-that snapshot: public k256 construction helpers reject unsupported envelope ids
-before creating boot commitments, device entries, or grant identities, and k256
-initial activation rejects unsupported boot envelope ids before registering the
-first device.
+that snapshot: public construction helpers reject unsupported k256 envelope ids
+or small-order Jubjub device keys before creating boot commitments, device
+entries, or grant identities, and k256 initial activation rejects unsupported
+boot envelope ids before registering the first device.
 
 The package is deliberately dependency-light: it contains no Ledger, Compact
 runtime, Halo2, ZKIR, generated bindings, or proving artifacts. The embedded

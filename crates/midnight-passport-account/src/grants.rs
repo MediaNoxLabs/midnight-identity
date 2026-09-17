@@ -1028,7 +1028,7 @@ fn sign_grant_jubjub(req: &GrantSignRequest) -> Result<serde_json::Value> {
 /// authoriser computes before it asks a device to sign `issue_grant` and
 /// what the cross-implementation vectors of Testing item 5 compare against
 /// the compiled pure circuits.
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct DeriveGrantRequest {
     /// `k256` (the default) or `jubjub`, selecting the identity recipe.
     #[serde(default)]
@@ -1064,7 +1064,7 @@ pub struct DeriveGrantRequest {
     pub device: Option<DeviceJson>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct DeviceJson {
     /// The device signing key, on the same arm as `arm`: a secp256k1
     /// scalar for `k256`, a JubJub scalar for `jubjub`, big-endian hex in
@@ -1076,7 +1076,7 @@ pub struct DeviceJson {
 
 /// The plaintext scope of section 4.2 on the wire. Feature strings map to
 /// the four Booleans per section 5.2; this path takes the Booleans.
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct ScopeJson {
     #[serde(default)]
     pub op_withdraw_unshielded: bool,
@@ -1108,6 +1108,42 @@ fn parse_reserved(value: &str) -> Result<u128> {
     value.parse().context("bad reserved window field")
 }
 
+fn validate_issuance_scope(scope: &GrantScopePlain) -> Result<()> {
+    let spend = scope.op_withdraw_unshielded || scope.op_withdraw_shielded || scope.op_withdraw_shielded_to_contract;
+    if !spend && !scope.read {
+        bail!("empty scope");
+    }
+    if (scope.op_withdraw_shielded || scope.op_withdraw_shielded_to_contract) && !scope.read {
+        bail!("shielded spend requires read");
+    }
+    if scope.per_call_cap > scope.cap {
+        bail!("per-call cap above cap");
+    }
+    if spend && scope.cap == 0 {
+        bail!("spend without cap");
+    }
+    if spend && scope.max_coin_value < scope.per_call_cap {
+        bail!("coin bound below per-call cap");
+    }
+    if scope.read && scope.read_pk_hash == [0u8; 32] {
+        bail!("read without delegate key");
+    }
+    if scope.window_len != 0 || scope.window_cap != 0 {
+        bail!("window bounds reserved");
+    }
+    if !spend
+        && (scope.color != [0u8; 32]
+            || scope.recipient_kind != 0
+            || scope.recipient != [0u8; 32]
+            || scope.max_coin_value != 0
+            || scope.per_call_cap != 0
+            || scope.cap != 0)
+    {
+        bail!("read-only grant carries object fields");
+    }
+    Ok(())
+}
+
 pub fn derive_grant(req: &DeriveGrantRequest) -> Result<serde_json::Value> {
     let self_addr = bytes32_from_hex(&req.contract_address)?;
     let scope_salt = bytes32_from_hex(&req.scope_salt)?;
@@ -1130,6 +1166,7 @@ pub fn derive_grant(req: &DeriveGrantRequest) -> Result<serde_json::Value> {
         window_len: u64::try_from(parse_reserved(&req.scope.window_len)?).context("window_len exceeds Uint<64>")?,
         window_cap: parse_reserved(&req.scope.window_cap)?,
     };
+    validate_issuance_scope(&scope)?;
 
     let (arm, grant_id, pk_json) = match req.arm.as_deref() {
         None | Some("k256") => {
@@ -2252,9 +2289,44 @@ mod tests {
             lc["revoke_all_grants"].as_str().unwrap(),
             hex::encode(challenge_revoke_all_grants_k256(&SELF, &dx, &dy, 7).unwrap())
         );
-        let mut bad_envelope = req;
+        let mut bad_envelope = req.clone();
         bad_envelope.envelope = 2;
         assert!(derive_grant(&bad_envelope).is_err());
+        let rejects_scope = |bad: DeriveGrantRequest| {
+            assert!(derive_grant(&bad).is_err());
+        };
+        let mut bad = req.clone();
+        bad.scope.op_withdraw_unshielded = false;
+        bad.scope.op_withdraw_shielded = false;
+        bad.scope.op_withdraw_shielded_to_contract = false;
+        bad.scope.read = false;
+        rejects_scope(bad);
+        let mut bad = req.clone();
+        bad.scope.op_withdraw_unshielded = false;
+        bad.scope.op_withdraw_shielded = true;
+        bad.scope.read = false;
+        rejects_scope(bad);
+        let mut bad = req.clone();
+        bad.scope.per_call_cap = (CAP + 1).to_string();
+        rejects_scope(bad);
+        let mut bad = req.clone();
+        bad.scope.cap = "0".into();
+        rejects_scope(bad);
+        let mut bad = req.clone();
+        bad.scope.max_coin_value = (PER_CALL_CAP - 1).to_string();
+        rejects_scope(bad);
+        let mut bad = req.clone();
+        bad.scope.read_pk_hash = hex::encode([0u8; 32]);
+        rejects_scope(bad);
+        let mut bad = req.clone();
+        bad.scope.window_len = "1".into();
+        rejects_scope(bad);
+        let mut bad = req.clone();
+        bad.scope.op_withdraw_unshielded = false;
+        bad.scope.op_withdraw_shielded = false;
+        bad.scope.op_withdraw_shielded_to_contract = false;
+        bad.scope.color = hex::encode(COLOR);
+        rejects_scope(bad);
 
         // The jubjub grantee arm: [5]G, pinned identity, both paths agree
         // inside derive_grant.

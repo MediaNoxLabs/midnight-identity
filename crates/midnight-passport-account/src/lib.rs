@@ -518,6 +518,7 @@ pub fn derive_device_entry_with_jubjub(
     epoch: u32,
     counter: u64,
 ) -> Result<[u8; 32]> {
+    require_live_jubjub_key(public_key)?;
     persistent_hash(&[
         el_bytes(32, &pad_tag_32("midnight:account:device:v1")?),
         el_bytes(32, contract_address),
@@ -529,11 +530,19 @@ pub fn derive_device_entry_with_jubjub(
 
 /// Derive the Jubjub boot commitment for an initial device and salt.
 pub fn derive_boot_commitment_with_jubjub(salt: &[u8; 32], public_key: &EmbeddedGroupAffine) -> Result<[u8; 32]> {
+    require_live_jubjub_key(public_key)?;
     persistent_hash(&[
         el_bytes(32, &pad_tag_32("midnight:account:boot:v1")?),
         el_bytes(32, salt),
         el_point(public_key)?,
     ])
+}
+
+fn require_live_jubjub_key(public_key: &EmbeddedGroupAffine) -> Result<()> {
+    if public_key.0 == JubjubSubgroup::identity() {
+        bail!("device key has small order");
+    }
+    Ok(())
 }
 
 fn pad_tag_32(tag: &str) -> Result<[u8; 32]> {
@@ -610,6 +619,13 @@ mod tests {
             circuit_dst(&Arm::Jubjub, "withdraw_unshielded").unwrap(),
             jubjub_by_hand
         );
+    }
+
+    #[test]
+    fn jubjub_construction_helpers_reject_identity_device_keys() {
+        let identity = EmbeddedGroupAffine(JubjubSubgroup::identity());
+        assert!(derive_boot_commitment_with_jubjub(&[0x22u8; 32], &identity).is_err());
+        assert!(derive_device_entry_with_jubjub(&[0x11u8; 32], &identity, 0, 0).is_err());
     }
 
     #[test]

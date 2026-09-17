@@ -26,7 +26,7 @@ and the project adheres to [SemVer](https://semver.org/).
 - **Passport account-custody crates (issue #79)** — new
   `midnight-passport-account-source` crate containing the Ledger 9.1 reference
   contract from Passport revision `40072709`, its byte-identical upstream
-  snapshot, documented downstream k256 envelope hardening patches,
+  snapshot, documented downstream device-key and k256 envelope hardening patches,
   Apache-2.0 provenance, immutable digests, MIP-0012/MIP-0013 compatibility
   metadata, known limitations, and reviewed public state/circuit roster. The
   source package has no runtime dependencies and does not introduce generated

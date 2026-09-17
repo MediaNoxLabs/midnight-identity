@@ -106,7 +106,13 @@ fn source_is_the_authenticated_hardened_snapshot() {
     assert_eq!(format!("{:x}", Sha256::digest(CONTRACT_SOURCE)), CONTRACT_SHA256);
     assert!(CONTRACT_SOURCE.contains("require_live_k256_key(pk);\n  assert(envelope <= 1, \"unknown envelope\");"));
     assert!(CONTRACT_SOURCE.contains(
+        "derive_boot_commitment_with_jubjub(salt: Bytes<32>, pk: JubjubPoint): Bytes<32> {\n  assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),\n         \"device key has small order\");"
+    ));
+    assert!(CONTRACT_SOURCE.contains(
         "derive_boot_commitment_with_k256(\n  salt:     Bytes<32>,\n  pk:       Secp256k1Point,\n  envelope: Uint<8>,\n): Bytes<32> {\n  assert(envelope <= 1, \"unknown envelope\");"
+    ));
+    assert!(CONTRACT_SOURCE.contains(
+        "derive_device_entry_with_jubjub(\n  self_addr: ContractAddress,\n  pk:        JubjubPoint,\n  epoch:     Uint<32>,\n  counter:   Uint<64>,\n): Bytes<32> {\n  assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),\n         \"device key has small order\");"
     ));
     assert!(CONTRACT_SOURCE.contains(
         "derive_device_entry_with_k256(\n  self_addr: ContractAddress,\n  pk:        Secp256k1Point,\n  envelope:  Uint<8>,\n  epoch:     Uint<32>,\n  counter:   Uint<64>,\n): Bytes<32> {\n  assert(envelope <= 1, \"unknown envelope\");"
@@ -175,6 +181,17 @@ fn manifest_matches_public_constants() {
     assert_eq!(manifest["provenance"]["revision"], UPSTREAM_REVISION);
     assert_eq!(manifest["provenance"]["path"], UPSTREAM_PATH);
     assert_eq!(manifest["provenance"]["byteIdentical"], false);
+    assert_eq!(
+        json_strings(&manifest["provenance"]["patches"]),
+        [
+            "downstream-jubjub-boot-small-order-guard",
+            "downstream-jubjub-device-entry-small-order-guard",
+            "downstream-k256-activation-envelope-guard",
+            "downstream-k256-boot-envelope-guard",
+            "downstream-k256-device-entry-envelope-guard",
+            "downstream-k256-grant-id-envelope-guard",
+        ]
+    );
     assert_eq!(
         manifest["provenance"]["pristineSnapshot"]["path"],
         UPSTREAM_CONTRACT_PATH
