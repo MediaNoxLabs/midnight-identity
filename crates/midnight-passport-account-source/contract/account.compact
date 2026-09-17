@@ -444,7 +444,7 @@ export pure circuit derive_device_entry_with_k256(
 // form does — measured against the runtime's own curve arithmetic. Comparing
 // coordinates catches both, and keeps the guard agnostic to how a caller
 // chose to encode the point.
-circuit require_live_k256_key(pk: Secp256k1Point): [] {
+pure circuit require_live_k256_key(pk: Secp256k1Point): [] {
   assert(
     !((secp256k1PointX(pk) as Bytes<32>) == pad(32, "")
       && (secp256k1PointY(pk) as Bytes<32>) == pad(32, "")),

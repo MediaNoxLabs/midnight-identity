@@ -104,6 +104,7 @@ const EXPECTED_EXPORTED_CIRCUITS: &[&str] = &[
 fn source_is_the_authenticated_hardened_snapshot() {
     assert_eq!(CONTRACT_SOURCE.len(), CONTRACT_BYTES);
     assert_eq!(format!("{:x}", Sha256::digest(CONTRACT_SOURCE)), CONTRACT_SHA256);
+    assert!(CONTRACT_SOURCE.contains("pure circuit require_live_k256_key(pk: Secp256k1Point): []"));
     assert!(CONTRACT_SOURCE.contains("require_live_k256_key(pk);\n  assert(envelope <= 1, \"unknown envelope\");"));
     assert!(CONTRACT_SOURCE.contains(
         "derive_boot_commitment_with_jubjub(salt: Bytes<32>, pk: JubjubPoint): Bytes<32> {\n  assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),\n         \"device key has small order\");"
