@@ -2496,6 +2496,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-passport-account-source"
+version = "0.5.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "midnight-passport-vault-source"
 version = "0.5.0"
 dependencies = [

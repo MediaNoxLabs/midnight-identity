@@ -126,7 +126,7 @@ codegen-vc-check: codegen-vc
 # sweep the path-mounted third_party crates (cargo absorbs them as
 # workspace members), and we don't gate vendored code — so every recipe
 # scopes to this list, mirroring CI.
-crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
+crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr -p midnight-passport-account-source -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
 
 # Family bindings are opt-in (`default = []`). Run a separate feature-complete
 # pass so `--all-features` does not change unrelated workspace crates.
@@ -158,7 +158,7 @@ coverage_floor := "87"
 
 # Coverage scope: every first-party crate; excludes the codegen artifact
 # (gated by codegen-check, not tests) and service/demo bin entrypoints.
-coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
+coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-passport-account-source -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
 coverage_features := "--features midnight-vc-families/digital-passport"
 # `contract/generated\.rs` is the DID codegen artifact; the three
 # `contract/{credentials,iso_registry,same_holder}\.rs` files are the VC ones.

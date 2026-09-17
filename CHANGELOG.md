@@ -23,6 +23,14 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Added
 
+- **Passport account-custody source package (issue #79)** — new
+  `midnight-passport-account-source` crate containing the byte-identical
+  Ledger 9.1 reference contract from Passport revision `40072709`, its
+  Apache-2.0 provenance, immutable digest, MIP-0012/MIP-0013 compatibility
+  metadata, known limitations, and reviewed public state/circuit roster. The
+  package has no runtime dependencies and does not introduce generated Ledger 9
+  artifacts into the workspace.
+
 - **Digital Passport credential family (issue #49)** — new opt-in
   `midnight-vc-families` codegen crate with the `digital-passport` feature,
   generated from the standalone family repository at `v0.1.0-rc1`
