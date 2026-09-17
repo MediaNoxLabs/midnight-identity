@@ -1,0 +1,217 @@
+{
+  "cacheKeyInputs": {
+    "compactCompilerRevision": "05b237a5e51f9c22853b424e7d4236dfa9384c24",
+    "compactInputRevision": "05b237a5e51f9c22853b424e7d4236dfa9384c24",
+    "materializerRevision": "50a21b47d280f06cafad94961d4a40f0a83fb3b4",
+    "materializerSourcePathSha256": "6a9a915aa29a22a0574dbd638deced8a529d0bdd278eb81e475feaa0812cb46a",
+    "nixLockSha256": "aeb37821a6bd2c29045435a573148d8a1343ce4da94dd5f6cfac5d79bd2ded40",
+    "sourceIdentity": "2ebc5b34dd440bc9a9736408f29f5003e7a78f26a564b392be2af36de69102f4:76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127"
+  },
+  "circuits": [
+    {
+      "id": "setTrustedIssuer",
+      "k": 13,
+      "rows": 5416
+    },
+    {
+      "id": "createLock",
+      "k": 11,
+      "rows": 1823
+    },
+    {
+      "id": "depositToLock",
+      "k": 10,
+      "rows": 834
+    },
+    {
+      "id": "claimFromLock",
+      "k": 17,
+      "rows": 124785
+    },
+    {
+      "id": "withdrawFromLock",
+      "k": 11,
+      "rows": 1212
+    }
+  ],
+  "generatedSurface": {
+    "abiStateVectorIdentity": "cf09906d2e007a3c7980ea6915d3039fbd2fd8933f241d717bba4216fce10466",
+    "artifactPaths": [
+      "compiler/contract-info.json",
+      "contract/index.d.ts",
+      "contract/index.js",
+      "contract/index.js.map",
+      "zkir/setTrustedIssuer.bzkir",
+      "zkir/setTrustedIssuer.zkir",
+      "keys/setTrustedIssuer.prover",
+      "keys/setTrustedIssuer.verifier",
+      "zkir/createLock.bzkir",
+      "zkir/createLock.zkir",
+      "keys/createLock.prover",
+      "keys/createLock.verifier",
+      "zkir/depositToLock.bzkir",
+      "zkir/depositToLock.zkir",
+      "keys/depositToLock.prover",
+      "keys/depositToLock.verifier",
+      "zkir/claimFromLock.bzkir",
+      "zkir/claimFromLock.zkir",
+      "keys/claimFromLock.prover",
+      "keys/claimFromLock.verifier",
+      "zkir/withdrawFromLock.bzkir",
+      "zkir/withdrawFromLock.zkir",
+      "keys/withdrawFromLock.prover",
+      "keys/withdrawFromLock.verifier",
+      "params/bls_midnight_2p10",
+      "params/bls_midnight_2p11",
+      "params/bls_midnight_2p13",
+      "params/bls_midnight_2p17"
+    ],
+    "contractInfoExpectations": {
+      "circuits": [
+        "setTrustedIssuer",
+        "createLock",
+        "depositToLock",
+        "claimFromLock",
+        "withdrawFromLock"
+      ],
+      "compilerVersion": "0.30.0",
+      "languageVersion": "0.22.0",
+      "runtimeVersion": "0.15.0"
+    },
+    "publicInputIdentity": "5c63aa4ebe9beb41835ae6179e757442e158ce85951230269f0454db60c1da0e"
+  },
+  "materialization": {
+    "command": "nix build github:MediaNoxLabs/oxid/50a21b47d280f06cafad94961d4a40f0a83fb3b4#passportVaultCompactArtifacts",
+    "derivationPath": "nix/packages/passport-vault-compact-artifacts.nix",
+    "derivationRepository": "MediaNoxLabs/oxid",
+    "derivationRevision": "50a21b47d280f06cafad94961d4a40f0a83fb3b4",
+    "derivationSha256": "6a9a915aa29a22a0574dbd638deced8a529d0bdd278eb81e475feaa0812cb46a",
+    "emitsArtifactDigests": true,
+    "note": "The pinned Oxid Ledger 8 derivation is the reviewed materializer for the heavy artifact set; this repository commits the authenticated upstream leaf manifest and keeps generated outputs out of Git until Oxid #123 cuts over to an immutable midnight-identity revision.",
+    "outputManifest": "manifest.json",
+    "verifiesSourceBeforeGeneration": true
+  },
+  "metrics": {
+    "artifactBytes": null,
+    "cacheBytes": null,
+    "coldGenerationTimeSeconds": null,
+    "dependencyClosureImpact": "source crate remains unchanged; artifact leaf records pinned Nix/Compact/Ledger/proof lineage outside midnight-passport-vault-source dependencies",
+    "warmGenerationTimeSeconds": null
+  },
+  "package": {
+    "delivery": "pinned-nix-artifact-leaf",
+    "ledgerLine": "8.x",
+    "name": "midnight-passport-vault-ledger8-artifacts",
+    "version": "0.5.0"
+  },
+  "packagePolicy": {
+    "committedArtifacts": [
+      "artifacts/passport-vault-ledger8/manifest.json"
+    ],
+    "forbiddenGitPathPatterns": [
+      "**/*.zkir",
+      "**/*.bzkir",
+      "**/*.prover",
+      "**/*.verifier",
+      "**/bls_midnight_2p*",
+      "target/",
+      "result"
+    ],
+    "generationCommand": "node scripts/compact/passport-vault-ledger8-artifacts.mjs --out artifacts/passport-vault-ledger8/manifest.json",
+    "reproduciblyDerivedNotCommitted": [
+      "zkir/setTrustedIssuer.bzkir",
+      "zkir/setTrustedIssuer.zkir",
+      "keys/setTrustedIssuer.prover",
+      "keys/setTrustedIssuer.verifier",
+      "zkir/createLock.bzkir",
+      "zkir/createLock.zkir",
+      "keys/createLock.prover",
+      "keys/createLock.verifier",
+      "zkir/depositToLock.bzkir",
+      "zkir/depositToLock.zkir",
+      "keys/depositToLock.prover",
+      "keys/depositToLock.verifier",
+      "zkir/claimFromLock.bzkir",
+      "zkir/claimFromLock.zkir",
+      "keys/claimFromLock.prover",
+      "keys/claimFromLock.verifier",
+      "zkir/withdrawFromLock.bzkir",
+      "zkir/withdrawFromLock.zkir",
+      "keys/withdrawFromLock.prover",
+      "keys/withdrawFromLock.verifier",
+      "params/bls_midnight_2p10",
+      "params/bls_midnight_2p11",
+      "params/bls_midnight_2p13",
+      "params/bls_midnight_2p17"
+    ]
+  },
+  "referenceBaseline": {
+    "headSha": "50a21b47d280f06cafad94961d4a40f0a83fb3b4",
+    "licenseProvenance": "Apache-2.0 repository license; derivation headerless Nix expression observed read-only from Oxid baseline",
+    "observationMode": "pinned-baseline",
+    "reference": "origin/develop",
+    "remote": "https://github.com/MediaNoxLabs/oxid.git",
+    "repository": "MediaNoxLabs/oxid",
+    "sourcePath": "nix/packages/passport-vault-compact-artifacts.nix",
+    "sourcePathSha256": "6a9a915aa29a22a0574dbd638deced8a529d0bdd278eb81e475feaa0812cb46a"
+  },
+  "schemaVersion": 1,
+  "source": {
+    "contractBytes": 23776,
+    "contractPath": "contract/passport-vault.compact",
+    "contractSha256": "2ebc5b34dd440bc9a9736408f29f5003e7a78f26a564b392be2af36de69102f4",
+    "includeClosureAlgorithm": "sha256-concat-utf8-sorted-paths-v1",
+    "includeClosureBytes": 68290,
+    "includeClosureFiles": [
+      "contract/vendored/credentials.compact",
+      "contract/vendored/credentials/composable.compact",
+      "contract/vendored/credentials/holder-bindings.compact",
+      "contract/vendored/credentials/issue.compact",
+      "contract/vendored/credentials/present.compact",
+      "contract/vendored/credentials/proofs.compact",
+      "contract/vendored/credentials/protocols.compact",
+      "contract/vendored/credentials/relations.compact",
+      "contract/vendored/credentials/status-bindings.compact",
+      "contract/vendored/credentials/types.compact",
+      "contract/vendored/credentials/vc.compact",
+      "contract/vendored/credentials/vp.compact",
+      "contract/vendored/digital-passport-credential.compact",
+      "contract/vendored/digital-passport-credential/claims.compact",
+      "contract/vendored/digital-passport-credential/helpers.compact",
+      "contract/vendored/digital-passport-credential/model.compact",
+      "contract/vendored/digital-passport-credential/protocol-model.compact",
+      "contract/vendored/digital-passport-credential/validation.compact"
+    ],
+    "includeClosureSha256": "76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127",
+    "package": "midnight-passport-vault-source",
+    "provenance": {
+      "byteIdentical": true,
+      "originalPath": "packages/contracts/vault/src/passport-vault.compact",
+      "originalRepository": "https://github.com/midnightntwrk/midnight-identity-solution-examples",
+      "originalRevision": "e4a92a6be2cc6dc34f68261f10c19c9312043807",
+      "reviewedCredentialIncludeClosureSha256": "76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127",
+      "reviewedCredentialRepository": "https://github.com/midnightntwrk/midnight-verifiable-credentials",
+      "reviewedCredentialRevision": "39b1354212620b396e914b29603e6a38f2656546",
+      "reviewedDistributionPath": "contracts/passport-vault/passport-vault.compact",
+      "reviewedDistributionRepository": "https://github.com/MediaNoxLabs/oxid"
+    },
+    "sourceIdentity": "2ebc5b34dd440bc9a9736408f29f5003e7a78f26a564b392be2af36de69102f4:76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127"
+  },
+  "toolchain": {
+    "compactCliVersion": "0.5.1",
+    "compactCompilerRevision": "05b237a5e51f9c22853b424e7d4236dfa9384c24",
+    "compactCompilerVersion": "0.30.0",
+    "compactInputRevision": "05b237a5e51f9c22853b424e7d4236dfa9384c24",
+    "generatedLanguageVersion": "0.22.0",
+    "generatedRuntimeVersion": "0.15.0",
+    "ledgerRepository": "https://github.com/MediaNoxLabs/midnight-ledger",
+    "oxidCredentialRevision": "39b1354212620b396e914b29603e6a38f2656546",
+    "oxidUpstreamVaultLockDigest": "c8d47db1b63785765b8875a3eaa33221b61c779ce7d7cc6e83d8d386a50c0e9f",
+    "oxidVaultRevision": "e4a92a6be2cc6dc34f68261f10c19c9312043807",
+    "proofRepository": "https://github.com/MediaNoxLabs/midnight-zk",
+    "repositoryCompactInputRevision": "611a3dda0c512326a2c15a2e68ce20f8dcf58105",
+    "repositoryLedgerRevision": "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65",
+    "repositoryLockSha256": "aeb37821a6bd2c29045435a573148d8a1343ce4da94dd5f6cfac5d79bd2ded40",
+    "repositoryProofRevision": "532629b044a88473a7175f4a96c2511c91156136"
+  }
+}

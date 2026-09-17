@@ -72,6 +72,16 @@ test("Compact inputs select only their affected generation family", () => {
   assert.ok(vc.packages.includes("midnight-vc-proof"));
   assert.ok(vc.targets.includes(Target.VC_CODEGEN));
   assert.ok(!vc.targets.includes(Target.DID_CODEGEN));
+  for (const path of [
+    "artifacts/passport-vault-ledger8/manifest.json",
+    "crates/midnight-passport-vault-source/contract/passport-vault.compact",
+    "crates/midnight-passport-vault-source/manifest.json",
+  ]) {
+    const vaultArtifacts = makeTargetPlan([path]);
+    assert.deepEqual(vaultArtifacts.packages, ["midnight-passport-vault-source"]);
+    assert.ok(vaultArtifacts.targets.includes(Target.VC_CODEGEN));
+    assert.ok(!vaultArtifacts.targets.includes(Target.DID_CODEGEN));
+  }
 });
 
 test("Digital Passport sources and bindings select the family codegen gate", () => {

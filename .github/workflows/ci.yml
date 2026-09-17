@@ -342,6 +342,15 @@ jobs:
       - name: Regenerate VC bindings and assert no drift
         run: nix develop --command just codegen-vc-check
 
+      - name: Test Passport Vault Ledger 8 artifact contract
+        run: nix develop .#factory --command node --test tests/compact/passport-vault-ledger8-artifacts.test.mjs
+
+      - name: Regenerate Passport Vault Ledger 8 manifest and assert no drift
+        run: |
+          nix develop .#factory --command node scripts/compact/passport-vault-ledger8-artifacts.mjs --out artifacts/passport-vault-ledger8/manifest.json
+          git ls-files --error-unmatch artifacts/passport-vault-ledger8/manifest.json
+          test -z "$(git status --porcelain -- artifacts/passport-vault-ledger8/manifest.json)"
+
   audit:
     name: Periodic factory audit
     needs: plan
