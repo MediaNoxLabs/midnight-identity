@@ -41,10 +41,10 @@ pub fn inbox_walk(view: &impl LedgerInboxView, enc_secret_key: &[u8; 32]) -> Vec
         let Some(entry) = view.inbox_entry(i) else {
             continue;
         };
-        if let Ok(coin) = open_inbox_entry(enc_secret_key, entry) {
-            if view.inbox_entry_matches_chain_coin(i, &coin) {
-                out.push(DiscoveredCoin { coin, inbox_index: i });
-            }
+        if let Ok(coin) = open_inbox_entry(enc_secret_key, entry)
+            && view.inbox_entry_matches_chain_coin(i, &coin)
+        {
+            out.push(DiscoveredCoin { coin, inbox_index: i });
         }
     }
     out
