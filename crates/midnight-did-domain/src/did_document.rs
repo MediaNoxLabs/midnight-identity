@@ -23,7 +23,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 use serde_json::Value as JsonValue;
 use thiserror::Error;
 
@@ -91,27 +91,172 @@ impl ValidationError {
     }
 }
 
+/// Maximum byte length accepted for DID document string fields.
+pub const MAX_DID_DOCUMENT_TEXT_BYTES: usize = 8 * 1024;
+/// Maximum byte length accepted for a DID string or DID URL.
+pub const MAX_DID_STRING_BYTES: usize = 8 * 1024;
+/// Maximum number of entries accepted in document arrays and extension maps.
+pub const MAX_DID_DOCUMENT_ENTRIES: usize = 128;
+/// Maximum nested JSON depth accepted inside extension values.
+pub const MAX_DID_DOCUMENT_EXTENSION_DEPTH: usize = 32;
+/// Maximum JSON nodes accepted inside one service endpoint value.
+pub const MAX_SERVICE_ENDPOINT_NODES: usize = 1_024;
+/// Maximum JSON nodes accepted across DID document extension values.
+pub const MAX_DID_DOCUMENT_EXTENSION_NODES: usize = 1_024;
+/// Maximum UTF-8 bytes accepted across DID document extension keys and string values.
+pub const MAX_DID_DOCUMENT_EXTENSION_BYTES: usize = 1024 * 1024;
+
+fn validate_bounded_text(value: &str, maximum: usize, message: &'static str) -> Result<(), ValidationError> {
+    if value.is_empty() || value.len() > maximum || value.trim() != value || value.chars().any(char::is_control) {
+        Err(ValidationError::from_issues(vec![ValidationIssue::new(message)]))
+    } else {
+        Ok(())
+    }
+}
+
+fn collect_bounded_text_issue(value: &str, maximum: usize, message: &'static str, issues: &mut Vec<ValidationIssue>) {
+    if value.is_empty() || value.len() > maximum || value.trim() != value || value.chars().any(char::is_control) {
+        issues.push(ValidationIssue::new(message));
+    }
+}
+
+fn validate_uri_text(value: &str, message: &'static str) -> Result<(), ValidationError> {
+    validate_bounded_text(value, MAX_DID_DOCUMENT_TEXT_BYTES, message)?;
+    if url::Url::parse(value).is_ok() {
+        Ok(())
+    } else {
+        Err(ValidationError::from_issues(vec![ValidationIssue::new(message)]))
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct ExtensionBudget {
+    nodes: usize,
+    bytes: usize,
+}
+
+impl ExtensionBudget {
+    fn count_node(&mut self) -> Result<(), ValidationError> {
+        self.nodes = self.nodes.saturating_add(1);
+        if self.nodes > MAX_DID_DOCUMENT_EXTENSION_NODES {
+            return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                "DID document extension JSON contains too many nodes",
+            )]));
+        }
+        Ok(())
+    }
+
+    fn count_bytes(&mut self, value: &str) -> Result<(), ValidationError> {
+        self.bytes = self.bytes.saturating_add(value.len());
+        if self.bytes > MAX_DID_DOCUMENT_EXTENSION_BYTES {
+            return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                "DID document extension JSON contains too many bytes",
+            )]));
+        }
+        Ok(())
+    }
+}
+
+fn validate_extension_value(
+    value: &JsonValue,
+    depth: usize,
+    budget: &mut ExtensionBudget,
+) -> Result<(), ValidationError> {
+    budget.count_node()?;
+    if depth > MAX_DID_DOCUMENT_EXTENSION_DEPTH {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "DID document extension JSON is too deeply nested",
+        )]));
+    }
+    match value {
+        JsonValue::String(s) => {
+            validate_bounded_text(
+                s,
+                MAX_DID_DOCUMENT_TEXT_BYTES,
+                "DID document extension string is invalid",
+            )?;
+            budget.count_bytes(s)
+        }
+        JsonValue::Array(items) => {
+            if items.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "DID document extension array contains too many entries",
+                )]));
+            }
+            for item in items {
+                validate_extension_value(item, depth + 1, budget)?;
+            }
+            Ok(())
+        }
+        JsonValue::Object(map) => {
+            if map.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "DID document extension object contains too many entries",
+                )]));
+            }
+            for (key, item) in map {
+                validate_bounded_text(
+                    key,
+                    MAX_DID_DOCUMENT_TEXT_BYTES,
+                    "DID document extension key is invalid",
+                )?;
+                budget.count_bytes(key)?;
+                validate_extension_value(item, depth + 1, budget)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_extensions_with_budget(
+    values: &BTreeMap<String, JsonValue>,
+    reserved: &[&str],
+    budget: &mut ExtensionBudget,
+) -> Result<(), ValidationError> {
+    if values.len() > MAX_DID_DOCUMENT_ENTRIES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "DID document contains too many extension entries",
+        )]));
+    }
+    for (key, value) in values {
+        if reserved.contains(&key.as_str()) {
+            return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                "DID document extension collides with a reserved field",
+            )]));
+        }
+        validate_bounded_text(
+            key,
+            MAX_DID_DOCUMENT_TEXT_BYTES,
+            "DID document extension key is invalid",
+        )?;
+        budget.count_bytes(key)?;
+        validate_extension_value(value, 0, budget)?;
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // DID string newtypes
 // ---------------------------------------------------------------------------
 
 /// `did:method:specific-id` URL string (may include path/query/fragment).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct DidUrl(String);
 
 /// Relative URL reference (no scheme, no leading `//`).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct RelativeUrl(String);
 
 /// Bare DID string with no path/query/fragment.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct DidString(String);
 
 /// DID Key ID — either a full DID URL `did:...#frag` or a relative `#frag` reference.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct DidKeyId(String);
 
@@ -210,6 +355,7 @@ impl DidUrl {
     /// a method and method-specific identifier).
     pub fn parse(value: impl Into<String>) -> Result<Self, ValidationError> {
         let s = value.into();
+        validate_bounded_text(&s, MAX_DID_STRING_BYTES, "Invalid DID URL format")?;
         if !is_did_url(&s) {
             return Err(ValidationError::from_issues(vec![ValidationIssue::new(
                 "Invalid DID URL format",
@@ -239,6 +385,11 @@ impl RelativeUrl {
     /// relative to the DID subject.
     pub fn parse(value: impl Into<String>) -> Result<Self, ValidationError> {
         let s = value.into();
+        validate_bounded_text(
+            &s,
+            MAX_DID_DOCUMENT_TEXT_BYTES,
+            "Relative URL must be relative to the DID subject",
+        )?;
         if !is_relative_reference(&s) {
             return Err(ValidationError::from_issues(vec![ValidationIssue::new(
                 "Relative URL must be relative to the DID subject",
@@ -268,6 +419,7 @@ impl DidString {
     /// characters (`/`, `?`, `#`).
     pub fn parse(value: impl Into<String>) -> Result<Self, ValidationError> {
         let s = value.into();
+        validate_bounded_text(&s, MAX_DID_STRING_BYTES, "Invalid DID format")?;
         if !is_did_string(&s) {
             return Err(ValidationError::from_issues(vec![ValidationIssue::new(
                 "Invalid DID format",
@@ -297,6 +449,11 @@ impl DidKeyId {
     /// or contains characters outside `[A-Za-z0-9.-_:%]`.
     pub fn parse(value: impl Into<String>) -> Result<Self, ValidationError> {
         let s = value.into();
+        validate_bounded_text(
+            &s,
+            MAX_DID_STRING_BYTES,
+            "Invalid DID Key ID format: invalid or missing fragment",
+        )?;
         if !is_did_key_id(&s) {
             return Err(ValidationError::from_issues(vec![ValidationIssue::new(
                 "Invalid DID Key ID format: invalid or missing fragment",
@@ -315,6 +472,25 @@ impl DidKeyId {
         self.0
     }
 }
+
+macro_rules! impl_validated_string_deserialize {
+    ($ty:ty) => {
+        impl<'de> Deserialize<'de> for $ty {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let value = String::deserialize(deserializer)?;
+                Self::parse(value).map_err(de::Error::custom)
+            }
+        }
+    };
+}
+
+impl_validated_string_deserialize!(DidUrl);
+impl_validated_string_deserialize!(RelativeUrl);
+impl_validated_string_deserialize!(DidString);
+impl_validated_string_deserialize!(DidKeyId);
 
 // ---------------------------------------------------------------------------
 // Verification method enums
@@ -573,11 +749,20 @@ impl PublicKeyJwk {
     /// issues from several values into one error.
     #[must_use]
     pub fn collect_issues(&self) -> Vec<ValidationIssue> {
+        self.collect_issues_with_budget(&mut ExtensionBudget::default())
+    }
+
+    fn collect_issues_with_budget(&self, extension_budget: &mut ExtensionBudget) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
         if self.extensions.contains_key("d") {
             issues.push(ValidationIssue::new(
                 "publicKeyJwk must not include private key material",
             ));
+        }
+        if let Err(error) =
+            validate_extensions_with_budget(&self.extensions, &["kty", "crv", "x", "y"], extension_budget)
+        {
+            issues.extend(error.issues);
         }
         // OKP-curve restrictions.
         let okp_curves = matches!(
@@ -657,6 +842,7 @@ impl PublicKeyJwk {
 /// the [`Self::id`] / [`Self::type_`] / [`Self::controller`] /
 /// [`Self::public_key_jwk`] accessors to read.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "VerificationMethodWire")]
 pub struct VerificationMethod {
     id: DidKeyId,
     #[serde(rename = "type")]
@@ -664,6 +850,36 @@ pub struct VerificationMethod {
     controller: DidString,
     #[serde(rename = "publicKeyJwk")]
     public_key_jwk: PublicKeyJwk,
+    /// Unrecognised verification-method properties retained losslessly.
+    #[serde(flatten)]
+    extensions: BTreeMap<String, JsonValue>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct VerificationMethodWire {
+    id: String,
+    #[serde(rename = "type")]
+    type_: VerificationMethodType,
+    controller: String,
+    #[serde(rename = "publicKeyJwk")]
+    public_key_jwk: PublicKeyJwk,
+    #[serde(flatten)]
+    extensions: BTreeMap<String, JsonValue>,
+}
+
+impl TryFrom<VerificationMethodWire> for VerificationMethod {
+    type Error = ValidationError;
+    fn try_from(w: VerificationMethodWire) -> Result<Self, Self::Error> {
+        let vm = Self {
+            id: DidKeyId::parse(w.id)?,
+            type_: w.type_,
+            controller: DidString::parse(w.controller)?,
+            public_key_jwk: w.public_key_jwk,
+            extensions: w.extensions,
+        };
+        vm.validate()?;
+        Ok(vm)
+    }
 }
 
 /// Parameters for [`VerificationMethod::new`]. Mirrors the field
@@ -706,6 +922,26 @@ impl VerificationMethod {
             type_: input.type_,
             controller: DidString::parse(input.controller)?,
             public_key_jwk: input.public_key_jwk,
+            extensions: BTreeMap::new(),
+        };
+        vm.validate()?;
+        Ok(vm)
+    }
+
+    /// Construct a `VerificationMethod` with extension members preserved on JSON round-trip.
+    ///
+    /// This is additive to [`Self::new`], which constructs a method with no
+    /// extension members.
+    pub fn new_with_extensions(
+        input: NewVerificationMethod,
+        extensions: BTreeMap<String, JsonValue>,
+    ) -> Result<Self, ValidationError> {
+        let vm = Self {
+            id: DidKeyId::parse(input.id)?,
+            type_: input.type_,
+            controller: DidString::parse(input.controller)?,
+            public_key_jwk: input.public_key_jwk,
+            extensions,
         };
         vm.validate()?;
         Ok(vm)
@@ -731,6 +967,11 @@ impl VerificationMethod {
         &self.public_key_jwk
     }
 
+    /// Borrow extension members preserved from the verification method object.
+    pub fn extensions(&self) -> &BTreeMap<String, JsonValue> {
+        &self.extensions
+    }
+
     /// Validate this method's id, controller, and embedded JWK.
     ///
     /// # Errors
@@ -747,7 +988,15 @@ impl VerificationMethod {
         if !is_did_string(self.controller.as_str()) {
             issues.push(ValidationIssue::new("Invalid DID format"));
         }
-        issues.extend(self.public_key_jwk.collect_issues());
+        let mut extension_budget = ExtensionBudget::default();
+        issues.extend(self.public_key_jwk.collect_issues_with_budget(&mut extension_budget));
+        if let Err(error) = validate_extensions_with_budget(
+            &self.extensions,
+            &["id", "type", "controller", "publicKeyJwk"],
+            &mut extension_budget,
+        ) {
+            issues.extend(error.issues);
+        }
         if issues.is_empty() {
             Ok(())
         } else {
@@ -794,12 +1043,33 @@ pub enum ServiceType {
 /// the [`Self::id`] / [`Self::type_`] / [`Self::service_endpoint`]
 /// accessors to read.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "ServiceWire")]
 pub struct Service {
     id: String,
     #[serde(rename = "type")]
     type_: ServiceType,
     #[serde(rename = "serviceEndpoint")]
     service_endpoint: ServiceEndpoint,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct ServiceWire {
+    id: String,
+    #[serde(rename = "type")]
+    type_: ServiceType,
+    #[serde(rename = "serviceEndpoint")]
+    service_endpoint: ServiceEndpoint,
+}
+
+impl TryFrom<ServiceWire> for Service {
+    type Error = ValidationError;
+    fn try_from(w: ServiceWire) -> Result<Self, Self::Error> {
+        Service::new(NewService {
+            id: w.id,
+            type_: w.type_,
+            service_endpoint: w.service_endpoint,
+        })
+    }
 }
 
 /// Parameters for [`Service::new`]. Mirrors the field shape of
@@ -816,6 +1086,128 @@ pub struct NewService {
     pub type_: ServiceType,
     /// Endpoint(s).
     pub service_endpoint: ServiceEndpoint,
+}
+
+fn validate_service_endpoint_uri(value: &str) -> Result<(), ValidationError> {
+    validate_uri_text(value, "serviceEndpoint URI is invalid")
+}
+
+fn validate_service_endpoint_uri_with_budget(value: &str, nodes: &mut usize) -> Result<(), ValidationError> {
+    *nodes = nodes.saturating_add(1);
+    if *nodes > MAX_SERVICE_ENDPOINT_NODES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint contains too many JSON nodes",
+        )]));
+    }
+    validate_service_endpoint_uri(value)
+}
+
+fn validate_endpoint_object_value(value: &JsonValue, depth: usize, nodes: &mut usize) -> Result<(), ValidationError> {
+    *nodes = nodes.saturating_add(1);
+    if *nodes > MAX_SERVICE_ENDPOINT_NODES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint contains too many JSON nodes",
+        )]));
+    }
+    if depth > MAX_DID_DOCUMENT_EXTENSION_DEPTH {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint JSON is too deeply nested",
+        )]));
+    }
+    match value {
+        JsonValue::String(value) => validate_bounded_text(
+            value,
+            MAX_DID_DOCUMENT_TEXT_BYTES,
+            "serviceEndpoint string value is invalid",
+        ),
+        JsonValue::Array(items) => {
+            if items.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint array contains too many entries",
+                )]));
+            }
+            for item in items {
+                validate_endpoint_object_value(item, depth + 1, nodes)?;
+            }
+            Ok(())
+        }
+        JsonValue::Object(map) => {
+            if map.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint object contains too many entries",
+                )]));
+            }
+            for (key, item) in map {
+                validate_bounded_text(
+                    key,
+                    MAX_DID_DOCUMENT_TEXT_BYTES,
+                    "serviceEndpoint object key is invalid",
+                )?;
+                validate_endpoint_object_value(item, depth + 1, nodes)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_endpoint_object_map(
+    map: &serde_json::Map<String, JsonValue>,
+    depth: usize,
+    nodes: &mut usize,
+) -> Result<(), ValidationError> {
+    *nodes = nodes.saturating_add(1);
+    if *nodes > MAX_SERVICE_ENDPOINT_NODES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint contains too many JSON nodes",
+        )]));
+    }
+    if map.len() > MAX_DID_DOCUMENT_ENTRIES {
+        return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+            "serviceEndpoint object contains too many entries",
+        )]));
+    }
+    for (key, value) in map {
+        validate_bounded_text(
+            key,
+            MAX_DID_DOCUMENT_TEXT_BYTES,
+            "serviceEndpoint object key is invalid",
+        )?;
+        validate_endpoint_object_value(value, depth + 1, nodes)?;
+    }
+    Ok(())
+}
+
+fn validate_service_endpoint(endpoint: &ServiceEndpoint) -> Result<(), ValidationError> {
+    let mut nodes = 0;
+    validate_service_endpoint_with_budget(endpoint, &mut nodes)
+}
+
+fn validate_service_endpoint_with_budget(endpoint: &ServiceEndpoint, nodes: &mut usize) -> Result<(), ValidationError> {
+    match endpoint {
+        ServiceEndpoint::Uri(value) => validate_service_endpoint_uri_with_budget(value, nodes),
+        ServiceEndpoint::Object(map) => validate_endpoint_object_map(map, 0, nodes),
+        ServiceEndpoint::Array(items) => {
+            *nodes = nodes.saturating_add(1);
+            if *nodes > MAX_SERVICE_ENDPOINT_NODES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint contains too many JSON nodes",
+                )]));
+            }
+            if items.is_empty() || items.len() > MAX_DID_DOCUMENT_ENTRIES {
+                return Err(ValidationError::from_issues(vec![ValidationIssue::new(
+                    "serviceEndpoint array must be non-empty and bounded",
+                )]));
+            }
+            for item in items {
+                match item {
+                    ServiceEndpointArrayEntry::Uri(value) => validate_service_endpoint_uri_with_budget(value, nodes)?,
+                    ServiceEndpointArrayEntry::Object(map) => validate_endpoint_object_map(map, 1, nodes)?,
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 impl Service {
@@ -867,17 +1259,43 @@ impl Service {
     /// nor a relative reference, or when `type` is empty.
     pub fn validate(&self) -> Result<(), ValidationError> {
         let mut issues = Vec::new();
+        collect_bounded_text_issue(
+            &self.id,
+            MAX_DID_STRING_BYTES,
+            "Service id must be a DID URL or relative reference",
+            &mut issues,
+        );
         if !is_did_url(&self.id) && !is_relative_reference(&self.id) {
             issues.push(ValidationIssue::new(
                 "Service id must be a DID URL or relative reference",
             ));
         }
         match &self.type_ {
-            ServiceType::One(s) if s.is_empty() => issues.push(ValidationIssue::new("service type must not be empty")),
-            ServiceType::Many(types) if types.is_empty() => {
+            ServiceType::One(s)
+                if s.is_empty()
+                    || s.len() > MAX_DID_DOCUMENT_TEXT_BYTES
+                    || s.trim() != s
+                    || s.chars().any(char::is_control) =>
+            {
+                issues.push(ValidationIssue::new("service type must not be empty"))
+            }
+            ServiceType::Many(types) if types.is_empty() || types.len() > MAX_DID_DOCUMENT_ENTRIES => {
                 issues.push(ValidationIssue::new("service type must be a non-empty array"))
             }
+            ServiceType::Many(types)
+                if types.iter().any(|s| {
+                    s.is_empty()
+                        || s.len() > MAX_DID_DOCUMENT_TEXT_BYTES
+                        || s.trim() != s
+                        || s.chars().any(char::is_control)
+                }) =>
+            {
+                issues.push(ValidationIssue::new("service type must not be empty"))
+            }
             _ => {}
+        }
+        if let Err(error) = validate_service_endpoint(&self.service_endpoint) {
+            issues.extend(error.issues);
         }
         if issues.is_empty() {
             Ok(())
@@ -957,6 +1375,7 @@ pub enum Controller {
 
 /// W3C DID Document.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "DidDocumentWire")]
 pub struct DidDocument {
     /// JSON-LD context(s).
     #[serde(rename = "@context")]
@@ -1001,6 +1420,117 @@ pub struct DidDocument {
     pub extra: BTreeMap<String, JsonValue>,
 }
 
+#[derive(Deserialize)]
+pub(crate) struct DidDocumentWire {
+    #[serde(rename = "@context")]
+    context: DocumentContext,
+    id: DidString,
+    #[serde(rename = "alsoKnownAs", default)]
+    also_known_as: Option<Vec<String>>,
+    #[serde(default)]
+    controller: Option<Controller>,
+    #[serde(rename = "verificationMethod", default)]
+    verification_method: Option<Vec<VerificationMethod>>,
+    #[serde(default)]
+    authentication: Option<Vec<DidKeyId>>,
+    #[serde(rename = "assertionMethod", default)]
+    assertion_method: Option<Vec<DidKeyId>>,
+    #[serde(rename = "keyAgreement", default)]
+    key_agreement: Option<Vec<DidKeyId>>,
+    #[serde(rename = "capabilityInvocation", default)]
+    capability_invocation: Option<Vec<DidKeyId>>,
+    #[serde(rename = "capabilityDelegation", default)]
+    capability_delegation: Option<Vec<DidKeyId>>,
+    #[serde(default)]
+    service: Option<Vec<Service>>,
+    #[serde(flatten)]
+    extra: BTreeMap<String, JsonValue>,
+}
+
+impl TryFrom<DidDocumentWire> for DidDocument {
+    type Error = ValidationError;
+    fn try_from(w: DidDocumentWire) -> Result<Self, Self::Error> {
+        let doc = Self {
+            context: w.context,
+            id: w.id,
+            also_known_as: w.also_known_as,
+            controller: w.controller,
+            verification_method: w.verification_method,
+            authentication: w.authentication,
+            assertion_method: w.assertion_method,
+            key_agreement: w.key_agreement,
+            capability_invocation: w.capability_invocation,
+            capability_delegation: w.capability_delegation,
+            service: w.service,
+            extra: w.extra,
+        };
+        doc.validate()?;
+        Ok(doc.with_normalized_service_endpoints())
+    }
+}
+
+fn validate_document_context(context: &DocumentContext, issues: &mut Vec<ValidationIssue>) {
+    match context {
+        DocumentContext::One(value) => {
+            if validate_uri_text(value, "@context value is invalid").is_err() {
+                issues.push(ValidationIssue::new("@context value is invalid"));
+            }
+        }
+        DocumentContext::Many(values) => {
+            if values.is_empty() || values.len() > MAX_DID_DOCUMENT_ENTRIES {
+                issues.push(ValidationIssue::new("@context must be a non-empty bounded list"));
+            }
+            let mut seen = HashSet::new();
+            for value in values {
+                if validate_uri_text(value, "@context value is invalid").is_err() {
+                    issues.push(ValidationIssue::new("@context value is invalid"));
+                }
+                if !seen.insert(value) {
+                    issues.push(ValidationIssue::new("@context values must be unique"));
+                }
+            }
+        }
+    }
+}
+
+fn validate_also_known_as(values: &Option<Vec<String>>, issues: &mut Vec<ValidationIssue>) {
+    let Some(values) = values else {
+        return;
+    };
+    if values.is_empty() || values.len() > MAX_DID_DOCUMENT_ENTRIES {
+        issues.push(ValidationIssue::new("alsoKnownAs must be a non-empty bounded list"));
+    }
+    let mut seen = HashSet::new();
+    for value in values {
+        if validate_uri_text(value, "alsoKnownAs value is invalid").is_err() {
+            issues.push(ValidationIssue::new("alsoKnownAs value is invalid"));
+        }
+        if !seen.insert(value) {
+            issues.push(ValidationIssue::new("alsoKnownAs values must be unique"));
+        }
+    }
+}
+
+fn validate_controller(controller: &Option<Controller>, issues: &mut Vec<ValidationIssue>) {
+    let Some(controller) = controller else {
+        return;
+    };
+    match controller {
+        Controller::One(_) => {}
+        Controller::Many(values) => {
+            if values.is_empty() || values.len() > MAX_DID_DOCUMENT_ENTRIES {
+                issues.push(ValidationIssue::new("controller must be a non-empty bounded list"));
+            }
+            let mut seen = HashSet::new();
+            for value in values {
+                if !seen.insert(value.as_str()) {
+                    issues.push(ValidationIssue::new("controller values must be unique"));
+                }
+            }
+        }
+    }
+}
+
 impl DidDocument {
     /// Run W3C DID Core cross-consistency validation. Returns a structured
     /// list of issues; the message text matches the TS port.
@@ -1013,10 +1543,46 @@ impl DidDocument {
     /// service endpoint array contains duplicate entries.
     pub fn validate(&self) -> Result<(), ValidationError> {
         let mut issues = Vec::new();
+        validate_document_context(&self.context, &mut issues);
+        validate_also_known_as(&self.also_known_as, &mut issues);
+        validate_controller(&self.controller, &mut issues);
         let normalized = self.clone().with_normalized_service_endpoints();
 
         let empty: Vec<VerificationMethod> = Vec::new();
         let vms: &[VerificationMethod] = normalized.verification_method.as_deref().unwrap_or(&empty);
+        let mut extension_budget = ExtensionBudget::default();
+        validate_extensions_with_budget(
+            &self.extra,
+            &[
+                "@context",
+                "id",
+                "alsoKnownAs",
+                "controller",
+                "verificationMethod",
+                "authentication",
+                "assertionMethod",
+                "keyAgreement",
+                "capabilityInvocation",
+                "capabilityDelegation",
+                "service",
+            ],
+            &mut extension_budget,
+        )?;
+        for vm in vms {
+            if let Err(error) = validate_extensions_with_budget(
+                vm.extensions(),
+                &["id", "type", "controller", "publicKeyJwk"],
+                &mut extension_budget,
+            ) {
+                issues.extend(error.issues);
+            }
+            issues.extend(vm.public_key_jwk().collect_issues_with_budget(&mut extension_budget));
+        }
+        if vms.len() > MAX_DID_DOCUMENT_ENTRIES {
+            issues.push(ValidationIssue::new(
+                "DID document contains too many verification methods",
+            ));
+        }
         let mut seen_vm_ids: HashMap<String, usize> = HashMap::new();
         let did = normalized.id.as_str();
         let canonicalize = |value: &str| -> String {
@@ -1042,6 +1608,9 @@ impl DidDocument {
 
         let check_relation = |name: &str, values: Option<&Vec<DidKeyId>>, issues: &mut Vec<ValidationIssue>| {
             if let Some(values) = values {
+                if values.len() > MAX_DID_DOCUMENT_ENTRIES {
+                    issues.push(ValidationIssue::new(format!("{name} contains too many entries")));
+                }
                 let mut seen = HashSet::new();
                 for (index, value) in values.iter().enumerate() {
                     let canonical = canonicalize(value.as_str());
@@ -1076,6 +1645,9 @@ impl DidDocument {
         );
 
         if let Some(services) = &normalized.service {
+            if services.len() > MAX_DID_DOCUMENT_ENTRIES {
+                issues.push(ValidationIssue::new("DID document contains too many services"));
+            }
             let mut seen_ids = HashSet::new();
             for (index, service) in services.iter().enumerate() {
                 if !seen_ids.insert(service.id.clone()) {
@@ -1226,11 +1798,53 @@ pub enum KnownDidResolutionErrorCode {
 }
 
 /// Generic DID resolution error keyword — accepts registered extension values.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
 pub struct DidResolutionErrorCode(pub String);
 
+impl<'de> Deserialize<'de> for DidResolutionErrorCode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Self(String::deserialize(deserializer)?);
+        value.validate().map_err(de::Error::custom)?;
+        Ok(value)
+    }
+}
+
+impl KnownDidResolutionErrorCode {
+    /// Transport-neutral HTTP numeric status for existing known enum variants.
+    ///
+    /// Additional standardized keywords that are not variants of this exhaustive
+    /// enum (for example `invalidDidUrl`, `invalidOptions`, and `deactivated`)
+    /// are classified by [`DidResolutionErrorCode::http_status`].
+    #[must_use]
+    pub const fn http_status(self) -> u16 {
+        match self {
+            Self::InvalidDid => 400,
+            Self::NotFound => 404,
+            Self::RepresentationNotSupported => 406,
+            Self::MethodNotSupported | Self::UnsupportedPublicKeyType => 501,
+            _ => 500,
+        }
+    }
+}
+
 impl DidResolutionErrorCode {
+    /// Transport-neutral HTTP numeric status for this error keyword.
+    #[must_use]
+    pub fn http_status(&self) -> u16 {
+        match self.0.as_str() {
+            "invalidDid" | "invalidDidUrl" | "invalidOptions" => 400,
+            "notFound" => 404,
+            "deactivated" => 410,
+            "representationNotSupported" => 406,
+            "methodNotSupported" | "unsupportedPublicKeyType" => 501,
+            _ => 500,
+        }
+    }
+
     /// Validate the keyword shape (`[A-Za-z][A-Za-z0-9]*`).
     ///
     /// # Errors
