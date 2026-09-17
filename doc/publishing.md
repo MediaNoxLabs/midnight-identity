@@ -20,6 +20,8 @@ SPDX-License-Identifier: Apache-2.0
 | `midnight-vc-domain` | **publishable now** | none — zero `midnight-*` deps |
 | `midnight-vc-runtime` | `publish = false` | `midnight-compact-runtime` + `midnight-ledger` unpublished; generated-code artifact |
 | `midnight-vc-families` | `publish = false` | `midnight-compact-runtime` + `midnight-ledger` unpublished; generated family bindings |
+| `midnight-passport-account-source` | not in release workflow | Ledger 9.1 source distribution; release preparation deferred for issue #79 |
+| `midnight-passport-account` | blocked | uses `midnight-ledger` encoding primitives for Compact `persistentHash` parity |
 | `midnight-passport-vault-source` | **publishable now** | no runtime dependencies; authenticated source and descriptor only |
 
 **Why the remaining crates are blocked:** crates.io rejects path-only

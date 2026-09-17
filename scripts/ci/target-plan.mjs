@@ -35,6 +35,8 @@ export const ALL_PACKAGES = Object.freeze([
   "midnight-did-resolver",
   "midnight-did-uniffi",
   "midnight-did-jubjub-schnorr",
+  "midnight-passport-account-source",
+  "midnight-passport-account",
   "midnight-passport-vault-source",
   "midnight-vc-domain",
   "midnight-vc-families",
@@ -68,6 +70,8 @@ const DEPENDENTS = Object.freeze({
   "midnight-did-resolver": ["midnight-did-resolver"],
   "midnight-did-uniffi": ["midnight-did-uniffi"],
   "midnight-did-jubjub-schnorr": ["midnight-did-jubjub-schnorr", "midnight-vc-proof"],
+  "midnight-passport-account-source": ["midnight-passport-account-source", "midnight-passport-account"],
+  "midnight-passport-account": ["midnight-passport-account"],
   "midnight-passport-vault-source": ["midnight-passport-vault-source"],
   "midnight-vc-domain": ["midnight-vc-domain"],
   "midnight-vc-families": ["midnight-vc-families", "midnight-vc-proof"],
@@ -161,6 +165,7 @@ export function makeTargetPlan(paths, {
     [
       "midnight-did-domain",
       "midnight-did-method",
+      "midnight-passport-account-source",
       "midnight-passport-vault-source",
       "midnight-vc-domain",
     ].includes(name));

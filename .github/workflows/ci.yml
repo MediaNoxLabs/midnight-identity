@@ -261,6 +261,7 @@ jobs:
             --target wasm32-unknown-unknown \
             -p midnight-did-domain \
             -p midnight-did-method \
+            -p midnight-passport-account-source \
             -p midnight-passport-vault-source \
             -p midnight-vc-domain
 

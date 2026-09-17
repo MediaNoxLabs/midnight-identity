@@ -39,10 +39,20 @@ test("method-only changes enforce the WASM-clean contract", () => {
   assert.ok(plan.targets.includes(Target.WASM));
 });
 
-test("Passport Vault source changes select its Rust, WASM, and coverage gates", () => {
-  const plan = makeTargetPlan(["crates/midnight-passport-vault-source/src/lib.rs"]);
-  assert.deepEqual(plan.packages, ["midnight-passport-vault-source"]);
-  assert.deepEqual(plan.targets, [
+test("Passport source changes select their focused Rust, WASM, and coverage gates", () => {
+  const accountSource = makeTargetPlan(["crates/midnight-passport-account-source/src/lib.rs"]);
+  assert.deepEqual(accountSource.packages, ["midnight-passport-account-source", "midnight-passport-account"]);
+  assert.deepEqual(accountSource.targets, [
+    Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE,
+  ]);
+
+  const account = makeTargetPlan(["crates/midnight-passport-account/src/lib.rs"]);
+  assert.deepEqual(account.packages, ["midnight-passport-account"]);
+  assert.deepEqual(account.targets, [Target.POLICY, Target.RUST, Target.UNIT, Target.COVERAGE]);
+
+  const vaultSource = makeTargetPlan(["crates/midnight-passport-vault-source/src/lib.rs"]);
+  assert.deepEqual(vaultSource.packages, ["midnight-passport-vault-source"]);
+  assert.deepEqual(vaultSource.targets, [
     Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE,
   ]);
 });
@@ -100,6 +110,17 @@ test("midnight-vc-proof paths and dependencies select focused proof targets", ()
     const plan = makeTargetPlan([path]);
     assert.ok(plan.packages.includes(dependent), path);
     assert.ok(plan.packages.includes("midnight-vc-proof"), path);
+  }
+});
+
+test("root Rust workspace changes force full CI even alongside a known crate", () => {
+  for (const rootPath of ["Cargo.toml", "Cargo.lock", "justfile"]) {
+    const plan = makeTargetPlan([
+      "crates/midnight-passport-account-source/src/lib.rs", rootPath,
+    ]);
+    assert.equal(plan.mode, "full", rootPath);
+    assert.deepEqual(plan.targets, TARGETS, rootPath);
+    assert.deepEqual(plan.packages, ALL_PACKAGES, rootPath);
   }
 });
 
