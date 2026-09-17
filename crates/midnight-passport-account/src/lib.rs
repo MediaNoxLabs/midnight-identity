@@ -495,6 +495,9 @@ pub fn derive_boot_commitment_with_k256(
     verifying_key: &VerifyingKey,
     envelope: u8,
 ) -> Result<[u8; 32]> {
+    if envelope > 1 {
+        bail!("unknown k256 envelope id {envelope}");
+    }
     let (pk_x, pk_y) = pk_coords_le(verifying_key)?;
     persistent_hash(&[
         el_bytes(32, &pad_tag_32("midnight:account:boot:k1:v2")?),
@@ -672,6 +675,10 @@ mod tests {
             assert_eq!(via_fab, by_hand);
             assert_eq!(hex::encode(via_fab), pinned, "envelope {envelope}");
         }
+        assert!(
+            derive_boot_commitment_with_k256(&salt, k256_signing_key_from_hex("0x01").unwrap().verifying_key(), 2)
+                .is_err()
+        );
     }
 
     #[test]

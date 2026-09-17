@@ -14,6 +14,14 @@ pub trait LedgerInboxView {
     fn inbox_count(&self) -> u64;
     /// Return the fixed 192-byte entry at `index`, or `None` when absent.
     fn inbox_entry(&self, index: u64) -> Option<&[u8]>;
+    /// Return whether the decrypted coin at `index` matches the chain coin
+    /// commitment/qualified-coin evidence associated with the depositing call.
+    ///
+    /// AEAD only proves that the entry was encrypted to the account public key;
+    /// the contract cannot prove that the plaintext matches the coin supplied
+    /// to `deposit_shielded`. Implementations must recompute/check the
+    /// chain-visible coin evidence here before discovery returns the coin.
+    fn inbox_entry_matches_chain_coin(&self, index: u64, coin: &PlainCoin) -> bool;
 }
 
 /// Recovered coin plus its inbox ordinal.
@@ -34,7 +42,9 @@ pub fn inbox_walk(view: &impl LedgerInboxView, enc_secret_key: &[u8; 32]) -> Vec
             continue;
         };
         if let Ok(coin) = open_inbox_entry(enc_secret_key, entry) {
-            out.push(DiscoveredCoin { coin, inbox_index: i });
+            if view.inbox_entry_matches_chain_coin(i, &coin) {
+                out.push(DiscoveredCoin { coin, inbox_index: i });
+            }
         }
     }
     out
@@ -49,6 +59,7 @@ mod tests {
 
     struct View {
         entries: Vec<Option<Vec<u8>>>,
+        coins: Vec<Option<PlainCoin>>,
     }
     impl LedgerInboxView for View {
         fn inbox_count(&self) -> u64 {
@@ -56,6 +67,9 @@ mod tests {
         }
         fn inbox_entry(&self, index: u64) -> Option<&[u8]> {
             self.entries[index as usize].as_deref()
+        }
+        fn inbox_entry_matches_chain_coin(&self, index: u64, coin: &PlainCoin) -> bool {
+            self.coins[index as usize].as_ref() == Some(coin)
         }
     }
 
@@ -69,8 +83,17 @@ mod tests {
             value: 3,
         };
         let entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin).unwrap();
+        let mut forged = coin.clone();
+        forged.value += 1;
+        let forged_entry = seal_inbox_entry(&mut rng, &keys.public_key, &forged).unwrap();
         let view = View {
-            entries: vec![None, Some(vec![0; 192]), Some(entry.to_vec())],
+            entries: vec![
+                None,
+                Some(vec![0; 192]),
+                Some(entry.to_vec()),
+                Some(forged_entry.to_vec()),
+            ],
+            coins: vec![None, None, Some(coin.clone()), Some(coin.clone())],
         };
         assert_eq!(
             inbox_walk(&view, &keys.secret_key),

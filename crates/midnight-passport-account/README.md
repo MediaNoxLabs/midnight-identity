@@ -13,7 +13,10 @@ This crate ports the reusable signer/challenge, scoped-grant, InboxEntry v1,
 coin-store, and inbox-discovery behavior from
 `midnightntwrk/passport@40072709e3f5ac5d9b89f9d92d02a4413cbe05cc`. It does
 not deploy contracts, submit transactions, talk to nodes/indexers/proof
-servers, implement capture/wave policy, or generate Compact bindings.
+servers, implement capture/wave policy, or generate Compact bindings. Runtime
+inbox discovery is deliberately abstract: callers must supply the read-only
+chain evidence needed to reject entries whose decrypted plaintext does not match
+the deposited coin commitment/qualified coin.
 
 Compatibility: the source contract is reviewed against Ledger 9.1 with
 Compact `0.33.0-rc.2` / runtime `0.18.0-rc.1`. The Jubjub arm is the normative
