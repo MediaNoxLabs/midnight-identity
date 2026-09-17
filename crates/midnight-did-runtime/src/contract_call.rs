@@ -86,7 +86,7 @@ fn validate_hex(s: &str, field: &'static str) -> Result<usize, ValidationError> 
     if s.is_empty() {
         return Err(ValidationError::Empty { field });
     }
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err(ValidationError::NotHex {
             field,
             reason: format!("odd length ({})", s.len()),
