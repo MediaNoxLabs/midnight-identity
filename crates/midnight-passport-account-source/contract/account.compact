@@ -1366,6 +1366,7 @@ export pure circuit derive_grant_id_with_k256(
   origin_hash: Bytes<32>,
   slot:        Uint<8>,
 ): Bytes<32> {
+  require_live_k256_key(pk);
   assert(envelope <= 1, "unknown envelope");
   return persistentHash<[Bytes<32>, ContractAddress, Bytes<32>, Bytes<32>, Uint<8>, Bytes<32>, Uint<8>]>(
     [pad(32, "midnight:account:grant:id:k1:v1"), self_addr,
@@ -1380,7 +1381,9 @@ export pure circuit derive_grant_id_with_jubjub(
   origin_hash: Bytes<32>,
   slot:        Uint<8>,
 ): Bytes<32> {
-  return persistentHash<[Bytes<32>, ContractAddress, JubjubPoint, Bytes<32>, Uint<8>]>(
+  assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),
+         "grantee key has small order");
+  return persistentHash<[Bytes<32>, ContractAddress, JubjubPoint, Bytes<32>, Uint<8>](
     [pad(32, "midnight:account:grant:id:v1"), self_addr, pk, origin_hash, slot]
   );
 }

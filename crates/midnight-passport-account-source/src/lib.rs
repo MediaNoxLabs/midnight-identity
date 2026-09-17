@@ -30,10 +30,10 @@ pub const CONTRACT_PATH: &str = "contract/account.compact";
 pub const CONTRACT_SOURCE: &str = include_str!("../contract/account.compact");
 
 /// SHA-256 digest of [`CONTRACT_SOURCE`].
-pub const CONTRACT_SHA256: &str = "1f08e3a6607b9bc795f0f883a2afbf70043352333e38547611aadd31f0f80d98";
+pub const CONTRACT_SHA256: &str = "40bb6943e92b71066b3f7415e00395adc5e0bd980121b4fb45c27af3e8af05f0";
 
 /// Size in bytes of [`CONTRACT_SOURCE`].
-pub const CONTRACT_BYTES: usize = 105_761;
+pub const CONTRACT_BYTES: usize = 105_906;
 
 /// Stable relative path of the pristine upstream snapshot within the published crate.
 pub const UPSTREAM_CONTRACT_PATH: &str = "contract/account.upstream.compact";

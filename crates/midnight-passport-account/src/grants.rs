@@ -121,6 +121,9 @@ pub fn grant_id_k256(
     origin_hash: &[u8; 32],
     slot: u8,
 ) -> Result<[u8; 32]> {
+    if pk_x_le == &[0u8; 32] && pk_y_le == &[0u8; 32] {
+        bail!("device key is the point at infinity");
+    }
     if envelope > 1 {
         bail!("unknown k256 envelope id {envelope}");
     }
@@ -148,6 +151,9 @@ pub fn grant_id_jubjub(
     origin_hash: &[u8; 32],
     slot: u8,
 ) -> Result<[u8; 32]> {
+    if pk.0 == JubjubSubgroup::identity() {
+        bail!("grantee key has small order");
+    }
     persistent_hash(&[
         el_bytes(32, &pad32(TAG_ID_V1)?),
         el_bytes(32, self_addr),
@@ -1508,6 +1514,7 @@ mod tests {
             assert_eq!(hex::encode(via_fab), pinned, "envelope {envelope} slot {slot}");
         }
         assert!(grant_id_k256(&SELF, &x_le, &y_le, 2, &origin(), 0).is_err());
+        assert!(grant_id_k256(&SELF, &[0u8; 32], &[0u8; 32], 0, &origin(), 0).is_err());
     }
 
     #[test]
@@ -1639,36 +1646,15 @@ mod tests {
     }
 
     #[test]
-    fn grant_id_v1_does_not_reject_the_jubjub_identity() {
+    fn grant_id_v1_rejects_the_jubjub_identity() {
         use group::Group as _;
         use midnight_curves::JubjubSubgroup;
-        // The JubJub identity is the ordinary affine point (0, 1), so it
-        // carries coordinates and derives an identity like any other point.
-        // Nothing in the identity recipe rejects it: the [8]pk != O guard of
-        // section 3.3 is the ONLY rejection, and an implementation that
-        // lifts this derivation without the guard admits a key that
-        // authorises with no secret.
         let identity = EmbeddedGroupAffine(JubjubSubgroup::identity());
         assert_eq!(hex::encode(identity.x().unwrap().as_le_bytes()), "00".repeat(32));
         let mut one = [0u8; 32];
         one[0] = 1;
         assert_eq!(identity.y().unwrap().as_le_bytes(), one.to_vec());
-        let id = grant_id_jubjub(&SELF, &identity, &origin(), 0).unwrap();
-        assert_eq!(
-            id,
-            sha256_concat(&[
-                pad_to(32, b"midnight:account:grant:id:v1"),
-                SELF.to_vec(),
-                vec![0u8; 32],
-                one.to_vec(),
-                origin().to_vec(),
-                vec![0u8],
-            ])
-        );
-        assert_eq!(
-            hex::encode(id),
-            "64de12ffba15ac106daa3f69dddd76962099cd1ffe7750d718e5fbadbcddd36e"
-        );
+        assert!(grant_id_jubjub(&SELF, &identity, &origin(), 0).is_err());
     }
 
     #[test]
