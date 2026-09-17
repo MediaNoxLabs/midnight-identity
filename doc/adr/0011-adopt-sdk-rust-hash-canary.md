@@ -1,0 +1,75 @@
+<!--
+This file is part of MediaNoxLabs/midnight-identity.
+Copyright (C) 2026 Midnight Foundation
+SPDX-License-Identifier: Apache-2.0
+-->
+
+# ADR 0011 — Adopt the generic SDK-Rust hash surface as a downstream canary
+
+**Status:** accepted · **Date:** 2026-09-17 · **Issue:** #81
+
+## Context
+
+`midnight-did-method` computes an off-chain holder-binding identifier as
+`SHA-256(domain || NUL || payload)`. The domain vocabulary, normalization rules,
+and holder-binding semantics are Midnight-specific and belong in this
+repository. The SHA-256 operation itself is a generic primitive already owned
+by Hyperledger Identus SDK-Rust.
+
+The first SDK-Rust release train needs evidence from a real, independently
+owned consumer. This repository must not transfer Midnight domain tags, DID
+method behavior, Compact types, ledger/runtime types, or product policy into
+the generic SDK merely to produce that evidence.
+
+At the preimplementation baseline, `midnight-did-method` depended directly on
+`sha2 0.10`. Its unique feature-tree output contained 204 lines, and a fresh
+locked package check completed in 11.11 seconds on the development host. These
+measurements are comparative observations, not performance guarantees.
+
+## Decision
+
+Pin `identus-crypto` to the full immutable SDK-Rust revision
+`19d0362038c3f2af6898624ea04347e3cd4648f7`, reachable from protected
+`develop`. Disable default
+features and enable only `hash`.
+
+Keep `domain_separated_sha256` and every Midnight-owned semantic in
+`midnight-did-method`. The function constructs the bounded
+`domain || NUL || payload` preimage locally and passes those bytes to the
+generic one-shot `identus_crypto::hash::sha256` function. The SDK digest is
+copied into the existing `[u8; 32]` return type, preserving this crate's public
+contract.
+
+The bounded preimage requires one allocation because the reviewed SDK surface
+is intentionally one-shot. Adding a multipart API upstream is not justified by
+this single canary: it would broaden the generic public contract before a
+second use case demonstrates that cohesion. The allocation is explicit and
+independently reversible.
+
+Commit `Cargo.lock`. Retain no direct `sha2` dependency in
+`midnight-did-method`; other workspace crates remain outside this slice.
+
+## Evidence required
+
+- Existing TypeScript-derived golden vectors remain byte-for-byte identical.
+- Independent differential vectors cover empty payloads, embedded NUL bytes,
+  and domain/payload concatenation ambiguities.
+- `cargo tree -e features` proves `identus-crypto` has only its `hash` feature
+  and does not select curves, derivation, JWK, COSE, encodings, entropy, or
+  compatibility features.
+- Native package tests, the repository's applicable WASM check, dependency,
+  license, advisory, policy, and production-ready local gates pass.
+- The PR records before/after dependency-cone and compile-duration evidence.
+
+## Consequences
+
+- The consumer proves a narrow real-world SDK seam without coupling SDK-Rust
+  to Midnight.
+- The source pin is pre-release integration evidence, not a registry, SemVer,
+  runtime, device, FFI, certification, or production-support claim.
+- One small allocation replaces incremental hashing on this path. If profiling
+  shows material impact or another consumer needs multipart input, propose a
+  generic upstream API under a separate SDK issue and ADR.
+- Rollback restores the direct `sha2` dependency and previous three-update
+  implementation; no stored data, wire format, domain tag, or migration is
+  involved.
