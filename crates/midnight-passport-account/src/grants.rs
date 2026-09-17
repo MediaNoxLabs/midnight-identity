@@ -1170,6 +1170,13 @@ pub fn derive_grant(req: &DeriveGrantRequest) -> Result<serde_json::Value> {
 
     let (arm, grant_id, pk_json) = match req.arm.as_deref() {
         None | Some("k256") => {
+            if req.envelope == 1
+                && (scope.op_withdraw_unshielded
+                    || scope.op_withdraw_shielded
+                    || scope.op_withdraw_shielded_to_contract)
+            {
+                bail!("envelope-1 k256 grants are read-only");
+            }
             let sk = k256_signing_key_from_hex(&req.sk)?;
             let vk = sk.verifying_key();
             let (x_le, y_le) = pk_coords_le(vk)?;
@@ -2292,6 +2299,9 @@ mod tests {
         let mut bad_envelope = req.clone();
         bad_envelope.envelope = 2;
         assert!(derive_grant(&bad_envelope).is_err());
+        let mut e1_spend = req.clone();
+        e1_spend.envelope = 1;
+        assert!(derive_grant(&e1_spend).is_err());
         let rejects_scope = |bad: DeriveGrantRequest| {
             assert!(derive_grant(&bad).is_err());
         };
