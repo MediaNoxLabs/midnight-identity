@@ -106,6 +106,14 @@ export function classifyPath(candidate) {
       || file.startsWith("third_party/midnight-verifiable-credential-digital-passport/")) {
     return { area: "vc-codegen", package: "midnight-vc-families" };
   }
+  if (file.startsWith("artifacts/passport-vault-ledger8/")
+      || file.startsWith("crates/midnight-passport-vault-source/contract/")
+      || file === "crates/midnight-passport-vault-source/manifest.json"
+      || file.startsWith("scripts/compact/passport-vault-ledger8-")
+      || file.startsWith("tests/compact/passport-vault-ledger8-")
+      || file === "doc/compact/passport-vault-ledger8-artifacts.md") {
+    return { area: "vc-codegen", package: "midnight-passport-vault-source" };
+  }
   if (/^crates\/midnight-did-runtime\/(?:src\/contract|assets\/keys)\//u.test(file)) {
     return { area: "did-codegen", package: "midnight-did-runtime" };
   }
