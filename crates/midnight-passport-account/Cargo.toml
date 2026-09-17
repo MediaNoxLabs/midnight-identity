@@ -1,0 +1,35 @@
+[package]
+name                   = "midnight-passport-account"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+documentation          = "https://docs.rs/midnight-passport-account"
+readme                 = "README.md"
+description            = "Platform-neutral Passport account-custody client primitives."
+keywords               = [ "midnight", "passport", "custody", "account" ]
+categories             = [ "cryptography", "data-structures" ]
+
+[dependencies]
+anyhow                    = "1"
+aes-gcm                   = { version = "0.10", features = [ "aes" ] }
+ff                        = "0.13"
+group                     = "0.13"
+hex.workspace             = true
+hkdf                      = "0.12"
+k256                      = { version = "0.13", default-features = false, features = [ "ecdsa", "std" ] }
+midnight-base-crypto      = { workspace = true }
+midnight-curves           = "0.2"
+midnight-passport-account-source = { workspace = true }
+midnight-transient-crypto = { workspace = true }
+rand                      = "0.8"
+serde                     = { workspace = true }
+serde_json.workspace      = true
+sha2                      = "0.10"
+thiserror                 = "2"
+x25519-dalek              = { version = "2", features = [ "getrandom", "static_secrets" ] }
+
+[dev-dependencies]

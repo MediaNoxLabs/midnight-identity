@@ -40,16 +40,21 @@ test("method-only changes enforce the WASM-clean contract", () => {
 });
 
 test("Passport source changes select their focused Rust, WASM, and coverage gates", () => {
-  for (const packageName of [
-    "midnight-passport-account-source",
-    "midnight-passport-vault-source",
-  ]) {
-    const plan = makeTargetPlan([`crates/${packageName}/src/lib.rs`]);
-    assert.deepEqual(plan.packages, [packageName]);
-    assert.deepEqual(plan.targets, [
-      Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE,
-    ]);
-  }
+  const accountSource = makeTargetPlan(["crates/midnight-passport-account-source/src/lib.rs"]);
+  assert.deepEqual(accountSource.packages, ["midnight-passport-account-source", "midnight-passport-account"]);
+  assert.deepEqual(accountSource.targets, [
+    Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE,
+  ]);
+
+  const account = makeTargetPlan(["crates/midnight-passport-account/src/lib.rs"]);
+  assert.deepEqual(account.packages, ["midnight-passport-account"]);
+  assert.deepEqual(account.targets, [Target.POLICY, Target.RUST, Target.UNIT, Target.COVERAGE]);
+
+  const vaultSource = makeTargetPlan(["crates/midnight-passport-vault-source/src/lib.rs"]);
+  assert.deepEqual(vaultSource.packages, ["midnight-passport-vault-source"]);
+  assert.deepEqual(vaultSource.targets, [
+    Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE,
+  ]);
 });
 
 test("prototype keeps directly affected checks but omits broad compatibility lanes", () => {

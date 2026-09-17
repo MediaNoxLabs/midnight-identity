@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-account-source", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-proof", "crates/midnight-vc-runtime" ]
+members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-account-source", "crates/midnight-passport-account", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-proof", "crates/midnight-vc-runtime" ]
 
 [workspace.package]
 version      = "0.5.0"
@@ -58,6 +58,7 @@ midnight-vc-families           = { path = "crates/midnight-vc-families" }
 midnight-vc-proof              = { path = "crates/midnight-vc-proof" }
 midnight-vc-runtime            = { path = "crates/midnight-vc-runtime" }
 midnight-passport-account-source = { path = "crates/midnight-passport-account-source", version = "=0.5.0" }
+midnight-passport-account        = { path = "crates/midnight-passport-account", version = "=0.5.0" }
 midnight-passport-vault-source   = { path = "crates/midnight-passport-vault-source", version = "=0.5.0" }
 
 # ---- Patch crates.io's `midnight-proofs` with the local fork ----
