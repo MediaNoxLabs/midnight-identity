@@ -42,7 +42,7 @@ and the opt-in `midnight-vc-families` bindings.
 | `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
 | `midnight-vc-runtime` | `compactc --rust` codegen target for the VC contracts (credentials / iso-registry / same-holder bindings) | no (`publish = false`)² |
 | `midnight-vc-families` | Feature-gated generated bindings for credential families (`digital-passport` today) | no (`publish = false`)² |
-| `midnight-passport-account-source` | Authenticated Passport account-custody Compact source and Ledger 9.1 compatibility descriptor (no runtime dependencies) | yes |
+| `midnight-passport-account-source` | Authenticated Passport account-custody Compact source and Ledger 9.1 compatibility descriptor (no runtime dependencies) | not in release workflow |
 | `midnight-passport-vault-source` | Authenticated Passport Vault Compact source, provenance, and circuit baselines (no runtime dependencies) | yes |
 
 ¹ crates.io publication is blocked until the upstream `midnight-ledger`

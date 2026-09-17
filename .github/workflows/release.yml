@@ -6,8 +6,7 @@
 # or manual dispatch with dry_run.
 #
 # Publishable set (dependency order). Today midnight-did-domain,
-# midnight-did-method, midnight-passport-account-source, and
-# midnight-passport-vault-source can reach crates.io.
+# midnight-did-method, and midnight-passport-vault-source can reach crates.io.
 # The remaining DID crates depend on unpublished midnight-ledger crates and/or
 # compact-runtime path dependencies.
 # When those publish upstream, extend PUBLISH_CRATES below in dependency order:
@@ -38,7 +37,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   # Dependency-ordered, space-separated list of crates to publish.
-  PUBLISH_CRATES: "midnight-did-domain midnight-did-method midnight-passport-account-source midnight-passport-vault-source"
+  PUBLISH_CRATES: "midnight-did-domain midnight-did-method midnight-passport-vault-source"
 
 jobs:
   verify:

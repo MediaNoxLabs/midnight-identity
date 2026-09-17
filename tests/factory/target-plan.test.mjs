@@ -44,9 +44,7 @@ test("Passport source changes select their focused Rust, WASM, and coverage gate
     "midnight-passport-account-source",
     "midnight-passport-vault-source",
   ]) {
-    const plan = makeTargetPlan([
-      `crates/${packageName}/src/lib.rs`, "Cargo.toml", "Cargo.lock",
-    ]);
+    const plan = makeTargetPlan([`crates/${packageName}/src/lib.rs`]);
     assert.deepEqual(plan.packages, [packageName]);
     assert.deepEqual(plan.targets, [
       Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE,
@@ -107,6 +105,17 @@ test("midnight-vc-proof paths and dependencies select focused proof targets", ()
     const plan = makeTargetPlan([path]);
     assert.ok(plan.packages.includes(dependent), path);
     assert.ok(plan.packages.includes("midnight-vc-proof"), path);
+  }
+});
+
+test("root Rust workspace changes force full CI even alongside a known crate", () => {
+  for (const rootPath of ["Cargo.toml", "Cargo.lock", "justfile"]) {
+    const plan = makeTargetPlan([
+      "crates/midnight-passport-account-source/src/lib.rs", rootPath,
+    ]);
+    assert.equal(plan.mode, "full", rootPath);
+    assert.deepEqual(plan.targets, TARGETS, rootPath);
+    assert.deepEqual(plan.packages, ALL_PACKAGES, rootPath);
   }
 });
 

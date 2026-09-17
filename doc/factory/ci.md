@@ -19,17 +19,12 @@ manual full runs execute the complete matrix.
 | WASM-clean library crate | Rust targets plus `wasm` |
 | DID Compact input/generated artifacts | Rust targets plus `did-codegen` |
 | VC Compact input/generated artifacts | Rust targets plus `vc-codegen` |
-| Standalone Rust workspace metadata, Nix/toolchain, or unknown | Full production matrix |
-| Rust workspace metadata accompanying a known crate change | Follow the affected crate plan; do not add unrelated codegen lanes |
+| Cargo/Nix/lock/toolchain or unknown | Full production matrix |
 | Manual/integration/release | Full production matrix |
 | Scheduled | Full production matrix plus factory audit |
 
 The planner expands a changed crate to known first-party dependents so focused
-testing still exercises compatibility. Root `Cargo.toml`/`Cargo.lock` and
-`justfile` changes stay on that focused plan only when the same diff identifies
-a known affected crate; standalone workspace metadata changes fail closed to
-the full matrix.
-Pull requests into `rust-codegen` or a
+testing still exercises compatibility. Pull requests into `rust-codegen` or a
 future `milestone-x.y.z` branch force the full release plan. The planner emits
 a stable GitHub output contract consumed by `.github/workflows/ci.yml`; its
 contract tests are part of the always-on policy lane.

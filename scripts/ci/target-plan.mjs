@@ -78,8 +78,7 @@ const DEPENDENTS = Object.freeze({
 });
 
 const DOC_FILE = /(?:^|\/)(?:README|CONTRIBUTING|CHANGELOG|SECURITY|CODE_OF_CONDUCT)\.md$|\.md$/u;
-const RUST_WORKSPACE_FILE = /^(?:Cargo\.toml|Cargo\.lock|justfile)$/u;
-const BUILD_FILE = /^(?:flake\.nix|flake\.lock|rustfmt\.toml|taplo\.toml)$|^nix\//u;
+const BUILD_FILE = /^(?:Cargo\.toml|Cargo\.lock|flake\.nix|flake\.lock|justfile|rustfmt\.toml|taplo\.toml)$|^nix\//u;
 
 function normalize(candidate) {
   return candidate.replaceAll("\\", "/").replace(/^\.\//u, "");
@@ -93,7 +92,6 @@ function ordered(values, authority) {
 export function classifyPath(candidate) {
   const file = normalize(candidate);
   if (!file) return { area: "unknown" };
-  if (RUST_WORKSPACE_FILE.test(file)) return { area: "rust-workspace" };
   if (BUILD_FILE.test(file) || file === ".gitmodules") return { area: "build" };
   if (file === "third_party/midnight-did" || file.startsWith("third_party/midnight-did/")) {
     return { area: "did-codegen", package: "midnight-did-runtime" };
@@ -141,10 +139,7 @@ export function makeTargetPlan(paths, {
   const classified = changedPaths.map(classifyPath);
   const areas = [...new Set(classified.map(({ area }) => area))].sort();
   const unavailable = changedPaths.length === 0;
-  const hasKnownPackageChange = classified.some(({ package: name }) => name !== undefined);
-  const unscopedWorkspaceChange = areas.includes("rust-workspace") && !hasKnownPackageChange;
-  const full = forceFull || unavailable || unscopedWorkspaceChange
-    || areas.includes("unknown") || areas.includes("build");
+  const full = forceFull || unavailable || areas.includes("unknown") || areas.includes("build");
   const packages = new Set();
 
   if (full) {

@@ -169,7 +169,7 @@ test("release verification and publishing include every publishable library crat
   const workflow = await readFile(path.join(root, ".github", "workflows", "release.yml"), "utf8");
   assert.match(
     workflow,
-    /PUBLISH_CRATES: "midnight-did-domain midnight-did-method midnight-passport-account-source midnight-passport-vault-source"/u,
+    /PUBLISH_CRATES: "midnight-did-domain midnight-did-method midnight-passport-vault-source"/u,
   );
   assert.match(workflow, /patch\.crates-io\.midnight-did-domain\.path/u);
   assert.match(workflow, /midnight-did-domain@\$\{version\}/u);
