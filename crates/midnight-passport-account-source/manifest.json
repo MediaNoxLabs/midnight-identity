@@ -4,8 +4,8 @@
   "contract": {
     "name": "passport-account-custody",
     "path": "contract/account.compact",
-    "bytes": 105394,
-    "sha256": "5c03ac26765ab963f72bf1badccabb7dd1cd8bb1e3598a85b18368e7793a0097",
+    "bytes": 105529,
+    "sha256": "28336d8b9302d446d8d95fcd991c869fa321b801bad4f93450e1a8d05c641601",
     "languageConstraint": ">=0.17.0",
     "license": "Apache-2.0",
     "specVersion": 2,

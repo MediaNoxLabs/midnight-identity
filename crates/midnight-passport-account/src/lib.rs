@@ -477,6 +477,9 @@ pub fn derive_device_entry_with_k256(
     epoch: u32,
     counter: u64,
 ) -> Result<[u8; 32]> {
+    if envelope > 1 {
+        bail!("unknown k256 envelope id {envelope}");
+    }
     let (pk_x, pk_y) = pk_coords_le(verifying_key)?;
     persistent_hash(&[
         el_bytes(32, &pad_tag_32("midnight:account:device:k1:v2")?),
@@ -645,6 +648,16 @@ mod tests {
             assert_eq!(via_fab, by_hand);
             assert_eq!(hex::encode(via_fab), pinned, "envelope {envelope}");
         }
+        assert!(
+            derive_device_entry_with_k256(
+                &self_addr,
+                k256_signing_key_from_hex("0x01").unwrap().verifying_key(),
+                2,
+                0,
+                0,
+            )
+            .is_err()
+        );
     }
 
     #[test]

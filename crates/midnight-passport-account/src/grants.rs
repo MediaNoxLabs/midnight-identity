@@ -121,6 +121,9 @@ pub fn grant_id_k256(
     origin_hash: &[u8; 32],
     slot: u8,
 ) -> Result<[u8; 32]> {
+    if envelope > 1 {
+        bail!("unknown k256 envelope id {envelope}");
+    }
     persistent_hash(&[
         el_bytes(32, &pad32(TAG_ID_K1)?),
         el_bytes(32, self_addr),
@@ -1460,6 +1463,7 @@ mod tests {
             assert_eq!(via_fab, sha256_concat(&parts));
             assert_eq!(hex::encode(via_fab), pinned, "envelope {envelope} slot {slot}");
         }
+        assert!(grant_id_k256(&SELF, &x_le, &y_le, 2, &origin(), 0).is_err());
     }
 
     #[test]
@@ -2248,6 +2252,9 @@ mod tests {
             lc["revoke_all_grants"].as_str().unwrap(),
             hex::encode(challenge_revoke_all_grants_k256(&SELF, &dx, &dy, 7).unwrap())
         );
+        let mut bad_envelope = req;
+        bad_envelope.envelope = 2;
+        assert!(derive_grant(&bad_envelope).is_err());
 
         // The jubjub grantee arm: [5]G, pinned identity, both paths agree
         // inside derive_grant.

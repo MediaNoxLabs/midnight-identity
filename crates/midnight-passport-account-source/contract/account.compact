@@ -363,6 +363,7 @@ export pure circuit derive_boot_commitment_with_k256(
   pk:       Secp256k1Point,
   envelope: Uint<8>,
 ): Bytes<32> {
+  assert(envelope <= 1, "unknown envelope");
   return persistentHash<[Bytes<32>, Bytes<32>, Bytes<32>, Bytes<32>, Uint<8>]>(
     [pad(32, "midnight:account:boot:k1:v2"), salt,
      secp256k1PointX(pk) as Bytes<32>, secp256k1PointY(pk) as Bytes<32>,
@@ -413,6 +414,7 @@ export pure circuit derive_device_entry_with_k256(
   epoch:     Uint<32>,
   counter:   Uint<64>,
 ): Bytes<32> {
+  assert(envelope <= 1, "unknown envelope");
   return persistentHash<[Bytes<32>, ContractAddress, Bytes<32>, Bytes<32>, Uint<8>, Uint<32>, Uint<64>]>(
     [pad(32, "midnight:account:device:k1:v2"), self_addr,
      secp256k1PointX(pk) as Bytes<32>, secp256k1PointY(pk) as Bytes<32>,
@@ -1360,6 +1362,7 @@ export pure circuit derive_grant_id_with_k256(
   origin_hash: Bytes<32>,
   slot:        Uint<8>,
 ): Bytes<32> {
+  assert(envelope <= 1, "unknown envelope");
   return persistentHash<[Bytes<32>, ContractAddress, Bytes<32>, Bytes<32>, Uint<8>, Bytes<32>, Uint<8>]>(
     [pad(32, "midnight:account:grant:id:k1:v1"), self_addr,
      secp256k1PointX(pk) as Bytes<32>, secp256k1PointY(pk) as Bytes<32>,
