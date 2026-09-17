@@ -165,8 +165,9 @@ pub fn open_inbox_entry(enc_secret_key: &[u8; 32], entry: &[u8]) -> Result<Plain
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rand::SeedableRng;
+
+    use super::*;
 
     #[test]
     fn roundtrip_and_fixed_codec() {

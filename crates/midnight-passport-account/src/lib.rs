@@ -549,8 +549,9 @@ fn pad_tag_32(tag: &str) -> Result<[u8; 32]> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use sha2::{Digest, Sha256};
+
+    use super::*;
 
     const GX_BE: &str = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
     const GY_BE: &str = "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8";

@@ -34,6 +34,7 @@ use ff::Field as _;
 use group::Group as _;
 use k256::ecdsa::Signature;
 use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
+use midnight_base_crypto::fab::{AlignmentAtom, AlignmentSegment, ValueAtom};
 use midnight_curves::{Fr as JubjubScalar, JubjubSubgroup};
 use midnight_transient_crypto::curve::EmbeddedGroupAffine;
 use serde::Deserialize;
@@ -44,7 +45,6 @@ use crate::{
     jubjub_point_json, jubjub_scalar_from_hex, jubjub_scalar_to_hex, k256_point_json, k256_signing_key_from_hex,
     persistent_hash, pk_coords_le,
 };
-use midnight_base_crypto::fab::{AlignmentAtom, AlignmentSegment, ValueAtom};
 
 // ── Tag families (MIP section 14) ──────────────────────────────────────────
 
@@ -1314,8 +1314,9 @@ impl Sha256Writer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use sha2::{Digest, Sha256};
+
+    use super::*;
 
     const GX_BE: &str = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
     const GY_BE: &str = "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8";

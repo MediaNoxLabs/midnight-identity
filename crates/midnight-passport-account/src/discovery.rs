@@ -42,9 +42,10 @@ pub fn inbox_walk(view: &impl LedgerInboxView, enc_secret_key: &[u8; 32]) -> Vec
 
 #[cfg(test)]
 mod tests {
+    use rand::SeedableRng;
+
     use super::*;
     use crate::inbox::{generate_enc_key_pair, seal_inbox_entry};
-    use rand::SeedableRng;
 
     struct View {
         entries: Vec<Option<Vec<u8>>>,
