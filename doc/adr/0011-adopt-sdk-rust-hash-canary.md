@@ -26,6 +26,12 @@ At the preimplementation baseline, `midnight-did-method` depended directly on
 locked package check completed in 11.11 seconds on the development host. These
 measurements are comparative observations, not performance guarantees.
 
+SDK-Rust's accepted `0.1.x` minimum supported Rust version is 1.89. This
+workspace declared 1.85 while its Nix gates already used a newer pinned nightly.
+Adopting the SDK without changing the declaration would make the consumer's
+compatibility metadata false: Cargo reports every crate in the pinned SDK train
+as requiring Rust 1.89.
+
 ## Decision
 
 Pin `identus-crypto` to the full immutable SDK-Rust revision
@@ -48,6 +54,9 @@ independently reversible.
 
 Commit `Cargo.lock`. Retain no direct `sha2` dependency in
 `midnight-did-method`; other workspace crates remain outside this slice.
+Raise the workspace `rust-version` declaration from 1.85 to 1.89 so every
+published crate states the dependency-imposed floor honestly. This is a
+consumer compatibility decision, not an SDK specialization.
 
 ## Evidence required
 
@@ -70,6 +79,9 @@ Commit `Cargo.lock`. Retain no direct `sha2` dependency in
 - One small allocation replaces incremental hashing on this path. If profiling
   shows material impact or another consumer needs multipart input, propose a
   generic upstream API under a separate SDK issue and ADR.
+- Consumers requiring Rust 1.85–1.88 cannot use this workspace revision. The
+  repository's build compiler was already newer; the change aligns published
+  metadata with the now-effective dependency floor.
 - Rollback restores the direct `sha2` dependency and previous three-update
   implementation; no stored data, wire format, domain tag, or migration is
   involved.
