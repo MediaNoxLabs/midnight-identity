@@ -108,6 +108,8 @@ fn source_is_the_authenticated_hardened_snapshot() {
     assert!(CONTRACT_SOURCE.contains(
         "derive_boot_commitment_with_jubjub(salt: Bytes<32>, pk: JubjubPoint): Bytes<32> {\n  assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),\n         \"device key has small order\");"
     ));
+    assert!(CONTRACT_SOURCE.contains("persistentHash<[Bytes<32>, Bytes<32>, JubjubPoint]>("));
+    assert!(!CONTRACT_SOURCE.contains("persistentHash<[Bytes<32>, Bytes<32>, JubjubPoint]("));
     assert!(CONTRACT_SOURCE.contains(
         "derive_boot_commitment_with_k256(\n  salt:     Bytes<32>,\n  pk:       Secp256k1Point,\n  envelope: Uint<8>,\n): Bytes<32> {\n  assert(envelope <= 1, \"unknown envelope\");"
     ));

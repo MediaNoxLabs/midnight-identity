@@ -350,7 +350,7 @@ export circuit activate_initial_device_with_k256(
 export pure circuit derive_boot_commitment_with_jubjub(salt: Bytes<32>, pk: JubjubPoint): Bytes<32> {
   assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),
          "device key has small order");
-  return persistentHash<[Bytes<32>, Bytes<32>, JubjubPoint](
+  return persistentHash<[Bytes<32>, Bytes<32>, JubjubPoint]>(
     [pad(32, "midnight:account:boot:v1"), salt, pk]
   );
 }
