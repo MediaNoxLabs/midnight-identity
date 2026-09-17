@@ -365,6 +365,7 @@ export pure circuit derive_boot_commitment_with_k256(
   pk:       Secp256k1Point,
   envelope: Uint<8>,
 ): Bytes<32> {
+  require_live_k256_key(pk);
   assert(envelope <= 1, "unknown envelope");
   return persistentHash<[Bytes<32>, Bytes<32>, Bytes<32>, Bytes<32>, Uint<8>]>(
     [pad(32, "midnight:account:boot:k1:v2"), salt,
@@ -418,6 +419,7 @@ export pure circuit derive_device_entry_with_k256(
   epoch:     Uint<32>,
   counter:   Uint<64>,
 ): Bytes<32> {
+  require_live_k256_key(pk);
   assert(envelope <= 1, "unknown envelope");
   return persistentHash<[Bytes<32>, ContractAddress, Bytes<32>, Bytes<32>, Uint<8>, Uint<32>, Uint<64>]>(
     [pad(32, "midnight:account:device:k1:v2"), self_addr,
@@ -1383,7 +1385,7 @@ export pure circuit derive_grant_id_with_jubjub(
 ): Bytes<32> {
   assert(ecMul(pk, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),
          "grantee key has small order");
-  return persistentHash<[Bytes<32>, ContractAddress, JubjubPoint, Bytes<32>, Uint<8>](
+  return persistentHash<[Bytes<32>, ContractAddress, JubjubPoint, Bytes<32>, Uint<8>]>(
     [pad(32, "midnight:account:grant:id:v1"), self_addr, pk, origin_hash, slot]
   );
 }

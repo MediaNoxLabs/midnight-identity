@@ -31,7 +31,7 @@
 
 use anyhow::{Context, Result, anyhow, bail};
 use ff::Field as _;
-use group::Group as _;
+use group::{Group as _, GroupEncoding as _};
 use k256::ecdsa::Signature;
 use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
 use midnight_base_crypto::fab::{AlignmentAtom, AlignmentSegment, ValueAtom};
@@ -151,7 +151,7 @@ pub fn grant_id_jubjub(
     origin_hash: &[u8; 32],
     slot: u8,
 ) -> Result<[u8; 32]> {
-    if pk.0 == JubjubSubgroup::identity() {
+    if pk.is_identity() {
         bail!("grantee key has small order");
     }
     persistent_hash(&[
@@ -213,6 +213,30 @@ pub fn grant_id_jubjub_coords(
     origin_hash: &[u8; 32],
     slot: u8,
 ) -> Result<[u8; 32]> {
+    let mut compressed = *pk_y_le;
+    compressed[31] |= (pk_x_le[0] & 1) << 7;
+    let subgroup = JubjubSubgroup::from_bytes(&compressed)
+        .into_option()
+        .ok_or_else(|| anyhow!("Jubjub wire key is not a canonical prime-subgroup point"))?;
+    if bool::from(subgroup.is_identity()) {
+        bail!("grantee key has small order");
+    }
+    let pk = EmbeddedGroupAffine(subgroup);
+    let decoded_x: [u8; 32] = pk
+        .x()
+        .ok_or_else(|| anyhow!("Jubjub wire key has no x coordinate"))?
+        .as_le_bytes()
+        .try_into()
+        .map_err(|_| anyhow!("coordinate width"))?;
+    let decoded_y: [u8; 32] = pk
+        .y()
+        .ok_or_else(|| anyhow!("Jubjub wire key has no y coordinate"))?
+        .as_le_bytes()
+        .try_into()
+        .map_err(|_| anyhow!("coordinate width"))?;
+    if &decoded_x != pk_x_le || &decoded_y != pk_y_le {
+        bail!("Jubjub wire key coordinates are not canonical");
+    }
     persistent_hash(&[
         el_bytes(32, &pad32(TAG_ID_V1)?),
         el_bytes(32, self_addr),
@@ -1650,11 +1674,12 @@ mod tests {
         use group::Group as _;
         use midnight_curves::JubjubSubgroup;
         let identity = EmbeddedGroupAffine(JubjubSubgroup::identity());
-        assert_eq!(hex::encode(identity.x().unwrap().as_le_bytes()), "00".repeat(32));
-        let mut one = [0u8; 32];
-        one[0] = 1;
-        assert_eq!(identity.y().unwrap().as_le_bytes(), one.to_vec());
+        assert!(identity.is_identity());
         assert!(grant_id_jubjub(&SELF, &identity, &origin(), 0).is_err());
+        let x = [0u8; 32];
+        let mut y = [0u8; 32];
+        y[0] = 1;
+        assert!(grant_id_jubjub_coords(&SELF, &x, &y, &origin(), 0).is_err());
     }
 
     #[test]
@@ -2447,21 +2472,19 @@ mod tests {
                 );
             }
         }
-        // The identity (0, 1) is a well-formed pair of canonical coordinates
-        // and is refused by section 3.3 only, never by the identity recipe.
+        // The identity (0, 1) is a well-formed canonical coordinate pair,
+        // but it is not a live grantee key and must not produce an ID.
         let mut one = [0u8; 32];
         one[0] = 1;
-        assert_eq!(
-            hex::encode(grant_id_jubjub_coords(&SELF, &[0u8; 32], &one, &origin(), 0).unwrap()),
-            "64de12ffba15ac106daa3f69dddd76962099cd1ffe7750d718e5fbadbcddd36e"
-        );
+        assert!(grant_id_jubjub_coords(&SELF, &[0u8; 32], &one, &origin(), 0).is_err());
+        assert!(grant_id_jubjub_coords(&SELF, &[2u8; 32], &[3u8; 32], &origin(), 0).is_err());
         // A coordinate at or above the modulus is not a wire form of any
         // point and is refused rather than reduced.
         assert!(grant_id_jubjub_coords(&SELF, &[0x99u8; 32], &one, &origin(), 0).is_err());
         assert!(grant_id_jubjub_coords(&SELF, &BLS12_381_SCALAR_MODULUS_LE, &one, &origin(), 0).is_err());
         let mut modulus_minus_one = BLS12_381_SCALAR_MODULUS_LE;
         modulus_minus_one[0] = 0;
-        assert!(grant_id_jubjub_coords(&SELF, &modulus_minus_one, &one, &origin(), 0).is_ok());
+        assert!(grant_id_jubjub_coords(&SELF, &modulus_minus_one, &one, &origin(), 0).is_err());
     }
 
     // ── The v1 grantee and lifecycle recipes ──────────────────────────────

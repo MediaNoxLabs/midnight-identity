@@ -4,8 +4,8 @@
   "contract": {
     "name": "passport-account-custody",
     "path": "contract/account.compact",
-    "bytes": 105906,
-    "sha256": "40bb6943e92b71066b3f7415e00395adc5e0bd980121b4fb45c27af3e8af05f0",
+    "bytes": 105965,
+    "sha256": "095da38a0bec0248172a8fc87b4b745d02e16bd2589142d506187ccd53850abe",
     "languageConstraint": ">=0.17.0",
     "license": "Apache-2.0",
     "specVersion": 2,
@@ -28,7 +28,9 @@
       "downstream-jubjub-device-entry-small-order-guard",
       "downstream-k256-activation-envelope-guard",
       "downstream-k256-boot-envelope-guard",
+      "downstream-k256-boot-live-key-guard",
       "downstream-k256-device-entry-envelope-guard",
+      "downstream-k256-device-entry-live-key-guard",
       "downstream-k256-grant-id-envelope-guard",
       "downstream-k256-grant-id-live-key-guard",
       "downstream-jubjub-grant-id-small-order-guard"

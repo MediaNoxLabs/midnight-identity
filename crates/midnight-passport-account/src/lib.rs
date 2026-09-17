@@ -539,7 +539,7 @@ pub fn derive_boot_commitment_with_jubjub(salt: &[u8; 32], public_key: &Embedded
 }
 
 fn require_live_jubjub_key(public_key: &EmbeddedGroupAffine) -> Result<()> {
-    if public_key.0 == JubjubSubgroup::identity() {
+    if public_key.is_identity() {
         bail!("device key has small order");
     }
     Ok(())
