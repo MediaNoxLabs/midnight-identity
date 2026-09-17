@@ -35,6 +35,7 @@ Ported material is derived from the Apache-2.0 upstream Passport repository at
 - `contract/src/tests/vectors/grants-e1.json`
 - `docs/plans/components/C1-account-custody-contract.md` and `contract/README.md`
 
-The sibling `midnight-passport-account-source` crate remains the authenticated
-byte-identical Compact source distribution for
-`contract/contracts/account.compact` at the same revision.
+The sibling `midnight-passport-account-source` crate preserves the
+byte-identical upstream Compact snapshot as `contract/account.upstream.compact`
+and exposes `contract/account.compact` with the documented downstream k256
+activation envelope hardening patch.

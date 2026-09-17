@@ -101,9 +101,19 @@ const EXPECTED_EXPORTED_CIRCUITS: &[&str] = &[
 ];
 
 #[test]
-fn source_is_the_authenticated_upstream_snapshot() {
+fn source_is_the_authenticated_hardened_snapshot() {
     assert_eq!(CONTRACT_SOURCE.len(), CONTRACT_BYTES);
     assert_eq!(format!("{:x}", Sha256::digest(CONTRACT_SOURCE)), CONTRACT_SHA256);
+    assert!(CONTRACT_SOURCE.contains("require_live_k256_key(pk);\n  assert(envelope <= 1, \"unknown envelope\");"));
+    assert_eq!(UPSTREAM_CONTRACT_SOURCE.len(), UPSTREAM_CONTRACT_BYTES);
+    assert_eq!(
+        format!("{:x}", Sha256::digest(UPSTREAM_CONTRACT_SOURCE)),
+        UPSTREAM_CONTRACT_SHA256
+    );
+    assert!(
+        !UPSTREAM_CONTRACT_SOURCE
+            .contains("require_live_k256_key(pk);\n  assert(envelope <= 1, \"unknown envelope\");")
+    );
     assert_eq!(SPEC_VERSION, 2);
     assert_eq!(UPSTREAM_REVISION.len(), 40);
     assert_eq!(STANDARDS, ["MIP-0012", "MIP-0013"]);
@@ -155,6 +165,19 @@ fn manifest_matches_public_constants() {
     assert_eq!(manifest["provenance"]["repository"], UPSTREAM_REPOSITORY);
     assert_eq!(manifest["provenance"]["revision"], UPSTREAM_REVISION);
     assert_eq!(manifest["provenance"]["path"], UPSTREAM_PATH);
+    assert_eq!(manifest["provenance"]["byteIdentical"], false);
+    assert_eq!(
+        manifest["provenance"]["pristineSnapshot"]["path"],
+        UPSTREAM_CONTRACT_PATH
+    );
+    assert_eq!(
+        manifest["provenance"]["pristineSnapshot"]["bytes"],
+        UPSTREAM_CONTRACT_BYTES
+    );
+    assert_eq!(
+        manifest["provenance"]["pristineSnapshot"]["sha256"],
+        UPSTREAM_CONTRACT_SHA256
+    );
     assert_eq!(manifest["compatibility"]["ledgerLine"], LEDGER_LINE);
     assert_eq!(manifest["compatibility"]["compactCompiler"], COMPACT_COMPILER_VERSION);
     assert_eq!(manifest["compatibility"]["compactRuntime"], COMPACT_RUNTIME_VERSION);
@@ -187,6 +210,7 @@ fn package_payload_is_explicit_and_complete() {
             "README.md".to_owned(),
             "contract/account.compact".to_owned(),
             "contract/account.compact.license".to_owned(),
+            "contract/account.upstream.compact".to_owned(),
             "manifest.json".to_owned(),
             "src/lib.rs".to_owned(),
             "tests/contract.rs".to_owned(),

@@ -68,7 +68,7 @@ mod tests {
             color: [2; 32],
             value: 3,
         };
-        let entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin);
+        let entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin).unwrap();
         let view = View {
             entries: vec![None, Some(vec![0; 192]), Some(entry.to_vec())],
         };

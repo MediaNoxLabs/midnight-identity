@@ -4,17 +4,34 @@
   "contract": {
     "name": "passport-account-custody",
     "path": "contract/account.compact",
-    "bytes": 105349,
-    "sha256": "1064b1998a71b5ade418f136428d82721e6021d6d939ff2f12797383bb3f8d50",
+    "bytes": 105394,
+    "sha256": "5c03ac26765ab963f72bf1badccabb7dd1cd8bb1e3598a85b18368e7793a0097",
     "languageConstraint": ">=0.17.0",
     "license": "Apache-2.0",
-    "specVersion": 2
+    "specVersion": 2,
+    "downstreamPatch": {
+      "reason": "Reject unsupported k256 boot envelope ids during initial activation so an account cannot boot into an envelope later rejected by envelope_digest.",
+      "baseRepository": "https://github.com/midnightntwrk/passport",
+      "baseRevision": "40072709e3f5ac5d9b89f9d92d02a4413cbe05cc",
+      "basePath": "contract/contracts/account.compact",
+      "patchedPath": "contract/account.compact",
+      "pristinePath": "contract/account.upstream.compact"
+    }
   },
   "provenance": {
     "repository": "https://github.com/midnightntwrk/passport",
     "revision": "40072709e3f5ac5d9b89f9d92d02a4413cbe05cc",
     "path": "contract/contracts/account.compact",
-    "byteIdentical": true
+    "byteIdentical": false,
+    "patches": [
+      "downstream-k256-activation-envelope-guard"
+    ],
+    "pristineSnapshot": {
+      "path": "contract/account.upstream.compact",
+      "bytes": 105349,
+      "sha256": "1064b1998a71b5ade418f136428d82721e6021d6d939ff2f12797383bb3f8d50",
+      "byteIdentical": true
+    }
   },
   "standards": [
     "MIP-0012",

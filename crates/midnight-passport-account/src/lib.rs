@@ -112,7 +112,8 @@ pub mod source {
     pub use midnight_passport_account_source::{
         AUTHORIZATION_ARMS, COMPACT_COMPILER_VERSION, COMPACT_JS_VERSION, COMPACT_RUNTIME_VERSION, CONTRACT_BYTES,
         CONTRACT_PATH, CONTRACT_SHA256, CONTRACT_SOURCE, INTERIM_AUTHORIZATION_ARM, KNOWN_LIMITATIONS, LEDGER_LINE,
-        NORMATIVE_AUTHORIZATION_ARM, SOURCE_MANIFEST, SPEC_VERSION, STANDARDS, UPSTREAM_PATH, UPSTREAM_REPOSITORY,
+        NORMATIVE_AUTHORIZATION_ARM, SOURCE_MANIFEST, SPEC_VERSION, STANDARDS, UPSTREAM_CONTRACT_BYTES,
+        UPSTREAM_CONTRACT_PATH, UPSTREAM_CONTRACT_SHA256, UPSTREAM_CONTRACT_SOURCE, UPSTREAM_PATH, UPSTREAM_REPOSITORY,
         UPSTREAM_REVISION,
     };
 }
@@ -237,7 +238,11 @@ pub fn jubjub_scalar_from_hex(hex_be: &str) -> Result<JubjubScalar> {
     let mut le: [u8; 32] = bytes.as_slice().try_into().context("scalar not 32 bytes")?;
     le.reverse();
     let scalar: Option<JubjubScalar> = JubjubScalar::from_bytes(&le).into();
-    scalar.ok_or_else(|| anyhow!("scalar out of range"))
+    let scalar = scalar.ok_or_else(|| anyhow!("scalar out of range"))?;
+    if bool::from(scalar.is_zero()) {
+        bail!("zero scalar is not a usable signing key");
+    }
+    Ok(scalar)
 }
 
 pub fn jubjub_scalar_to_hex(s: &JubjubScalar) -> String {
@@ -583,6 +588,11 @@ mod tests {
         let (x_le, y_le) = pk_coords_le(sk.verifying_key()).unwrap();
         assert_eq!(x_le, coord_le(GX_BE));
         assert_eq!(y_le, coord_le(GY_BE));
+    }
+
+    #[test]
+    fn jubjub_signing_key_rejects_zero_scalar() {
+        assert!(jubjub_scalar_from_hex("0x00").is_err());
     }
 
     #[test]

@@ -335,7 +335,6 @@ export circuit activate_initial_device_with_k256(
 ): [] {
   assert(!booted, "already activated");
   require_live_k256_key(pk);
-  assert(envelope <= 1, "unknown envelope");
   assert(derive_boot_commitment_with_k256(salt, pk, envelope) == boot,
          "boot commitment mismatch");
   do_activate_initial_device(derive_device_entry_with_k256(

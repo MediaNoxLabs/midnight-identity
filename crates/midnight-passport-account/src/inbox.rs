@@ -15,7 +15,7 @@ use aes_gcm::{Aes256Gcm, Nonce};
 use hkdf::Hkdf;
 use rand::RngCore;
 use sha2::Sha256;
-use x25519_dalek::{PublicKey, StaticSecret};
+use x25519_dalek::{PublicKey, SharedSecret, StaticSecret};
 
 /// Fixed InboxEntry v1 container size.
 pub const ENTRY_SIZE: usize = 192;
@@ -58,6 +58,9 @@ pub enum OpenEntryError {
     /// Authentication failed or the entry is not for this key.
     #[error("inbox entry authentication failed")]
     AuthenticationFailed,
+    /// X25519 produced a non-contributory shared secret.
+    #[error("non-contributory X25519 shared secret")]
+    NonContributorySharedSecret,
 }
 
 /// Generate a fresh X25519 account encryption keypair.
@@ -70,8 +73,8 @@ pub fn generate_enc_key_pair<R: RngCore + rand::CryptoRng>(rng: &mut R) -> EncKe
     }
 }
 
-fn derive_aead_key(shared: [u8; 32]) -> [u8; 32] {
-    let hk = Hkdf::<Sha256>::new(Some(&[]), &shared);
+fn derive_aead_key(shared: &SharedSecret) -> [u8; 32] {
+    let hk = Hkdf::<Sha256>::new(Some(&[]), shared.as_bytes());
     let mut key = [0u8; 32];
     hk.expand(HKDF_INFO, &mut key).expect("32-byte HKDF output is valid");
     key
@@ -98,13 +101,14 @@ pub fn seal_inbox_entry<R: RngCore + rand::CryptoRng>(
     rng: &mut R,
     recipient_enc_key: &[u8; 32],
     coin: &PlainCoin,
-) -> [u8; ENTRY_SIZE] {
+) -> Result<[u8; ENTRY_SIZE], OpenEntryError> {
     let eph_secret = StaticSecret::random_from_rng(&mut *rng);
     let eph_public = PublicKey::from(&eph_secret);
-    let shared = eph_secret
-        .diffie_hellman(&PublicKey::from(*recipient_enc_key))
-        .to_bytes();
-    let key = derive_aead_key(shared);
+    let shared = eph_secret.diffie_hellman(&PublicKey::from(*recipient_enc_key));
+    if !shared.was_contributory() {
+        return Err(OpenEntryError::NonContributorySharedSecret);
+    }
+    let key = derive_aead_key(&shared);
     let cipher = Aes256Gcm::new_from_slice(&key).expect("AES-256 key length");
     let mut nonce_bytes = [0u8; 12];
     rng.fill_bytes(&mut nonce_bytes);
@@ -126,7 +130,7 @@ pub fn seal_inbox_entry<R: RngCore + rand::CryptoRng>(
     entry[34..46].copy_from_slice(&nonce_bytes);
     entry[46..62].copy_from_slice(&ciphertext[PLAINTEXT_SIZE..]);
     entry[62..142].copy_from_slice(&ciphertext[..PLAINTEXT_SIZE]);
-    entry
+    Ok(entry)
 }
 
 /// Open one fixed InboxEntry. Unknown/invalid entries return an error so
@@ -142,10 +146,11 @@ pub fn open_inbox_entry(enc_secret_key: &[u8; 32], entry: &[u8]) -> Result<Plain
     let nonce: [u8; 12] = entry[34..46].try_into().expect("slice length");
     let tag = &entry[46..62];
     let ct = &entry[62..142];
-    let shared = StaticSecret::from(*enc_secret_key)
-        .diffie_hellman(&PublicKey::from(eph_pub))
-        .to_bytes();
-    let key = derive_aead_key(shared);
+    let shared = StaticSecret::from(*enc_secret_key).diffie_hellman(&PublicKey::from(eph_pub));
+    if !shared.was_contributory() {
+        return Err(OpenEntryError::NonContributorySharedSecret);
+    }
+    let key = derive_aead_key(&shared);
     let cipher = Aes256Gcm::new_from_slice(&key).expect("AES-256 key length");
     let mut combined = Vec::with_capacity(PLAINTEXT_SIZE + 16);
     combined.extend_from_slice(ct);
@@ -178,7 +183,7 @@ mod tests {
             color: [2; 32],
             value: 500,
         };
-        let entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin);
+        let entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin).unwrap();
         assert_eq!(entry.len(), ENTRY_SIZE);
         assert_eq!(entry[0], ENTRY_VERSION);
         assert_eq!(entry[1], ENTRY_SUITE);
@@ -195,7 +200,7 @@ mod tests {
             color: [4; 32],
             value: u128::MAX,
         };
-        let mut entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin);
+        let mut entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin).unwrap();
         assert_eq!(
             open_inbox_entry(&keys.secret_key, &entry[..191]),
             Err(OpenEntryError::BadLength)
@@ -210,6 +215,29 @@ mod tests {
         assert_eq!(
             open_inbox_entry(&keys.secret_key, &entry),
             Err(OpenEntryError::AuthenticationFailed)
+        );
+    }
+
+    #[test]
+    fn rejects_non_contributory_x25519_inputs() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(13);
+        let keys = generate_enc_key_pair(&mut rng);
+        let coin = PlainCoin {
+            nonce: [5; 32],
+            color: [6; 32],
+            value: 7,
+        };
+
+        assert_eq!(
+            seal_inbox_entry(&mut rng, &[0u8; 32], &coin),
+            Err(OpenEntryError::NonContributorySharedSecret)
+        );
+
+        let mut entry = seal_inbox_entry(&mut rng, &keys.public_key, &coin).unwrap();
+        entry[2..34].copy_from_slice(&[0u8; 32]);
+        assert_eq!(
+            open_inbox_entry(&keys.secret_key, &entry),
+            Err(OpenEntryError::NonContributorySharedSecret)
         );
     }
 }

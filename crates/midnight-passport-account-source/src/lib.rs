@@ -23,17 +23,29 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms, clippy::all)]
 
-/// Stable relative path of the contract within the published crate.
+/// Stable relative path of the hardened contract within the published crate.
 pub const CONTRACT_PATH: &str = "contract/account.compact";
 
-/// Byte-identical account-custody Compact source from [`UPSTREAM_REVISION`].
+/// Account-custody Compact source with the downstream activation hardening patch documented in the manifest.
 pub const CONTRACT_SOURCE: &str = include_str!("../contract/account.compact");
 
 /// SHA-256 digest of [`CONTRACT_SOURCE`].
-pub const CONTRACT_SHA256: &str = "1064b1998a71b5ade418f136428d82721e6021d6d939ff2f12797383bb3f8d50";
+pub const CONTRACT_SHA256: &str = "5c03ac26765ab963f72bf1badccabb7dd1cd8bb1e3598a85b18368e7793a0097";
 
 /// Size in bytes of [`CONTRACT_SOURCE`].
-pub const CONTRACT_BYTES: usize = 105_349;
+pub const CONTRACT_BYTES: usize = 105_394;
+
+/// Stable relative path of the pristine upstream snapshot within the published crate.
+pub const UPSTREAM_CONTRACT_PATH: &str = "contract/account.upstream.compact";
+
+/// Byte-identical account-custody Compact source from [`UPSTREAM_REVISION`].
+pub const UPSTREAM_CONTRACT_SOURCE: &str = include_str!("../contract/account.upstream.compact");
+
+/// SHA-256 digest of [`UPSTREAM_CONTRACT_SOURCE`].
+pub const UPSTREAM_CONTRACT_SHA256: &str = "1064b1998a71b5ade418f136428d82721e6021d6d939ff2f12797383bb3f8d50";
+
+/// Size in bytes of [`UPSTREAM_CONTRACT_SOURCE`].
+pub const UPSTREAM_CONTRACT_BYTES: usize = 105_349;
 
 /// Account-custody contract specification version exposed on ledger.
 pub const SPEC_VERSION: u32 = 2;
