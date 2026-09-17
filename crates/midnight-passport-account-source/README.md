@@ -26,5 +26,6 @@ via `UPSTREAM_CONTRACT_SHA256`, or read `manifest.json` directly.
 The descriptor preserves the reviewed Ledger 9.1 toolchain cohort and its known
 boundaries. In particular, recovery is specified without an exposed recovery
 circuit, the k256 arm is interim engineering rather than normative MIP-0013,
-and deployment of the full contract must respect the reviewed Ledger 9 block
-limits.
+`remove_device` removes one enrolled entry but is not guaranteed key revocation
+because an enrolled device can add another entry for the same key, and deployment
+of the full contract must respect the reviewed Ledger 9 block limits.

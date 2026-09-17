@@ -90,6 +90,7 @@ pub const MIDNIGHT_JS_VERSION: &str = "5.0.0-beta.4";
 pub const KNOWN_LIMITATIONS: &[&str] = &[
     "Recovery is specified but this source exposes no recovery circuit.",
     "The ecdsa-secp256k1 authorization arm is interim engineering, not normative MIP-0013.",
+    "Device removal is not sufficient revocation: an enrolled device can add another entry for the same key, so consumers must treat remove_device as entry removal rather than guaranteed key revocation.",
     "The full contract requires wave deployment under the reviewed Ledger 9 block limits.",
 ];
 

@@ -53,11 +53,10 @@
 //!                     the byte-reverse of its SEC1 big-endian form
 //!   Uint<n>         → one bytes(n/8) atom, minimal little-endian
 //!
-//! Protocol: one JSON request on stdin, one JSON response on stdout. Every
-//! request carries the arm.
+//! Library JSON shapes: callers pass these request objects to the exported
+//! Rust helper functions; this crate does not ship a stdin/stdout binary
+//! dispatcher. Every request carries the arm.
 //!
-//!   {"cmd":"keygen","arm":"jubjub"}
-//!     → {"sk":"0x…","pk":{"x":"0x…","y":"0x…"}}
 //!   {"cmd":"sign","arm":"jubjub","circuit":"withdraw_unshielded","sk":"0x…",
 //!    "contract_address":"…64 hex…","color":"…64 hex…","amount":"500",
 //!    "recipient":"…64 hex…","auth_nonce":"3"}
