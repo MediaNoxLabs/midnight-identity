@@ -32,8 +32,8 @@
 use anyhow::{Context, Result, anyhow, bail};
 use ff::Field as _;
 use group::{Group as _, GroupEncoding as _};
-use k256::ecdsa::Signature;
 use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
+use k256::ecdsa::{Signature, VerifyingKey};
 use midnight_base_crypto::fab::{AlignmentAtom, AlignmentSegment, ValueAtom};
 use midnight_curves::{Fr as JubjubScalar, JubjubSubgroup};
 use midnight_transient_crypto::curve::EmbeddedGroupAffine;
@@ -121,9 +121,7 @@ pub fn grant_id_k256(
     origin_hash: &[u8; 32],
     slot: u8,
 ) -> Result<[u8; 32]> {
-    if pk_x_le == &[0u8; 32] && pk_y_le == &[0u8; 32] {
-        bail!("device key is the point at infinity");
-    }
+    require_canonical_k256_wire_key(pk_x_le, pk_y_le)?;
     if envelope > 1 {
         bail!("unknown k256 envelope id {envelope}");
     }
@@ -136,6 +134,25 @@ pub fn grant_id_k256(
         el_bytes(32, origin_hash),
         el_uint(1, u128::from(slot)),
     ])
+}
+
+fn require_canonical_k256_wire_key(pk_x_le: &[u8; 32], pk_y_le: &[u8; 32]) -> Result<()> {
+    if pk_x_le == &[0u8; 32] && pk_y_le == &[0u8; 32] {
+        bail!("device key is the point at infinity");
+    }
+    let mut sec1 = [0u8; 65];
+    sec1[0] = 4;
+    sec1[1..33].copy_from_slice(pk_x_le);
+    sec1[33..65].copy_from_slice(pk_y_le);
+    sec1[1..33].reverse();
+    sec1[33..65].reverse();
+    let vk =
+        VerifyingKey::from_sec1_bytes(&sec1).map_err(|_| anyhow!("k256 wire key is not a canonical curve point"))?;
+    let (decoded_x, decoded_y) = pk_coords_le(&vk)?;
+    if &decoded_x != pk_x_le || &decoded_y != pk_y_le {
+        bail!("k256 wire key coordinates are not canonical");
+    }
+    Ok(())
 }
 
 /// `grant_id` for the `v1` (JubJub) arm: 161 preimage bytes,
@@ -1539,6 +1556,16 @@ mod tests {
         }
         assert!(grant_id_k256(&SELF, &x_le, &y_le, 2, &origin(), 0).is_err());
         assert!(grant_id_k256(&SELF, &[0u8; 32], &[0u8; 32], 0, &origin(), 0).is_err());
+        let mut one = [0u8; 32];
+        one[0] = 1;
+        assert!(grant_id_k256(&SELF, &one, &one, 0, &origin(), 0).is_err());
+        let mut secp256k1_prime_le: [u8; 32] =
+            hex::decode("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f")
+                .unwrap()
+                .try_into()
+                .unwrap();
+        secp256k1_prime_le.reverse();
+        assert!(grant_id_k256(&SELF, &secp256k1_prime_le, &y_le, 0, &origin(), 0).is_err());
     }
 
     #[test]
@@ -1550,7 +1577,7 @@ mod tests {
         assert_ne!(base, grant_id_k256(&SELF, &x_le, &y_le, 0, &origin(), 1).unwrap());
         assert_ne!(base, grant_id_k256(&SELF, &x_le, &y_le, 0, &other_origin, 0).unwrap());
         assert_ne!(base, grant_id_k256(&SALT, &x_le, &y_le, 0, &origin(), 0).unwrap());
-        assert_ne!(base, grant_id_k256(&SELF, &y_le, &x_le, 0, &origin(), 0).unwrap());
+        assert!(grant_id_k256(&SELF, &y_le, &x_le, 0, &origin(), 0).is_err());
     }
 
     /// A `Field` atom's binary representation, which is what fixes the
