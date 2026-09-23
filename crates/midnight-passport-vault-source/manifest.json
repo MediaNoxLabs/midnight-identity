@@ -40,6 +40,9 @@
     "originalPath": "packages/contracts/vault/src/passport-vault.compact",
     "reviewedDistributionRepository": "https://github.com/MediaNoxLabs/oxid",
     "reviewedDistributionPath": "contracts/passport-vault/passport-vault.compact",
+    "reviewedCredentialRepository": "https://github.com/midnightntwrk/midnight-verifiable-credentials",
+    "reviewedCredentialRevision": "39b1354212620b396e914b29603e6a38f2656546",
+    "reviewedCredentialIncludeClosureSha256": "76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127",
     "byteIdentical": true
   },
   "compatibility": {
