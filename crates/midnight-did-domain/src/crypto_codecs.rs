@@ -67,6 +67,92 @@ pub enum CodecError {
     },
 }
 
+/// Jubjub base-field modulus used by Midnight DID v0.7.0 for `EC`/`Jubjub`
+/// JWK coordinates. Provenance: upstream `midnightntwrk/midnight-did` tag
+/// `v0.7.0` commit `4e7f6b0f69bf4e2c8506a9693f8d0c3dfe68e550`,
+/// `docs-site/architecture/adr-jubjub-jwk-coordinate-encoding.md`.
+pub const JUBJUB_JWK_COORDINATE_MODULUS_DECIMAL: &str =
+    "52435875175126190479447740508185965837690552500527637822603658699938581184513";
+
+const JUBJUB_JWK_COORDINATE_BYTES: usize = 32;
+const JUBJUB_MODULUS_BE: [u8; JUBJUB_JWK_COORDINATE_BYTES] = [
+    0x73, 0xed, 0xa7, 0x53, 0x29, 0x9d, 0x7d, 0x48, 0x33, 0x39, 0xd8, 0x08, 0x09, 0xa1, 0xd8, 0x05, 0x53, 0xbd, 0xa4,
+    0x02, 0xff, 0xfe, 0x5b, 0xfe, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01,
+];
+
+fn is_strictly_less_than_jubjub_modulus(bytes: &[u8; JUBJUB_JWK_COORDINATE_BYTES]) -> bool {
+    bytes < &JUBJUB_MODULUS_BE
+}
+
+/// Encode a Jubjub JWK coordinate as Midnight DID v0.7.0 canonical EC/Jubjub
+/// `x`/`y`: exactly 32 unsigned big-endian bytes, unpadded base64url.
+///
+/// The input is already in the domain-facing big-endian order. Use
+/// [`encode_jubjub_jwk_coordinate_from_little_endian`] at ledger or MOD1 v1
+/// boundaries, whose native fields remain little-endian.
+///
+/// # Errors
+///
+/// Returns [`CodecError::UnexpectedByteLength`] unless the input has exactly
+/// 32 bytes, or [`CodecError::NotCanonical`] when the value is at or above the
+/// Jubjub base-field modulus.
+pub fn encode_jubjub_jwk_coordinate(bytes_be: &[u8], label: &str) -> Result<String, CodecError> {
+    let bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] =
+        bytes_be.try_into().map_err(|_| CodecError::UnexpectedByteLength {
+            label: label.into(),
+            expected: JUBJUB_JWK_COORDINATE_BYTES,
+            actual: bytes_be.len(),
+        })?;
+    if !is_strictly_less_than_jubjub_modulus(&bytes) {
+        return Err(CodecError::NotCanonical { label: label.into() });
+    }
+    Ok(encode_base64url(&bytes))
+}
+
+/// Decode a Midnight DID v0.7.0 EC/Jubjub JWK coordinate to fixed-width
+/// unsigned big-endian bytes.
+///
+/// This is the canonical public-domain validation gate: unpadded base64url,
+/// exactly 32 decoded bytes, and integer value strictly below the Jubjub
+/// base-field modulus.
+///
+/// # Errors
+///
+/// Forwards canonical base64url errors from [`decode_base64url_bytes`] and
+/// returns [`CodecError::NotCanonical`] for values at or above the modulus.
+pub fn decode_jubjub_jwk_coordinate(input: &str, label: &str) -> Result<[u8; JUBJUB_JWK_COORDINATE_BYTES], CodecError> {
+    let decoded = decode_base64url_bytes(input, JUBJUB_JWK_COORDINATE_BYTES, label)?;
+    let bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] = decoded.try_into().expect("decode_base64url_bytes enforced length");
+    if !is_strictly_less_than_jubjub_modulus(&bytes) {
+        return Err(CodecError::NotCanonical { label: label.into() });
+    }
+    Ok(bytes)
+}
+
+/// Convert a historical little-endian Jubjub field (ledger/MOD1 v1) to the
+/// Midnight DID v0.7.0 domain JWK coordinate string.
+pub fn encode_jubjub_jwk_coordinate_from_little_endian(bytes_le: &[u8], label: &str) -> Result<String, CodecError> {
+    let mut bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] =
+        bytes_le.try_into().map_err(|_| CodecError::UnexpectedByteLength {
+            label: label.into(),
+            expected: JUBJUB_JWK_COORDINATE_BYTES,
+            actual: bytes_le.len(),
+        })?;
+    bytes.reverse();
+    encode_jubjub_jwk_coordinate(&bytes, label)
+}
+
+/// Decode a v0.7.0 domain JWK coordinate and convert it back to the
+/// historical little-endian ledger/MOD1 v1 field bytes.
+pub fn decode_jubjub_jwk_coordinate_to_little_endian(
+    input: &str,
+    label: &str,
+) -> Result<[u8; JUBJUB_JWK_COORDINATE_BYTES], CodecError> {
+    let mut bytes = decode_jubjub_jwk_coordinate(input, label)?;
+    bytes.reverse();
+    Ok(bytes)
+}
+
 /// Reference regex pattern accepted by the canonical-form check. Exposed
 /// as a doc-string constant for parity with the TS implementation; the
 /// runtime check is performed character-by-character via [`is_base64url_byte`]

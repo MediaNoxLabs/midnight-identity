@@ -27,7 +27,7 @@ use serde::{Deserialize, Deserializer, Serialize, de};
 use serde_json::Value as JsonValue;
 use thiserror::Error;
 
-use crate::crypto_codecs::{CodecError, decode_base64url_bytes};
+use crate::crypto_codecs::{CodecError, decode_base64url_bytes, decode_jubjub_jwk_coordinate};
 use crate::uri::normalize_uri_string;
 
 // ---------------------------------------------------------------------------
@@ -792,7 +792,12 @@ impl PublicKeyJwk {
         // byte-length is a validation failure, not a skip. This is what
         // keeps e.g. `kty: RSA, crv: Ed25519` out (issue #17).
         match public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::X) {
-            Some(expected_x) if decode_base64url_bytes(&self.x, expected_x, "publicKeyJwk.x").is_ok() => {}
+            Some(expected_x)
+                if if matches!((self.kty, self.crv), (KeyType::EC, CurveType::Jubjub)) {
+                    decode_jubjub_jwk_coordinate(&self.x, "publicKeyJwk.x").is_ok()
+                } else {
+                    decode_base64url_bytes(&self.x, expected_x, "publicKeyJwk.x").is_ok()
+                } => {}
             _ => {
                 issues.push(ValidationIssue::new(
                     "publicKeyJwk.x must be canonical base64url for the supported curve length",
@@ -801,7 +806,12 @@ impl PublicKeyJwk {
         }
         if let Some(y) = &self.y {
             match public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::Y) {
-                Some(expected_y) if decode_base64url_bytes(y, expected_y, "publicKeyJwk.y").is_ok() => {}
+                Some(expected_y)
+                    if if matches!((self.kty, self.crv), (KeyType::EC, CurveType::Jubjub)) {
+                        decode_jubjub_jwk_coordinate(y, "publicKeyJwk.y").is_ok()
+                    } else {
+                        decode_base64url_bytes(y, expected_y, "publicKeyJwk.y").is_ok()
+                    } => {}
                 _ => {
                     issues.push(ValidationIssue::new(
                         "publicKeyJwk.y must be canonical base64url for the supported curve length",
@@ -828,7 +838,11 @@ impl PublicKeyJwk {
                 expected: 0,
                 actual: self.x.len(),
             })?;
-        decode_base64url_bytes(&self.x, expected, "publicKeyJwk.x")
+        if matches!((self.kty, self.crv), (KeyType::EC, CurveType::Jubjub)) {
+            decode_jubjub_jwk_coordinate(&self.x, "publicKeyJwk.x").map(|bytes| bytes.to_vec())
+        } else {
+            decode_base64url_bytes(&self.x, expected, "publicKeyJwk.x")
+        }
     }
 }
 

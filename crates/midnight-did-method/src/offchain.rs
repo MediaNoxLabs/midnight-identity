@@ -39,7 +39,10 @@
 
 use blake2::digest::consts::U32;
 use blake2::{Blake2s, Digest};
-use midnight_did_domain::crypto_codecs::{CodecError, decode_base64url, encode_base64url};
+use midnight_did_domain::crypto_codecs::{
+    CodecError, decode_base64url, decode_jubjub_jwk_coordinate_to_little_endian, encode_base64url,
+    encode_jubjub_jwk_coordinate_from_little_endian,
+};
 use midnight_did_domain::did_document::{
     CurveType, DidString, DocumentContext, KeyType, NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk,
     Service, ServiceEndpoint, ServiceType, ValidationError, VerificationMethod, VerificationMethodType,
@@ -219,21 +222,148 @@ pub fn key_kind_from_jwk(jwk: &PublicKeyJwk) -> Result<OffchainKeyKind, Offchain
 pub fn jwk_from_key_kind(kind: OffchainKeyKind, x: &str, y: &str) -> Result<PublicKeyJwk, ValidationError> {
     use CurveType::*;
     use KeyType::*;
-    let (kty, crv, has_y) = match kind {
-        OffchainKeyKind::Jubjub => (EC, Jubjub, true),
-        OffchainKeyKind::Ed25519 => (OKP, Ed25519, false),
-        OffchainKeyKind::P256 => (EC, P256, true),
-        OffchainKeyKind::X25519 => (OKP, X25519, false),
-        OffchainKeyKind::Secp256k1 => (EC, Secp256k1, true),
-        OffchainKeyKind::BLS12381G1 => (OKP, BLS12381G1, false),
-        OffchainKeyKind::BLS12381G2 => (OKP, BLS12381G2, false),
+    // Midnight DID v0.7.0 keeps MOD1 v1 `keyKind = 1` coordinates as the
+    // historical fixed-width little-endian wire fields, while every exposed
+    // EC/Jubjub JWK is fixed-width unsigned big-endian. Provenance:
+    // midnightntwrk/midnight-did v0.7.0 commit
+    // 4e7f6b0f69bf4e2c8506a9693f8d0c3dfe68e550,
+    // docs-site/architecture/adr-jubjub-jwk-coordinate-encoding.md.
+    let (kty, crv, has_y, x_value, y_value) = match kind {
+        OffchainKeyKind::Jubjub => (
+            EC,
+            Jubjub,
+            true,
+            encode_jubjub_jwk_coordinate_from_little_endian(
+                &decode_base64url(x).map_err(|err| {
+                    ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
+                        err.to_string(),
+                    )])
+                })?,
+                "publicKeyJwk.x",
+            )
+            .map_err(|err| {
+                ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
+                    err.to_string(),
+                )])
+            })?,
+            Some(
+                encode_jubjub_jwk_coordinate_from_little_endian(
+                    &decode_base64url(y).map_err(|err| {
+                        ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
+                            err.to_string(),
+                        )])
+                    })?,
+                    "publicKeyJwk.y",
+                )
+                .map_err(|err| {
+                    ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
+                        err.to_string(),
+                    )])
+                })?,
+            ),
+        ),
+        OffchainKeyKind::Ed25519 => (OKP, Ed25519, false, x.to_owned(), None),
+        OffchainKeyKind::P256 => (EC, P256, true, x.to_owned(), Some(y.to_owned())),
+        OffchainKeyKind::X25519 => (OKP, X25519, false, x.to_owned(), None),
+        OffchainKeyKind::Secp256k1 => (EC, Secp256k1, true, x.to_owned(), Some(y.to_owned())),
+        OffchainKeyKind::BLS12381G1 => (OKP, BLS12381G1, false, x.to_owned(), None),
+        OffchainKeyKind::BLS12381G2 => (OKP, BLS12381G2, false, x.to_owned(), None),
     };
     PublicKeyJwk::new(NewPublicKeyJwk {
         kty,
         crv,
-        x: x.to_owned(),
-        y: if has_y { Some(y.to_owned()) } else { None },
+        x: x_value,
+        y: if has_y { y_value } else { None },
         extensions: Default::default(),
+    })
+}
+
+/// Convert a v0.7 domain JWK coordinate to the historical MOD1 v1 little-endian
+/// coordinate field and encode it as unpadded base64url. Non-Jubjub profiles
+/// must not call this helper.
+pub fn jubjub_jwk_coordinate_to_mod1_wire(value: &str, label: &str) -> Result<String, CodecError> {
+    Ok(encode_base64url(&decode_jubjub_jwk_coordinate_to_little_endian(
+        value, label,
+    )?))
+}
+
+fn validation_from_codec(error: CodecError) -> ValidationError {
+    ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
+        error.to_string(),
+    )])
+}
+
+fn convert_jubjub_method_to_mod1_wire(
+    vm: &OffchainVerificationMethod,
+) -> Result<OffchainVerificationMethod, OffchainError> {
+    if !matches!(
+        (vm.public_key_jwk.kty(), vm.public_key_jwk.crv()),
+        (KeyType::EC, CurveType::Jubjub)
+    ) {
+        return Ok(vm.clone());
+    }
+    let y = vm.public_key_jwk.y().ok_or(OffchainError::UnsupportedKeyType {
+        kty: "EC".into(),
+        crv: "Jubjub without y".into(),
+    })?;
+    let public_key_jwk = PublicKeyJwk::new(NewPublicKeyJwk {
+        kty: KeyType::EC,
+        crv: CurveType::Jubjub,
+        x: jubjub_jwk_coordinate_to_mod1_wire(vm.public_key_jwk.x(), "publicKeyJwk.x")
+            .map_err(validation_from_codec)?,
+        y: Some(jubjub_jwk_coordinate_to_mod1_wire(y, "publicKeyJwk.y").map_err(validation_from_codec)?),
+        extensions: vm.public_key_jwk.extensions().clone(),
+    })?;
+    Ok(OffchainVerificationMethod {
+        id: vm.id.clone(),
+        public_key_jwk,
+        relationships: vm.relationships,
+    })
+}
+
+fn convert_jubjub_method_from_mod1_wire(
+    vm: &OffchainVerificationMethod,
+) -> Result<OffchainVerificationMethod, OffchainError> {
+    if !matches!(
+        (vm.public_key_jwk.kty(), vm.public_key_jwk.crv()),
+        (KeyType::EC, CurveType::Jubjub)
+    ) {
+        return Ok(vm.clone());
+    }
+    let y = vm.public_key_jwk.y().ok_or(OffchainError::UnsupportedKeyType {
+        kty: "EC".into(),
+        crv: "Jubjub without y".into(),
+    })?;
+    Ok(OffchainVerificationMethod {
+        id: vm.id.clone(),
+        public_key_jwk: jwk_from_key_kind(OffchainKeyKind::Jubjub, vm.public_key_jwk.x(), y)?,
+        relationships: vm.relationships,
+    })
+}
+
+fn state_to_mod1_wire(state: &OffchainMidnightDidState) -> Result<OffchainMidnightDidState, OffchainError> {
+    Ok(OffchainMidnightDidState {
+        version: state.version,
+        also_known_as: state.also_known_as.clone(),
+        verification_method: state
+            .verification_method
+            .iter()
+            .map(convert_jubjub_method_to_mod1_wire)
+            .collect::<Result<Vec<_>, _>>()?,
+        service: state.service.clone(),
+    })
+}
+
+fn state_from_mod1_wire(state: &OffchainMidnightDidState) -> Result<OffchainMidnightDidState, OffchainError> {
+    Ok(OffchainMidnightDidState {
+        version: state.version,
+        also_known_as: state.also_known_as.clone(),
+        verification_method: state
+            .verification_method
+            .iter()
+            .map(convert_jubjub_method_from_mod1_wire)
+            .collect::<Result<Vec<_>, _>>()?,
+        service: state.service.clone(),
     })
 }
 
@@ -415,7 +545,8 @@ pub fn encode_offchain_midnight_did_state<C: CompactValueCodec>(
     state: &OffchainMidnightDidState,
 ) -> Result<EncodedOffchainMidnightDidState, OffchainError> {
     validate_state_shape(state)?;
-    let chunks = C::to_chunks(state)?;
+    let wire_state = state_to_mod1_wire(state)?;
+    let chunks = C::to_chunks(&wire_state)?;
     let frame = compact_value_to_bytes(&chunks)?;
     Ok(EncodedOffchainMidnightDidState {
         encoding: OFFCHAIN_STATE_ENCODING.to_owned(),
@@ -434,7 +565,8 @@ pub fn decode_offchain_midnight_did_state<C: CompactValueCodec>(
     }
     let frame = from_base64url(&encoded.payload)?;
     let chunks = compact_value_from_bytes(&frame)?;
-    let state = C::from_chunks(&chunks)?;
+    let wire_state = C::from_chunks(&chunks)?;
+    let state = state_from_mod1_wire(&wire_state)?;
     validate_state_shape(&state)?;
     Ok(state)
 }
@@ -995,6 +1127,97 @@ mod tests {
             );
             assert_eq!(jwk.y().is_some(), is_ec);
         }
+    }
+
+    #[test]
+    fn frozen_mod1_v1_jubjub_vector_preserves_payload_hash_and_exposes_v07_jwk() {
+        let mut one_le = [0u8; 32];
+        one_le[0] = 1;
+        let mut two_fifty_six_le = [0u8; 32];
+        two_fifty_six_le[1] = 1;
+        let state = OffchainMidnightDidState {
+            version: 1,
+            also_known_as: vec![],
+            verification_method: vec![OffchainVerificationMethod {
+                id: "#jub".into(),
+                public_key_jwk: PublicKeyJwk::new(NewPublicKeyJwk {
+                    kty: KeyType::EC,
+                    crv: CurveType::Jubjub,
+                    x: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE".into(),
+                    y: Some("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQA".into()),
+                    extensions: Default::default(),
+                })
+                .unwrap(),
+                relationships: OffchainVerificationRelationships {
+                    authentication: true,
+                    ..OffchainVerificationRelationships::default()
+                },
+            }],
+            service: vec![],
+        };
+
+        let encoded = encode_offchain_midnight_did_state::<JsonCompactValueCodec>(&state).unwrap();
+        assert_eq!(
+            encoded.payload,
+            "TU9EMQAAAAEAAAF3eyJ2ZXJzaW9uIjoxLCJhbHNvX2tub3duX2FzIjpbXSwidmVyaWZpY2F0aW9uX21ldGhvZCI6W3siaWQiOiIjanViIiwicHVibGljX2tleV9qd2siOnsia3R5IjoiRUMiLCJjcnYiOiJKdWJqdWIiLCJ4IjoiQVFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsInkiOiJBQUVBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIn0sInJlbGF0aW9uc2hpcHMiOnsiYXV0aGVudGljYXRpb24iOnRydWUsImFzc2VydGlvbl9tZXRob2QiOmZhbHNlLCJrZXlfYWdyZWVtZW50IjpmYWxzZSwiY2FwYWJpbGl0eV9pbnZvY2F0aW9uIjpmYWxzZSwiY2FwYWJpbGl0eV9kZWxlZ2F0aW9uIjpmYWxzZX19XSwic2VydmljZSI6W119"
+        );
+        assert_eq!(
+            create_offchain_midnight_did_string_from_state::<JsonCompactValueCodec>(&state)
+                .unwrap()
+                .0,
+            "did:midnight:offchain:51032e190c8a9a93cecf3fe6578a30d7f35637b1ff5d18aeaca43eb44c409970"
+        );
+        assert_eq!(
+            create_long_form_offchain_midnight_did_string::<JsonCompactValueCodec>(&state)
+                .unwrap()
+                .0,
+            format!(
+                "did:midnight:offchain:51032e190c8a9a93cecf3fe6578a30d7f35637b1ff5d18aeaca43eb44c409970:{}",
+                encoded.payload
+            )
+        );
+        let decoded = decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&encoded).unwrap();
+        assert_eq!(
+            decoded.verification_method[0].public_key_jwk.x(),
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE"
+        );
+        assert_eq!(
+            decoded.verification_method[0].public_key_jwk.y(),
+            Some("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQA")
+        );
+        assert_eq!(
+            jubjub_jwk_coordinate_to_mod1_wire(decoded.verification_method[0].public_key_jwk.x(), "x").unwrap(),
+            encode_base64url(&one_le)
+        );
+        assert_eq!(
+            jubjub_jwk_coordinate_to_mod1_wire(decoded.verification_method[0].public_key_jwk.y().unwrap(), "y")
+                .unwrap(),
+            encode_base64url(&two_fifty_six_le)
+        );
+    }
+
+    #[test]
+    fn jubjub_key_kind_converts_mod1_little_endian_to_v07_domain_jwk() {
+        let mut one_le = [0u8; 32];
+        one_le[0] = 1;
+        let mut two_fifty_six_le = [0u8; 32];
+        two_fifty_six_le[1] = 1;
+        let jwk = jwk_from_key_kind(
+            OffchainKeyKind::Jubjub,
+            &encode_base64url(&one_le),
+            &encode_base64url(&two_fifty_six_le),
+        )
+        .expect("MOD1 Jubjub JWK converts");
+        assert_eq!(jwk.x(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE");
+        assert_eq!(jwk.y(), Some("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQA"));
+        assert_eq!(
+            jubjub_jwk_coordinate_to_mod1_wire(jwk.x(), "x").unwrap(),
+            encode_base64url(&one_le)
+        );
+        assert_eq!(
+            jubjub_jwk_coordinate_to_mod1_wire(jwk.y().unwrap(), "y").unwrap(),
+            encode_base64url(&two_fifty_six_le)
+        );
     }
 
     #[test]

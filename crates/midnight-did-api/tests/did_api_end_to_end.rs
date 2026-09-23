@@ -84,11 +84,10 @@ fn did_subject() -> String {
 /// shape, padded out to the 32-byte length the validating constructor
 /// requires.
 ///
-/// `decode_jubjub_coordinate` (in `resolution.rs`) zero-pads short inputs on
-/// the right, so the resolver-derived `publicKeyJwk` matches the JSON
-/// fixtures `"AQAA…"` / `"AgAA…"` either way; this helper just renders the
-/// full 32 bytes explicitly so the new `JubjubPointHex::new` length check
-/// passes.
+/// `decode_jubjub_coordinate` (in `resolution.rs`) keeps ledger bytes in their
+/// native little-endian order. Resolver projection converts those bytes to the
+/// Midnight DID v0.7.0 big-endian EC/Jubjub JWK profile; this helper just
+/// renders the full 32 bytes explicitly so `JubjubPointHex::new` passes.
 fn jub_point_one_two() -> JubjubPointHex {
     JubjubPointHex::new(NewJubjubPointHex {
         x: format!("01{}", "00".repeat(31)),
@@ -697,8 +696,9 @@ async fn after_remove_vm_matches_ts_fixture() {
 
 /// `setSchnorrJubjubVerificationMethod(vm, Insert)` — fixture shows the EC
 /// + Jubjub JWK reconstruction performed by
-/// `LedgerToDomain.schnorrJubjubPkToJwk`. The hex coords `01` / `02` are
-/// right-padded to 32 bytes then base64url-encoded.
+/// `LedgerToDomain.schnorrJubjubPkToJwk`. The little-endian ledger hex coords
+/// `01` / `02` are preserved in ledger storage, then reversed at the domain
+/// boundary to the v0.7.0 fixed-width unsigned big-endian JWK strings.
 #[tokio::test]
 async fn after_set_schnorr_jubjub_vm_insert_matches_ts_fixture() {
     let contract = contract_with(MidnightNetwork::Undeployed, initial_ledger());

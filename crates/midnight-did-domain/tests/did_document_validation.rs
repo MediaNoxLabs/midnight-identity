@@ -383,6 +383,46 @@ fn public_key_jwk_decode_x_returns_canonical_bytes() {
 }
 
 #[test]
+fn public_key_jwk_jubjub_uses_v07_big_endian_and_rejects_modulus() {
+    let x = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE";
+    let y = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQA";
+    let jwk = PublicKeyJwk::new(NewPublicKeyJwk {
+        kty: KeyType::EC,
+        crv: CurveType::Jubjub,
+        x: x.to_string(),
+        y: Some(y.to_string()),
+        extensions: BTreeMap::new(),
+    })
+    .expect("v0.7 Jubjub JWK is valid");
+    assert_eq!(jwk.decode_x().expect("decode x")[31], 1);
+
+    // The old 0.6 little-endian string for integer 1 is still exactly 32
+    // bytes, but it denotes a different big-endian integer in v0.7 and must
+    // not be silently rewritten or treated as an alias.
+    let legacy_little_endian_one = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    let legacy = PublicKeyJwk::new(NewPublicKeyJwk {
+        kty: KeyType::EC,
+        crv: CurveType::Jubjub,
+        x: legacy_little_endian_one.to_string(),
+        y: Some(y.to_string()),
+        extensions: BTreeMap::new(),
+    })
+    .expect("legacy bytes are a canonical v0.7 integer, not an alias");
+    assert_ne!(legacy.x(), x);
+
+    let modulus = "c-2nUymdfUgzOdgICaHYBVO9pAL__lv-_____wAAAAE";
+    let err = PublicKeyJwk::new(NewPublicKeyJwk {
+        kty: KeyType::EC,
+        crv: CurveType::Jubjub,
+        x: modulus.to_string(),
+        y: Some(y.to_string()),
+        extensions: BTreeMap::new(),
+    })
+    .unwrap_err();
+    assert!(format!("{err}").contains("publicKeyJwk.x must be canonical base64url"));
+}
+
+#[test]
 fn public_key_jwk_serialize_round_trips_with_extensions() {
     let mut extensions = BTreeMap::new();
     extensions.insert("kid".to_string(), json!("key-1"));
