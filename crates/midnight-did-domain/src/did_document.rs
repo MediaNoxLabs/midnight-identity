@@ -728,6 +728,46 @@ impl PublicKeyJwk {
         &self.extensions
     }
 
+    #[doc(hidden)]
+    /// Construct the internal MOD1 v1 wire representation for an `EC`/`Jubjub`
+    /// key without applying the v0.7 domain JWK modulus rule to the wire
+    /// coordinate strings.
+    ///
+    /// This is not a public-domain JWK constructor. It exists only so the
+    /// method-layer MOD1 encoder can preserve historical fixed-width
+    /// little-endian wire bytes after first validating and converting a normal
+    /// v0.7 domain JWK. The inputs still must be canonical unpadded base64url
+    /// strings that decode to exactly 32 bytes, and private/extension members
+    /// are not accepted.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError`] if either wire coordinate is not canonical
+    /// 32-byte base64url.
+    pub fn new_mod1_wire_jubjub_unchecked(x: String, y: String) -> Result<Self, ValidationError> {
+        let mut issues = Vec::new();
+        if decode_base64url_bytes(&x, 32, "publicKeyJwk.x").is_err() {
+            issues.push(ValidationIssue::new(
+                "publicKeyJwk.x must be canonical base64url for the MOD1 Jubjub wire length",
+            ));
+        }
+        if decode_base64url_bytes(&y, 32, "publicKeyJwk.y").is_err() {
+            issues.push(ValidationIssue::new(
+                "publicKeyJwk.y must be canonical base64url for the MOD1 Jubjub wire length",
+            ));
+        }
+        if !issues.is_empty() {
+            return Err(ValidationError::from_issues(issues));
+        }
+        Ok(Self {
+            kty: KeyType::EC,
+            crv: CurveType::Jubjub,
+            x,
+            y: Some(y),
+            extensions: BTreeMap::new(),
+        })
+    }
+
     /// Run all JWK validation checks. Returns the structured list of issues.
     ///
     /// # Errors

@@ -306,14 +306,10 @@ fn convert_jubjub_method_to_mod1_wire(
         kty: "EC".into(),
         crv: "Jubjub without y".into(),
     })?;
-    let public_key_jwk = PublicKeyJwk::new(NewPublicKeyJwk {
-        kty: KeyType::EC,
-        crv: CurveType::Jubjub,
-        x: jubjub_jwk_coordinate_to_mod1_wire(vm.public_key_jwk.x(), "publicKeyJwk.x")
-            .map_err(validation_from_codec)?,
-        y: Some(jubjub_jwk_coordinate_to_mod1_wire(y, "publicKeyJwk.y").map_err(validation_from_codec)?),
-        extensions: vm.public_key_jwk.extensions().clone(),
-    })?;
+    let public_key_jwk = PublicKeyJwk::new_mod1_wire_jubjub_unchecked(
+        jubjub_jwk_coordinate_to_mod1_wire(vm.public_key_jwk.x(), "publicKeyJwk.x").map_err(validation_from_codec)?,
+        jubjub_jwk_coordinate_to_mod1_wire(y, "publicKeyJwk.y").map_err(validation_from_codec)?,
+    )?;
     Ok(OffchainVerificationMethod {
         id: vm.id.clone(),
         public_key_jwk,
@@ -493,8 +489,20 @@ pub trait CompactValueCodec {
     /// Convert structured state into the chunk list expected by the
     /// runtime's Compact type descriptors.
     fn to_chunks(state: &OffchainMidnightDidState) -> Result<Vec<Vec<u8>>, OffchainError>;
+    /// Convert domain state to MOD1 v1 chunks, preserving `keyKind = 1`
+    /// Jubjub coordinates as historical little-endian wire fields.
+    fn to_mod1_chunks(state: &OffchainMidnightDidState) -> Result<Vec<Vec<u8>>, OffchainError> {
+        let wire_state = state_to_mod1_wire(state)?;
+        Self::to_chunks(&wire_state)
+    }
     /// Inverse of [`Self::to_chunks`].
     fn from_chunks(chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError>;
+    /// Decode MOD1 v1 chunks, converting `keyKind = 1` Jubjub wire fields to
+    /// v0.7 domain JWK coordinates before domain validation.
+    fn from_mod1_chunks(chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError> {
+        let wire_state = Self::from_chunks(chunks)?;
+        state_from_mod1_wire(&wire_state)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -545,8 +553,7 @@ pub fn encode_offchain_midnight_did_state<C: CompactValueCodec>(
     state: &OffchainMidnightDidState,
 ) -> Result<EncodedOffchainMidnightDidState, OffchainError> {
     validate_state_shape(state)?;
-    let wire_state = state_to_mod1_wire(state)?;
-    let chunks = C::to_chunks(&wire_state)?;
+    let chunks = C::to_mod1_chunks(state)?;
     let frame = compact_value_to_bytes(&chunks)?;
     Ok(EncodedOffchainMidnightDidState {
         encoding: OFFCHAIN_STATE_ENCODING.to_owned(),
@@ -565,8 +572,7 @@ pub fn decode_offchain_midnight_did_state<C: CompactValueCodec>(
     }
     let frame = from_base64url(&encoded.payload)?;
     let chunks = compact_value_from_bytes(&frame)?;
-    let wire_state = C::from_chunks(&chunks)?;
-    let state = state_from_mod1_wire(&wire_state)?;
+    let state = C::from_mod1_chunks(&chunks)?;
     validate_state_shape(&state)?;
     Ok(state)
 }
@@ -1047,6 +1053,48 @@ mod tests {
             let first = chunks.first().ok_or(OffchainError::CompactCodecMissing)?;
             serde_json::from_slice(first).map_err(|_| OffchainError::CompactCodecMissing)
         }
+
+        fn from_mod1_chunks(chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError> {
+            let first = chunks.first().ok_or(OffchainError::CompactCodecMissing)?;
+            let mut value: serde_json::Value =
+                serde_json::from_slice(first).map_err(|_| OffchainError::CompactCodecMissing)?;
+            if let Some(methods) = value
+                .get_mut("verification_method")
+                .and_then(serde_json::Value::as_array_mut)
+            {
+                for method in methods {
+                    let Some(jwk) = method.get_mut("public_key_jwk") else {
+                        continue;
+                    };
+                    let is_jubjub = jwk.get("kty").and_then(serde_json::Value::as_str) == Some("EC")
+                        && jwk.get("crv").and_then(serde_json::Value::as_str) == Some("Jubjub");
+                    if !is_jubjub {
+                        continue;
+                    }
+                    let x = jwk
+                        .get("x")
+                        .and_then(serde_json::Value::as_str)
+                        .ok_or(OffchainError::CompactCodecMissing)?;
+                    let y = jwk
+                        .get("y")
+                        .and_then(serde_json::Value::as_str)
+                        .ok_or(OffchainError::CompactCodecMissing)?;
+                    let x = encode_jubjub_jwk_coordinate_from_little_endian(
+                        &decode_base64url(x).map_err(OffchainError::Codec)?,
+                        "publicKeyJwk.x",
+                    )
+                    .map_err(OffchainError::Codec)?;
+                    let y = encode_jubjub_jwk_coordinate_from_little_endian(
+                        &decode_base64url(y).map_err(OffchainError::Codec)?,
+                        "publicKeyJwk.y",
+                    )
+                    .map_err(OffchainError::Codec)?;
+                    jwk["x"] = serde_json::Value::String(x);
+                    jwk["y"] = serde_json::Value::String(y);
+                }
+            }
+            serde_json::from_value(value).map_err(|_| OffchainError::CompactCodecMissing)
+        }
     }
 
     const ALL_KEY_KINDS: [OffchainKeyKind; 7] = [
@@ -1194,6 +1242,59 @@ mod tests {
                 .unwrap(),
             encode_base64url(&two_fifty_six_le)
         );
+    }
+
+    #[test]
+    fn mod1_encode_accepts_valid_domain_coordinate_whose_le_wire_exceeds_modulus_prefix() {
+        let domain = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8"; // integer 255, valid v0.7 big-endian
+        let wire = "_wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // historical little-endian MOD1 field
+        let y = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE";
+        let state = OffchainMidnightDidState {
+            version: 1,
+            also_known_as: vec![],
+            verification_method: vec![OffchainVerificationMethod {
+                id: "#high-low".into(),
+                public_key_jwk: PublicKeyJwk::new(NewPublicKeyJwk {
+                    kty: KeyType::EC,
+                    crv: CurveType::Jubjub,
+                    x: domain.into(),
+                    y: Some(y.into()),
+                    extensions: Default::default(),
+                })
+                .expect("domain coordinate below modulus is valid"),
+                relationships: OffchainVerificationRelationships {
+                    authentication: true,
+                    ..OffchainVerificationRelationships::default()
+                },
+            }],
+            service: vec![],
+        };
+
+        assert!(
+            PublicKeyJwk::new(NewPublicKeyJwk {
+                kty: KeyType::EC,
+                crv: CurveType::Jubjub,
+                x: wire.into(),
+                y: Some(y.into()),
+                extensions: Default::default(),
+            })
+            .is_err(),
+            "the MOD1 little-endian wire bytes must not be re-validated as a domain JWK"
+        );
+        assert_eq!(
+            jubjub_jwk_coordinate_to_mod1_wire(state.verification_method[0].public_key_jwk.x(), "x").unwrap(),
+            wire
+        );
+
+        let encoded = encode_offchain_midnight_did_state::<JsonCompactValueCodec>(&state)
+            .expect("MOD1 encode preserves wire bytes without domain-validating the LE field");
+        let frame = decode_base64url(&encoded.payload).unwrap();
+        let chunks = compact_value_from_bytes(&frame).unwrap();
+        let wire_state: serde_json::Value = serde_json::from_slice(&chunks[0]).unwrap();
+        assert_eq!(wire_state["verification_method"][0]["public_key_jwk"]["x"], wire);
+
+        let decoded = decode_offchain_midnight_did_state::<JsonCompactValueCodec>(&encoded).unwrap();
+        assert_eq!(decoded.verification_method[0].public_key_jwk.x(), domain);
     }
 
     #[test]
