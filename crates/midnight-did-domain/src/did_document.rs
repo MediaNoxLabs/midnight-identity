@@ -806,12 +806,12 @@ impl PublicKeyJwk {
                 "publicKeyJwk.x must be canonical base64url for the supported curve length",
             ));
         }
-        if let Some(y) = &self.y {
-            if !self.coordinate_is_valid(y, PublicKeyJwkCoordinate::Y, "publicKeyJwk.y") {
-                issues.push(ValidationIssue::new(
-                    "publicKeyJwk.y must be canonical base64url for the supported curve length",
-                ));
-            }
+        if let Some(y) = &self.y
+            && !self.coordinate_is_valid(y, PublicKeyJwkCoordinate::Y, "publicKeyJwk.y")
+        {
+            issues.push(ValidationIssue::new(
+                "publicKeyJwk.y must be canonical base64url for the supported curve length",
+            ));
         }
         issues
     }
