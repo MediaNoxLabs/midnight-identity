@@ -65,6 +65,12 @@ pub enum CodecError {
         /// Operator-provided label.
         label: String,
     },
+    /// Decoded Jubjub coordinate is at or above the v0.7 base-field modulus.
+    #[error("{label} must be an integer below the Jubjub base-field modulus")]
+    CoordinateOutOfRange {
+        /// Operator-provided label.
+        label: String,
+    },
 }
 
 /// Jubjub base-field modulus used by Midnight DID v0.7.0 for `EC`/`Jubjub`
@@ -94,8 +100,8 @@ fn is_strictly_less_than_jubjub_modulus(bytes: &[u8; JUBJUB_JWK_COORDINATE_BYTES
 /// # Errors
 ///
 /// Returns [`CodecError::UnexpectedByteLength`] unless the input has exactly
-/// 32 bytes, or [`CodecError::NotCanonical`] when the value is at or above the
-/// Jubjub base-field modulus.
+/// 32 bytes, or [`CodecError::CoordinateOutOfRange`] when the value is at or
+/// above the Jubjub base-field modulus.
 pub fn encode_jubjub_jwk_coordinate(bytes_be: &[u8], label: &str) -> Result<String, CodecError> {
     let bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] =
         bytes_be.try_into().map_err(|_| CodecError::UnexpectedByteLength {
@@ -104,7 +110,7 @@ pub fn encode_jubjub_jwk_coordinate(bytes_be: &[u8], label: &str) -> Result<Stri
             actual: bytes_be.len(),
         })?;
     if !is_strictly_less_than_jubjub_modulus(&bytes) {
-        return Err(CodecError::NotCanonical { label: label.into() });
+        return Err(CodecError::CoordinateOutOfRange { label: label.into() });
     }
     Ok(encode_base64url(&bytes))
 }
@@ -119,12 +125,12 @@ pub fn encode_jubjub_jwk_coordinate(bytes_be: &[u8], label: &str) -> Result<Stri
 /// # Errors
 ///
 /// Forwards canonical base64url errors from [`decode_base64url_bytes`] and
-/// returns [`CodecError::NotCanonical`] for values at or above the modulus.
+/// returns [`CodecError::CoordinateOutOfRange`] for values at or above the modulus.
 pub fn decode_jubjub_jwk_coordinate(input: &str, label: &str) -> Result<[u8; JUBJUB_JWK_COORDINATE_BYTES], CodecError> {
     let decoded = decode_base64url_bytes(input, JUBJUB_JWK_COORDINATE_BYTES, label)?;
     let bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] = decoded.try_into().expect("decode_base64url_bytes enforced length");
     if !is_strictly_less_than_jubjub_modulus(&bytes) {
-        return Err(CodecError::NotCanonical { label: label.into() });
+        return Err(CodecError::CoordinateOutOfRange { label: label.into() });
     }
     Ok(bytes)
 }
@@ -375,6 +381,25 @@ mod tests {
         assert_eq!(
             CodecError::NotCanonical { label: "coord".into() }.to_string(),
             "coord is not canonical unpadded base64url"
+        );
+    }
+
+    #[test]
+    fn coordinate_out_of_range_error_displays_label() {
+        assert_eq!(
+            CodecError::CoordinateOutOfRange { label: "coord".into() }.to_string(),
+            "coord must be an integer below the Jubjub base-field modulus"
+        );
+    }
+
+    #[test]
+    fn jubjub_decode_reports_modulus_range_distinct_from_canonicality() {
+        let modulus = "c-2nUymdfUgzOdgICaHYBVO9pAL__lv-_____wAAAAE";
+        assert_eq!(
+            decode_jubjub_jwk_coordinate(modulus, "publicKeyJwk.x").unwrap_err(),
+            CodecError::CoordinateOutOfRange {
+                label: "publicKeyJwk.x".into(),
+            }
         );
     }
 

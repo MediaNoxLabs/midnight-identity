@@ -752,6 +752,16 @@ impl PublicKeyJwk {
         self.collect_issues_with_budget(&mut ExtensionBudget::default())
     }
 
+    fn coordinate_is_valid(&self, value: &str, coordinate: PublicKeyJwkCoordinate, label: &str) -> bool {
+        public_key_jwk_coordinate_byte_length(self.kty, self.crv, coordinate).is_some_and(|expected| {
+            if matches!((self.kty, self.crv), (KeyType::EC, CurveType::Jubjub)) {
+                decode_jubjub_jwk_coordinate(value, label).is_ok()
+            } else {
+                decode_base64url_bytes(value, expected, label).is_ok()
+            }
+        })
+    }
+
     fn collect_issues_with_budget(&self, extension_budget: &mut ExtensionBudget) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
         if self.extensions.contains_key("d") {
@@ -791,32 +801,16 @@ impl PublicKeyJwk {
         // pair has NO table entry and therefore rejects — a `None`
         // byte-length is a validation failure, not a skip. This is what
         // keeps e.g. `kty: RSA, crv: Ed25519` out (issue #17).
-        match public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::X) {
-            Some(expected_x)
-                if if matches!((self.kty, self.crv), (KeyType::EC, CurveType::Jubjub)) {
-                    decode_jubjub_jwk_coordinate(&self.x, "publicKeyJwk.x").is_ok()
-                } else {
-                    decode_base64url_bytes(&self.x, expected_x, "publicKeyJwk.x").is_ok()
-                } => {}
-            _ => {
-                issues.push(ValidationIssue::new(
-                    "publicKeyJwk.x must be canonical base64url for the supported curve length",
-                ));
-            }
+        if !self.coordinate_is_valid(&self.x, PublicKeyJwkCoordinate::X, "publicKeyJwk.x") {
+            issues.push(ValidationIssue::new(
+                "publicKeyJwk.x must be canonical base64url for the supported curve length",
+            ));
         }
         if let Some(y) = &self.y {
-            match public_key_jwk_coordinate_byte_length(self.kty, self.crv, PublicKeyJwkCoordinate::Y) {
-                Some(expected_y)
-                    if if matches!((self.kty, self.crv), (KeyType::EC, CurveType::Jubjub)) {
-                        decode_jubjub_jwk_coordinate(y, "publicKeyJwk.y").is_ok()
-                    } else {
-                        decode_base64url_bytes(y, expected_y, "publicKeyJwk.y").is_ok()
-                    } => {}
-                _ => {
-                    issues.push(ValidationIssue::new(
-                        "publicKeyJwk.y must be canonical base64url for the supported curve length",
-                    ));
-                }
+            if !self.coordinate_is_valid(y, PublicKeyJwkCoordinate::Y, "publicKeyJwk.y") {
+                issues.push(ValidationIssue::new(
+                    "publicKeyJwk.y must be canonical base64url for the supported curve length",
+                ));
             }
         }
         issues

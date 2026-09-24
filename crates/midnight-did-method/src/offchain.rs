@@ -40,8 +40,8 @@
 use blake2::digest::consts::U32;
 use blake2::{Blake2s, Digest};
 use midnight_did_domain::crypto_codecs::{
-    CodecError, decode_base64url, decode_jubjub_jwk_coordinate_to_little_endian, encode_base64url,
-    encode_jubjub_jwk_coordinate_from_little_endian,
+    CodecError, decode_base64url, decode_base64url_bytes, decode_jubjub_jwk_coordinate_to_little_endian,
+    encode_base64url, encode_jubjub_jwk_coordinate_from_little_endian,
 };
 use midnight_did_domain::did_document::{
     CurveType, DidString, DocumentContext, KeyType, NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk,
@@ -265,34 +265,8 @@ pub fn jwk_from_key_kind(kind: OffchainKeyKind, x: &str, y: &str) -> Result<Publ
             EC,
             Jubjub,
             true,
-            encode_jubjub_jwk_coordinate_from_little_endian(
-                &decode_base64url(x).map_err(|err| {
-                    ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
-                        err.to_string(),
-                    )])
-                })?,
-                "publicKeyJwk.x",
-            )
-            .map_err(|err| {
-                ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
-                    err.to_string(),
-                )])
-            })?,
-            Some(
-                encode_jubjub_jwk_coordinate_from_little_endian(
-                    &decode_base64url(y).map_err(|err| {
-                        ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
-                            err.to_string(),
-                        )])
-                    })?,
-                    "publicKeyJwk.y",
-                )
-                .map_err(|err| {
-                    ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
-                        err.to_string(),
-                    )])
-                })?,
-            ),
+            mod1_wire_to_jwk_coordinate(x, "publicKeyJwk.x")?,
+            Some(mod1_wire_to_jwk_coordinate(y, "publicKeyJwk.y")?),
         ),
         OffchainKeyKind::Ed25519 => (OKP, Ed25519, false, x.to_owned(), None),
         OffchainKeyKind::P256 => (EC, P256, true, x.to_owned(), Some(y.to_owned())),
@@ -323,6 +297,11 @@ fn validation_from_codec(error: CodecError) -> ValidationError {
     ValidationError::from_issues(vec![midnight_did_domain::did_document::ValidationIssue::new(
         error.to_string(),
     )])
+}
+
+fn mod1_wire_to_jwk_coordinate(value: &str, label: &str) -> Result<String, ValidationError> {
+    let wire = decode_base64url_bytes(value, 32, label).map_err(validation_from_codec)?;
+    encode_jubjub_jwk_coordinate_from_little_endian(&wire, label).map_err(validation_from_codec)
 }
 
 fn method_to_mod1_wire(vm: &OffchainVerificationMethod) -> Result<RawOffchainVerificationMethodWire, OffchainError> {
@@ -503,9 +482,20 @@ pub fn compact_value_from_bytes(bytes: &[u8]) -> Result<Vec<Vec<u8>>, OffchainEr
 /// every high-level helper in this module are runtime-independent and
 /// covered by unit tests inside this crate.
 pub trait CompactValueCodec {
-    /// Convert structured state into the chunk list expected by the
-    /// runtime's Compact type descriptors.
-    fn to_chunks(state: &OffchainMidnightDidState) -> Result<Vec<Vec<u8>>, OffchainError>;
+    /// Deprecated pre-v0.7 domain-state chunk hook.
+    ///
+    /// v0.7 codecs route through [`Self::to_mod1_wire_chunks`] so `keyKind = 1`
+    /// Jubjub coordinates never pass through domain JWK validation while they
+    /// are still historical little-endian MOD1 wire fields. Runtime codec
+    /// authors should implement the MOD1 wire hooks below; this method remains
+    /// only as a migration marker for older implementors.
+    #[deprecated(
+        since = "0.7.0",
+        note = "implement to_mod1_wire_chunks instead; v0.7 MOD1 Jubjub wire fields are little-endian"
+    )]
+    fn to_chunks(_state: &OffchainMidnightDidState) -> Result<Vec<Vec<u8>>, OffchainError> {
+        Err(OffchainError::CompactCodecMissing)
+    }
     /// Convert raw MOD1 v1 wire state into chunks. Implementations backed by a
     /// real Compact serializer should encode this DTO without constructing
     /// domain [`PublicKeyJwk`] values for little-endian Jubjub wire fields.
@@ -518,8 +508,19 @@ pub trait CompactValueCodec {
         let wire_state = state_to_mod1_wire(state)?;
         Self::to_mod1_wire_chunks(&wire_state)
     }
-    /// Inverse of [`Self::to_chunks`].
-    fn from_chunks(chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError>;
+    /// Deprecated inverse of [`Self::to_chunks`].
+    ///
+    /// v0.7 decode routes through [`Self::from_mod1_wire_chunks`] before
+    /// converting `keyKind = 1` Jubjub fields into canonical big-endian domain
+    /// JWK coordinates. Runtime codec authors should implement the MOD1 wire
+    /// hook instead of this domain-state hook.
+    #[deprecated(
+        since = "0.7.0",
+        note = "implement from_mod1_wire_chunks instead; v0.7 MOD1 Jubjub wire fields are little-endian"
+    )]
+    fn from_chunks(_chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError> {
+        Err(OffchainError::CompactCodecMissing)
+    }
     /// Decode raw MOD1 v1 chunks into the method-layer wire DTO.
     fn from_mod1_wire_chunks(_chunks: &[Vec<u8>]) -> Result<RawOffchainMidnightDidStateWire, OffchainError> {
         Err(OffchainError::CompactCodecMissing)
@@ -857,15 +858,7 @@ pub fn create_offchain_midnight_did_document_metadata(
 /// their own backend in.
 pub struct UnimplementedCompactValueCodec;
 
-impl CompactValueCodec for UnimplementedCompactValueCodec {
-    fn to_chunks(_state: &OffchainMidnightDidState) -> Result<Vec<Vec<u8>>, OffchainError> {
-        Err(OffchainError::CompactCodecMissing)
-    }
-
-    fn from_chunks(_chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError> {
-        Err(OffchainError::CompactCodecMissing)
-    }
-}
+impl CompactValueCodec for UnimplementedCompactValueCodec {}
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -1072,15 +1065,6 @@ mod tests {
     struct JsonCompactValueCodec;
 
     impl CompactValueCodec for JsonCompactValueCodec {
-        fn to_chunks(state: &OffchainMidnightDidState) -> Result<Vec<Vec<u8>>, OffchainError> {
-            Ok(vec![serde_json::to_vec(state).expect("state serializes")])
-        }
-
-        fn from_chunks(chunks: &[Vec<u8>]) -> Result<OffchainMidnightDidState, OffchainError> {
-            let first = chunks.first().ok_or(OffchainError::CompactCodecMissing)?;
-            serde_json::from_slice(first).map_err(|_| OffchainError::CompactCodecMissing)
-        }
-
         fn to_mod1_wire_chunks(state: &RawOffchainMidnightDidStateWire) -> Result<Vec<Vec<u8>>, OffchainError> {
             Ok(vec![serde_json::to_vec(state).expect("wire state serializes")])
         }
@@ -1335,6 +1319,18 @@ mod tests {
         assert_eq!(
             jubjub_jwk_coordinate_to_mod1_wire(jwk.y().unwrap(), "y").unwrap(),
             encode_base64url(&two_fifty_six_le)
+        );
+    }
+
+    #[test]
+    fn jubjub_key_kind_rejects_padded_mod1_wire_coordinates() {
+        let x = format!("{}=", encode_base64url(&[1u8; 32]));
+        let y = encode_base64url(&[2u8; 32]);
+        let err = jwk_from_key_kind(OffchainKeyKind::Jubjub, &x, &y).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("publicKeyJwk.x contains an invalid base64url character"),
+            "unexpected error: {err}"
         );
     }
 
