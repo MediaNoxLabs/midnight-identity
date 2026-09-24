@@ -120,12 +120,16 @@ Constants used in every fixture:
 
 ### Authoring notes
 
-The Schnorr-Jubjub fixture relies on
-`LedgerToDomain.schnorrJubjubPkToJwk`, which hex-decodes each
-coordinate, right-pads to 32 bytes, then base64url-encodes the result.
-Inputs `x = "01"`, `y = "02"` yield the JWK coordinates
-`AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA` and
-`AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`.
+The Schnorr-Jubjub fixture follows the Midnight DID v0.7 ledger/domain
+boundary. Ledger `JubjubPointHex` coordinates remain historical
+little-endian bytes, but `LedgerToDomain.schnorrJubjubPkToJwk` projects
+them to canonical domain JWK coordinates by fixing each coordinate to 32
+bytes, reversing to unsigned big-endian order, enforcing the Jubjub
+modulus bound, and base64url-encoding without padding. Inputs `x =
+"01"`, `y = "02"` therefore yield the v0.7 JWK coordinates
+`AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE` and
+`AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI`, not the old v0.6
+little-endian strings.
 
 For `setVerificationMethodRelation` the document still carries the
 underlying `verificationMethod` array because the relation must point
