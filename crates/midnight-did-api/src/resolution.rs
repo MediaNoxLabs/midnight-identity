@@ -24,7 +24,9 @@
 
 use std::collections::BTreeMap;
 
+#[cfg(test)]
 use midnight_did_domain::crypto_codecs::encode_base64url;
+use midnight_did_domain::crypto_codecs::encode_jubjub_jwk_coordinate_from_little_endian;
 use midnight_did_domain::did_document::{
     Controller, CurveType, DidDocument, DidDocumentMetadata, DidKeyId, DidString, DocumentContext, KeyType,
     NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk, Service, ServiceEndpoint,
@@ -238,8 +240,8 @@ pub fn schnorr_jubjub_pk_to_jwk(method: &LedgerSchnorrJubjubVerificationMethod) 
     Ok(PublicKeyJwk::new(NewPublicKeyJwk {
         kty: KeyType::EC,
         crv: CurveType::Jubjub,
-        x: encode_base64url(&x),
-        y: Some(encode_base64url(&y)),
+        x: encode_jubjub_jwk_coordinate_from_little_endian(&x, "publicKey.x")?,
+        y: Some(encode_jubjub_jwk_coordinate_from_little_endian(&y, "publicKey.y")?),
         extensions: BTreeMap::new(),
     })?)
 }
@@ -252,8 +254,9 @@ fn decode_jubjub_coordinate(hex_value: &str, label: &str) -> Result<[u8; 32], Ap
             bytes.len()
         )));
     }
-    // Pad to 32 bytes — coordinate is a field element so we accept short
-    // hex inputs (right-padded to 32 little-endian bytes).
+    // Pad to 32 bytes — ledger coordinates are native little-endian field
+    // elements. Domain JWK projection reverses these bytes at the resolver
+    // boundary for Midnight DID v0.7.0; ledger storage itself is unchanged.
     bytes.resize(32, 0u8);
     let mut out = [0u8; 32];
     out.copy_from_slice(&bytes);
@@ -445,7 +448,10 @@ pub fn ledger_to_domain_relation(relation: LedgerVerificationMethodRelation) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contract::{LedgerPublicKeyJwk, LedgerService, LedgerVerificationMethod};
+    use crate::contract::{
+        JubjubPointHex, LedgerPublicKeyJwk, LedgerSchnorrJubjubVerificationMethod, LedgerService,
+        LedgerVerificationMethod, NewJubjubPointHex,
+    };
 
     const ADDR: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
@@ -510,6 +516,33 @@ mod tests {
         let doc = ledger_state_to_did_document(&state, MidnightNetwork::Testnet, ADDR).unwrap();
         let svc = &doc.service.unwrap()[0];
         assert!(matches!(svc.service_endpoint(), ServiceEndpoint::Uri(u) if u == "https://example.com"));
+    }
+
+    #[test]
+    fn schnorr_jubjub_ledger_projection_uses_v07_big_endian_jwk() {
+        let method_one = LedgerSchnorrJubjubVerificationMethod {
+            id: "#jub-1".into(),
+            public_key: JubjubPointHex::new(NewJubjubPointHex {
+                x: format!("01{}", "00".repeat(31)),
+                y: format!("00{}", "00".repeat(31)),
+            })
+            .unwrap(),
+        };
+        let jwk_one = schnorr_jubjub_pk_to_jwk(&method_one).unwrap();
+        assert_eq!(jwk_one.x(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE");
+        assert_ne!(jwk_one.x(), "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+
+        let method_256 = LedgerSchnorrJubjubVerificationMethod {
+            id: "#jub-256".into(),
+            public_key: JubjubPointHex::new(NewJubjubPointHex {
+                x: format!("0001{}", "00".repeat(30)),
+                y: format!("00{}", "00".repeat(31)),
+            })
+            .unwrap(),
+        };
+        let jwk_256 = schnorr_jubjub_pk_to_jwk(&method_256).unwrap();
+        assert_eq!(jwk_256.x(), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQA");
+        assert_ne!(jwk_256.x(), "AAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
 
     #[test]

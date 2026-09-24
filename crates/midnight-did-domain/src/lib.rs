@@ -52,8 +52,10 @@ pub mod uri;
 // Re-exports mirroring the TS `index.ts` so downstream callers can `use
 // midnight_did_domain::*` to get the most common items.
 pub use crypto_codecs::{
-    decode_base64url, decode_base64url_bytes, decode_base64url_bytes_32, decode_field_element, encode_base64url,
-    encode_field_element,
+    JUBJUB_JWK_COORDINATE_MODULUS_DECIMAL, decode_base64url, decode_base64url_bytes, decode_base64url_bytes_32,
+    decode_field_element, decode_jubjub_jwk_coordinate, decode_jubjub_jwk_coordinate_to_little_endian,
+    encode_base64url, encode_field_element, encode_jubjub_jwk_coordinate,
+    encode_jubjub_jwk_coordinate_from_little_endian,
 };
 pub use did_document::{
     CurveType, DidDocument, DidDocumentBuilder, DidDocumentMetadata, DidKeyId, DidResolutionErrorCode,

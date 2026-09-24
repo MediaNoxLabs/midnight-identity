@@ -67,6 +67,36 @@ shape in [ADR 0003][adr3].
 
 ## Migration and compatibility
 
+
+### Midnight DID 0.7 Jubjub JWK coordinate profile
+
+Midnight DID v0.7.0 aligns `EC` / `Jubjub` `publicKeyJwk.x` and `y` with
+standard EC JWK coordinate semantics: canonical unpadded base64url over exactly
+32 unsigned **big-endian** octets, with the decoded integer strictly below the
+Jubjub base-field modulus
+`52435875175126190479447740508185965837690552500527637822603658699938581184513`.
+The canonical Rust helpers are `encode_jubjub_jwk_coordinate`,
+`decode_jubjub_jwk_coordinate`, and the explicit little-endian boundary helpers
+for ledger/MOD1 fields. Provenance: upstream `midnightntwrk/midnight-did` tag
+`v0.7.0`, commit `4e7f6b0f69bf4e2c8506a9693f8d0c3dfe68e550`,
+`docs-site/architecture/adr-jubjub-jwk-coordinate-encoding.md` (Apache-2.0).
+
+Ledger-native SchnorrJubjub points, signatures, contract state, and the MOD1 v1
+offchain wire fields remain fixed-width little-endian. The conversion happens
+only at the domain boundary: resolving ledger/MOD1 material exposes v0.7
+big-endian JWKs, while encoding MOD1 v1 converts canonical domain JWKs back to
+the historical little-endian fields so existing payload bytes, state hashes,
+short DIDs, and long-form DIDs are stable.
+
+Roll out producers and consumers together. Consumers that derive cache keys,
+indexes, JWK thumbprints, document hashes, or other identifiers from serialized
+JWK bytes must rebuild those values after re-resolving with a v0.7 resolver.
+Persisted 0.6 DID Document snapshots remain historical 0.6 evidence and should
+be verified under the 0.6 profile that created them. Do not add unmarked
+dual-endian fallback or heuristic byte-order detection: a 32-byte coordinate has
+no discriminator, and accepting both encodings makes interpretation
+non-deterministic.
+
 This release is additive for ordinary callers and does not add variants to the
 exhaustive known resolution error enum. Existing constructors continue to build
 values without extensions. Call `VerificationMethod::new_with_extensions`
