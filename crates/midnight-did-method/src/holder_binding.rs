@@ -30,7 +30,6 @@
 //! The [`hash_domains`] submodule owns the domain-tag vocabulary so the
 //! DID- and VC-layer tags stay collision-free by construction.
 
-use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 /// Domain-separation tags for off-chain SHA-256 hash contexts.
@@ -71,11 +70,11 @@ pub enum MethodReferenceError {
 /// `SHA-256(domain ‖ NUL ‖ payload)` — the generic domain-separated
 /// hash every off-chain tag in [`hash_domains`] uses.
 pub fn domain_separated_sha256(domain: &str, payload: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(domain.as_bytes());
-    hasher.update([0u8]);
-    hasher.update(payload);
-    hasher.finalize().into()
+    let mut preimage = Vec::with_capacity(domain.len() + 1 + payload.len());
+    preimage.extend_from_slice(domain.as_bytes());
+    preimage.push(0);
+    preimage.extend_from_slice(payload);
+    *identus_crypto::hash::sha256(preimage).as_array()
 }
 
 /// Hash a **normalized** method-reference fragment (`#key-1` form) into
@@ -161,6 +160,36 @@ mod tests {
         // Without the NUL, domain "a" + payload "bc" would collide with
         // domain "ab" + payload "c".
         assert_ne!(domain_separated_sha256("a", b"bc"), domain_separated_sha256("ab", b"c"));
+    }
+
+    #[test]
+    fn domain_hash_matches_independent_boundary_vectors() {
+        let vectors: [(&str, &[u8], &str); 4] = [
+            (
+                "example",
+                b"",
+                "bb3483010f53158ce58a227cc8dfefd484fc8fcb0ab139880b1180e0773f0552",
+            ),
+            (
+                "example",
+                &[0, 1, 0xff],
+                "a2b7ea5bea713b5983d7fd360f5bf183aab9f9e52a01aebec71206d73a126f3e",
+            ),
+            (
+                "a",
+                b"bc",
+                "40bb547d936bbd31318ee37ac8799e7ecbb22eda2651f65e3214bffb8ce97bb4",
+            ),
+            (
+                "ab",
+                b"c",
+                "6c032e631d39a14d85aff7e319546af701e26c97b57ca95fbfe9c6ba855f67bf",
+            ),
+        ];
+
+        for (domain, payload, expected) in vectors {
+            assert_eq!(hex::encode(domain_separated_sha256(domain, payload)), expected);
+        }
     }
 
     #[test]

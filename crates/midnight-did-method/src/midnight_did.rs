@@ -273,12 +273,11 @@ pub fn parse_midnight_did_string(input: &str) -> Result<MidnightDidString, Midni
     if net == "offchain" && !is_lowercase_hex64(identifier) {
         return Err(MidnightDidError::OffchainNotLowercase);
     }
-    if net == "offchain" {
-        if let Some(state) = parts.get(4) {
-            if !is_base64url_segment(state) {
-                return Err(MidnightDidError::BadOffchainStateEncoding);
-            }
-        }
+    if net == "offchain"
+        && let Some(state) = parts.get(4)
+        && !is_base64url_segment(state)
+    {
+        return Err(MidnightDidError::BadOffchainStateEncoding);
     }
     Ok(MidnightDidString(input.to_owned()))
 }

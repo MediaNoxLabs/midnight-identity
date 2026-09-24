@@ -5,12 +5,16 @@ members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-
 [workspace.package]
 version      = "0.5.0"
 edition      = "2024"
-rust-version = "1.85"
+rust-version = "1.89"
 license      = "Apache-2.0"
 authors      = [ "Midnight Foundation" ]
 repository   = "https://github.com/MediaNoxLabs/midnight-identity"
 
 [workspace.dependencies]
+# Generic, chain-neutral cryptographic primitives. Keep the canary source pin
+# immutable and its feature cone minimal; Midnight-specific semantics remain in
+# this workspace (ADR 0011).
+identus-crypto = { git = "https://github.com/hyperledger-identus/sdk-rust.git", rev = "19d0362038c3f2af6898624ea04347e3cd4648f7", default-features = false, features = [ "hash" ] }
 # midnight-ledger crates (path-mounted by devshell into third_party/midnight-ledger)
 midnight-base-crypto      = { path = "third_party/midnight-ledger/base-crypto" }
 midnight-coin-structure   = { path = "third_party/midnight-ledger/coin-structure" }

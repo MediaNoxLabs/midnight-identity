@@ -1862,6 +1862,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
+name = "identus-core"
+version = "0.0.0"
+source = "git+https://github.com/hyperledger-identus/sdk-rust.git?rev=19d0362038c3f2af6898624ea04347e3cd4648f7#19d0362038c3f2af6898624ea04347e3cd4648f7"
+dependencies = [
+ "identus-derive",
+ "serde",
+]
+
+[[package]]
+name = "identus-crypto"
+version = "0.0.0"
+source = "git+https://github.com/hyperledger-identus/sdk-rust.git?rev=19d0362038c3f2af6898624ea04347e3cd4648f7#19d0362038c3f2af6898624ea04347e3cd4648f7"
+dependencies = [
+ "identus-core",
+ "identus-derive",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "identus-derive"
+version = "0.0.0"
+source = "git+https://github.com/hyperledger-identus/sdk-rust.git?rev=19d0362038c3f2af6898624ea04347e3cd4648f7#19d0362038c3f2af6898624ea04347e3cd4648f7"
+dependencies = [
+ "proc-macro2",
+ "quote 1.0.45",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "idna"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2462,10 +2491,10 @@ version = "0.5.0"
 dependencies = [
  "blake2",
  "hex",
+ "identus-crypto",
  "midnight-did-domain",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "thiserror",
 ]
 
