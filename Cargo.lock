@@ -1863,8 +1863,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "identus-core"
-version = "0.0.0"
-source = "git+https://github.com/hyperledger-identus/sdk-rust.git?rev=19d0362038c3f2af6898624ea04347e3cd4648f7#19d0362038c3f2af6898624ea04347e3cd4648f7"
+version = "0.1.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f92bf9d273ffb42a577780fcecd125569210a78ad7cd7cb7423df0d526f3b820"
 dependencies = [
  "identus-derive",
  "serde",
@@ -1872,8 +1873,9 @@ dependencies = [
 
 [[package]]
 name = "identus-crypto"
-version = "0.0.0"
-source = "git+https://github.com/hyperledger-identus/sdk-rust.git?rev=19d0362038c3f2af6898624ea04347e3cd4648f7#19d0362038c3f2af6898624ea04347e3cd4648f7"
+version = "0.1.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "447fc7e1c0c3e55fc75049f93806aa47bc64c66da8b29470bf0faeff749dde40"
 dependencies = [
  "identus-core",
  "identus-derive",
@@ -1882,8 +1884,9 @@ dependencies = [
 
 [[package]]
 name = "identus-derive"
-version = "0.0.0"
-source = "git+https://github.com/hyperledger-identus/sdk-rust.git?rev=19d0362038c3f2af6898624ea04347e3cd4648f7#19d0362038c3f2af6898624ea04347e3cd4648f7"
+version = "0.1.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acf8f8957a165204d365745777c8ab728a6c8e206e1457505f12708e80a1085c"
 dependencies = [
  "proc-macro2",
  "quote 1.0.45",

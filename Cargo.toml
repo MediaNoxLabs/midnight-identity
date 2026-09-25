@@ -11,10 +11,10 @@ authors      = [ "Midnight Foundation" ]
 repository   = "https://github.com/MediaNoxLabs/midnight-identity"
 
 [workspace.dependencies]
-# Generic, chain-neutral cryptographic primitives. Keep the canary source pin
-# immutable and its feature cone minimal; Midnight-specific semantics remain in
-# this workspace (ADR 0011).
-identus-crypto = { git = "https://github.com/hyperledger-identus/sdk-rust.git", rev = "19d0362038c3f2af6898624ea04347e3cd4648f7", default-features = false, features = [ "hash" ] }
+# Generic, chain-neutral cryptographic primitives. Keep the canary registry
+# version exact and its feature cone minimal; Midnight-specific semantics remain
+# in this workspace (ADR 0011).
+identus-crypto = { version = "=0.1.0-rc.1", default-features = false, features = [ "hash" ] }
 # midnight-ledger crates (path-mounted by devshell into third_party/midnight-ledger)
 midnight-base-crypto      = { path = "third_party/midnight-ledger/base-crypto" }
 midnight-coin-structure   = { path = "third_party/midnight-ledger/coin-structure" }
@@ -57,10 +57,10 @@ midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 # VC layer (issue #13). `vc-domain` is pure data and publishable on its own
 # cadence (hence the `=` version pin, same rationale as midnight-did-domain);
 # `vc-runtime` is the codegen target and stays unpublished.
-midnight-vc-domain             = { path = "crates/midnight-vc-domain", version = "=0.5.0" }
-midnight-vc-families           = { path = "crates/midnight-vc-families" }
-midnight-vc-proof              = { path = "crates/midnight-vc-proof" }
-midnight-vc-runtime            = { path = "crates/midnight-vc-runtime" }
+midnight-vc-domain               = { path = "crates/midnight-vc-domain", version = "=0.5.0" }
+midnight-vc-families             = { path = "crates/midnight-vc-families" }
+midnight-vc-proof                = { path = "crates/midnight-vc-proof" }
+midnight-vc-runtime              = { path = "crates/midnight-vc-runtime" }
 midnight-passport-account-source = { path = "crates/midnight-passport-account-source", version = "=0.5.0" }
 midnight-passport-account        = { path = "crates/midnight-passport-account", version = "=0.5.0" }
 midnight-passport-vault-source   = { path = "crates/midnight-passport-vault-source", version = "=0.5.0" }
