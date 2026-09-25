@@ -16,7 +16,7 @@ and holder-binding semantics are Midnight-specific and belong in this
 repository. The SHA-256 operation itself is a generic primitive already owned
 by Hyperledger Identus SDK-Rust.
 
-The first SDK-Rust release train needs evidence from a real, independently
+The published SDK-Rust release train needs evidence from a real, independently
 owned consumer. This repository must not transfer Midnight domain tags, DID
 method behavior, Compact types, ledger/runtime types, or product policy into
 the generic SDK merely to produce that evidence.
@@ -34,10 +34,11 @@ as requiring Rust 1.89.
 
 ## Decision
 
-Pin `identus-crypto` to the full immutable SDK-Rust revision
-`19d0362038c3f2af6898624ea04347e3cd4648f7`, reachable from protected
-`develop`. Disable default
-features and enable only `hash`.
+Pin `identus-crypto` to the exact crates.io registry version
+`=0.1.0-rc.1`. Disable default features and enable only `hash`. The lockfile
+must resolve `identus-crypto`, `identus-core`, and `identus-derive` from the
+crates.io registry at `0.1.0-rc.1` with checksums, not from SDK-Rust Git or
+path sources.
 
 Keep `domain_separated_sha256` and every Midnight-owned semantic in
 `midnight-did-method`. The function constructs the bounded
@@ -66,6 +67,9 @@ consumer compatibility decision, not an SDK specialization.
 - `cargo tree -e features` proves `identus-crypto` has only its `hash` feature
   and does not select curves, derivation, JWK, COSE, encodings, entropy, or
   compatibility features.
+- `cargo metadata` proves `identus-crypto`, `identus-core`, and
+  `identus-derive` resolve to exact `0.1.0-rc.1` crates.io packages with
+  lockfile checksums.
 - Native package tests, the repository's applicable WASM check, dependency,
   license, advisory, policy, and production-ready local gates pass.
 - The PR records before/after dependency-cone and compile-duration evidence.
@@ -74,8 +78,9 @@ consumer compatibility decision, not an SDK specialization.
 
 - The consumer proves a narrow real-world SDK seam without coupling SDK-Rust
   to Midnight.
-- The source pin is pre-release integration evidence, not a registry, SemVer,
-  runtime, device, FFI, certification, or production-support claim.
+- The exact registry pin is release-train canary evidence, not a runtime,
+  device, FFI, certification, or production-support claim. Historical evidence
+  from the prior Git-pinned canary remains comparative observation only.
 - One small allocation replaces incremental hashing on this path. If profiling
   shows material impact or another consumer needs multipart input, propose a
   generic upstream API under a separate SDK issue and ADR.
