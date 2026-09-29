@@ -98,14 +98,6 @@ export function classifyPath(candidate) {
   if (file === "third_party/midnight-did" || file.startsWith("third_party/midnight-did/")) {
     return { area: "did-codegen", package: "midnight-did-runtime" };
   }
-  if (file === "third_party/midnight-verifiable-credentials"
-      || file.startsWith("third_party/midnight-verifiable-credentials/")) {
-    return { area: "vc-codegen", package: "midnight-vc-runtime" };
-  }
-  if (file === "third_party/midnight-verifiable-credential-digital-passport"
-      || file.startsWith("third_party/midnight-verifiable-credential-digital-passport/")) {
-    return { area: "vc-codegen", package: "midnight-vc-families" };
-  }
   if (file.startsWith("artifacts/passport-vault-ledger8/")
       || file.startsWith("crates/midnight-passport-vault-source/contract/")
       || file === "crates/midnight-passport-vault-source/manifest.json"

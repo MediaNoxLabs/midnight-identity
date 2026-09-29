@@ -84,9 +84,8 @@ test("Compact inputs select only their affected generation family", () => {
   }
 });
 
-test("Digital Passport sources and bindings select the family codegen gate", () => {
+test("Digital Passport bindings select the family codegen gate", () => {
   for (const path of [
-    "third_party/midnight-verifiable-credential-digital-passport",
     "crates/midnight-vc-families/src/contract/digital_passport.rs",
   ]) {
     const plan = makeTargetPlan([path]);

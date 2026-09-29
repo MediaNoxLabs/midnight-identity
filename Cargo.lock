@@ -2869,10 +2869,12 @@ dependencies = [
 name = "midnight-vc-families"
 version = "0.5.0"
 dependencies = [
+ "hex",
  "midnight-base-crypto",
  "midnight-compact-runtime",
  "midnight-onchain-runtime",
  "midnight-serialize",
+ "serde_json",
  "sha2 0.10.9",
 ]
 

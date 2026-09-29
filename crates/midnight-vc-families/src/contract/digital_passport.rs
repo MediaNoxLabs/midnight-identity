@@ -1,9 +1,9 @@
 //! GENERATED — do not edit; run `just codegen-vc`.
 //!
-//! Family source: `midnight-verifiable-credential-digital-passport/packages/midnight-verifiable-credential-digital-passport/src/digital-passport-credential.compact` at tag `v0.1.0-rc1`
-//! in the pinned `third_party/midnight-verifiable-credential-digital-passport` submodule;
-//! core contract `@midnight-ntwrk/credential-compact@0.1.0-rc3` (npm),
-//! staged into the family repo's `core-compact-staging/` by this recipe.
+//! Family source: `src/digital-passport-credential.compact` in
+//! `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc2` (GitHub Release
+//! tarball); core contract `@midnight-ntwrk/credential-compact@0.2.0`
+//! (npm), staged into the package's `core-compact-staging/` by this recipe.
 // This file is part of Compact.
 // Copyright (C) 2026 Midnight Foundation
 // SPDX-License-Identifier: Apache-2.0
@@ -128,227 +128,8 @@ impl midnight_compact_runtime::BinaryHashRepr for SchemaRef {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct SchemaCapabilities {
-    pub supportsSelectiveDisclosure: bool,
-    pub supportsPredicateProofs: bool,
-    pub supportsVerifierScopedPseudonym: bool,
-    pub supportsSameHolderProof: bool,
-}
-impl Aligned for SchemaCapabilities {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<bool as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for SchemaCapabilities {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.supportsSelectiveDisclosure.field_repr(writer);
-        self.supportsPredicateProofs.field_repr(writer);
-        self.supportsVerifierScopedPseudonym.field_repr(writer);
-        self.supportsSameHolderProof.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.supportsSelectiveDisclosure.field_size()
-            + self.supportsPredicateProofs.field_size()
-            + self.supportsVerifierScopedPseudonym.field_size()
-            + self.supportsSameHolderProof.field_size()
-    }
-}
-impl FromFieldRepr for SchemaCapabilities {
-    const FIELD_SIZE: usize = <bool as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let supportsSelectiveDisclosure =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let supportsPredicateProofs =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let supportsVerifierScopedPseudonym =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let supportsSameHolderProof =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(SchemaCapabilities {
-            supportsSelectiveDisclosure,
-            supportsPredicateProofs,
-            supportsVerifierScopedPseudonym,
-            supportsSameHolderProof,
-        })
-    }
-}
-impl From<SchemaCapabilities> for midnight_compact_runtime::Value {
-    fn from(s: SchemaCapabilities) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.supportsSelectiveDisclosure));
-        _v.push(midnight_compact_runtime::Value::from(s.supportsPredicateProofs));
-        _v.push(midnight_compact_runtime::Value::from(s.supportsVerifierScopedPseudonym));
-        _v.push(midnight_compact_runtime::Value::from(s.supportsSameHolderProof));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for SchemaCapabilities {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.supportsSelectiveDisclosure.binary_repr(writer);
-        self.supportsPredicateProofs.binary_repr(writer);
-        self.supportsVerifierScopedPseudonym.binary_repr(writer);
-        self.supportsSameHolderProof.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.supportsSelectiveDisclosure.binary_len()
-            + self.supportsPredicateProofs.binary_len()
-            + self.supportsVerifierScopedPseudonym.binary_len()
-            + self.supportsSameHolderProof.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct SchemaFamilyResolutionHint {
-    pub hasResolverHint: bool,
-    pub resolverHint: [u8; 32],
-}
-impl Aligned for SchemaFamilyResolutionHint {
-    fn alignment() -> Alignment {
-        Alignment::concat([&<bool as Aligned>::alignment(), &<[u8; 32] as Aligned>::alignment()])
-    }
-}
-impl FieldRepr for SchemaFamilyResolutionHint {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.hasResolverHint.field_repr(writer);
-        self.resolverHint.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.hasResolverHint.field_size() + self.resolverHint.field_size()
-    }
-}
-impl FromFieldRepr for SchemaFamilyResolutionHint {
-    const FIELD_SIZE: usize = <bool as FromFieldRepr>::FIELD_SIZE + <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let hasResolverHint =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let resolverHint = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(SchemaFamilyResolutionHint {
-            hasResolverHint,
-            resolverHint,
-        })
-    }
-}
-impl From<SchemaFamilyResolutionHint> for midnight_compact_runtime::Value {
-    fn from(s: SchemaFamilyResolutionHint) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.hasResolverHint));
-        _v.push(midnight_compact_runtime::Value::from(s.resolverHint));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for SchemaFamilyResolutionHint {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.hasResolverHint.binary_repr(writer);
-        self.resolverHint.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.hasResolverHint.binary_len() + self.resolverHint.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct SchemaDescriptor {
-    pub schema: SchemaRef,
-    pub capabilities: SchemaCapabilities,
-    pub familyResolutionHint: SchemaFamilyResolutionHint,
-}
-impl Aligned for SchemaDescriptor {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<SchemaRef as Aligned>::alignment(),
-            &<SchemaCapabilities as Aligned>::alignment(),
-            &<SchemaFamilyResolutionHint as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for SchemaDescriptor {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.schema.field_repr(writer);
-        self.capabilities.field_repr(writer);
-        self.familyResolutionHint.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.schema.field_size() + self.capabilities.field_size() + self.familyResolutionHint.field_size()
-    }
-}
-impl FromFieldRepr for SchemaDescriptor {
-    const FIELD_SIZE: usize = <SchemaRef as FromFieldRepr>::FIELD_SIZE
-        + <SchemaCapabilities as FromFieldRepr>::FIELD_SIZE
-        + <SchemaFamilyResolutionHint as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
-        let capabilities = <SchemaCapabilities as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaCapabilities as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaCapabilities as FromFieldRepr>::FIELD_SIZE;
-        let familyResolutionHint = <SchemaFamilyResolutionHint as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaFamilyResolutionHint as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaFamilyResolutionHint as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(SchemaDescriptor {
-            schema,
-            capabilities,
-            familyResolutionHint,
-        })
-    }
-}
-impl From<SchemaDescriptor> for midnight_compact_runtime::Value {
-    fn from(s: SchemaDescriptor) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.schema));
-        _v.push(midnight_compact_runtime::Value::from(s.capabilities));
-        _v.push(midnight_compact_runtime::Value::from(s.familyResolutionHint));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for SchemaDescriptor {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.schema.binary_repr(writer);
-        self.capabilities.binary_repr(writer);
-        self.familyResolutionHint.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.schema.binary_len() + self.capabilities.binary_len() + self.familyResolutionHint.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct VerificationMethodRef {
-    pub didContractAddress: ContractAddress,
+    pub controllerAddress: ContractAddress,
     pub methodId: [u8; 32],
 }
 impl Aligned for VerificationMethodRef {
@@ -361,11 +142,11 @@ impl Aligned for VerificationMethodRef {
 }
 impl FieldRepr for VerificationMethodRef {
     fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.didContractAddress.field_repr(writer);
+        self.controllerAddress.field_repr(writer);
         self.methodId.field_repr(writer);
     }
     fn field_size(&self) -> usize {
-        self.didContractAddress.field_size() + self.methodId.field_size()
+        self.controllerAddress.field_size() + self.methodId.field_size()
     }
 }
 impl FromFieldRepr for VerificationMethodRef {
@@ -375,7 +156,7 @@ impl FromFieldRepr for VerificationMethodRef {
             return None;
         }
         let mut _offset = 0usize;
-        let didContractAddress = <ContractAddress as FromFieldRepr>::from_field_repr(
+        let controllerAddress = <ContractAddress as FromFieldRepr>::from_field_repr(
             &_repr[_offset.._offset + <ContractAddress as FromFieldRepr>::FIELD_SIZE],
         )?;
         _offset += <ContractAddress as FromFieldRepr>::FIELD_SIZE;
@@ -385,7 +166,7 @@ impl FromFieldRepr for VerificationMethodRef {
         _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
         Some(VerificationMethodRef {
-            didContractAddress,
+            controllerAddress,
             methodId,
         })
     }
@@ -393,18 +174,18 @@ impl FromFieldRepr for VerificationMethodRef {
 impl From<VerificationMethodRef> for midnight_compact_runtime::Value {
     fn from(s: VerificationMethodRef) -> midnight_compact_runtime::Value {
         let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.didContractAddress));
+        _v.push(midnight_compact_runtime::Value::from(s.controllerAddress));
         _v.push(midnight_compact_runtime::Value::from(s.methodId));
         midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
 impl midnight_compact_runtime::BinaryHashRepr for VerificationMethodRef {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.didContractAddress.binary_repr(writer);
+        self.controllerAddress.binary_repr(writer);
         self.methodId.binary_repr(writer);
     }
     fn binary_len(&self) -> usize {
-        self.didContractAddress.binary_len() + self.methodId.binary_len()
+        self.controllerAddress.binary_len() + self.methodId.binary_len()
     }
 }
 
@@ -583,269 +364,6 @@ impl midnight_compact_runtime::BinaryHashRepr for ExplicitHolderBinding {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct JubjubHolderBinding {
-    pub holderPublicKey: JubjubPoint,
-}
-impl Aligned for JubjubHolderBinding {
-    fn alignment() -> Alignment {
-        Alignment::concat([&<JubjubPoint as Aligned>::alignment()])
-    }
-}
-impl FieldRepr for JubjubHolderBinding {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        midnight_compact_runtime::jubjub_point_field_repr(&self.holderPublicKey, writer);
-    }
-    fn field_size(&self) -> usize {
-        midnight_compact_runtime::jubjub_point_field_size(&self.holderPublicKey)
-    }
-}
-impl FromFieldRepr for JubjubHolderBinding {
-    const FIELD_SIZE: usize = midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let holderPublicKey = midnight_compact_runtime::jubjub_point_from_field_repr(
-            &_repr[_offset.._offset + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE],
-        )?;
-        _offset += midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
-        let _ = _offset;
-        Some(JubjubHolderBinding { holderPublicKey })
-    }
-}
-impl From<JubjubHolderBinding> for midnight_compact_runtime::Value {
-    fn from(s: JubjubHolderBinding) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.holderPublicKey));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for JubjubHolderBinding {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        midnight_compact_runtime::jubjub_point_binary_repr(&self.holderPublicKey, writer);
-    }
-    fn binary_len(&self) -> usize {
-        midnight_compact_runtime::jubjub_point_binary_len(&self.holderPublicKey)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct OffchainMidnightHolderBinding {
-    pub holderDidStateHash: [u8; 32],
-    pub holderMethodId: [u8; 32],
-    pub holderPublicKey: JubjubPoint,
-}
-impl Aligned for OffchainMidnightHolderBinding {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<[u8; 32] as Aligned>::alignment(),
-            &<[u8; 32] as Aligned>::alignment(),
-            &<JubjubPoint as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for OffchainMidnightHolderBinding {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.holderDidStateHash.field_repr(writer);
-        self.holderMethodId.field_repr(writer);
-        midnight_compact_runtime::jubjub_point_field_repr(&self.holderPublicKey, writer);
-    }
-    fn field_size(&self) -> usize {
-        self.holderDidStateHash.field_size()
-            + self.holderMethodId.field_size()
-            + midnight_compact_runtime::jubjub_point_field_size(&self.holderPublicKey)
-    }
-}
-impl FromFieldRepr for OffchainMidnightHolderBinding {
-    const FIELD_SIZE: usize = <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let holderDidStateHash = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let holderMethodId = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let holderPublicKey = midnight_compact_runtime::jubjub_point_from_field_repr(
-            &_repr[_offset.._offset + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE],
-        )?;
-        _offset += midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
-        let _ = _offset;
-        Some(OffchainMidnightHolderBinding {
-            holderDidStateHash,
-            holderMethodId,
-            holderPublicKey,
-        })
-    }
-}
-impl From<OffchainMidnightHolderBinding> for midnight_compact_runtime::Value {
-    fn from(s: OffchainMidnightHolderBinding) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.holderDidStateHash));
-        _v.push(midnight_compact_runtime::Value::from(s.holderMethodId));
-        _v.push(midnight_compact_runtime::Value::from(s.holderPublicKey));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for OffchainMidnightHolderBinding {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.holderDidStateHash.binary_repr(writer);
-        self.holderMethodId.binary_repr(writer);
-        midnight_compact_runtime::jubjub_point_binary_repr(&self.holderPublicKey, writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.holderDidStateHash.binary_len()
-            + self.holderMethodId.binary_len()
-            + midnight_compact_runtime::jubjub_point_binary_len(&self.holderPublicKey)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct SecretHolderBinding {
-    pub holderSecretCommitment: [u8; 32],
-    pub requestChallengeResponse: [u8; 32],
-}
-impl Aligned for SecretHolderBinding {
-    fn alignment() -> Alignment {
-        Alignment::concat([&<[u8; 32] as Aligned>::alignment(), &<[u8; 32] as Aligned>::alignment()])
-    }
-}
-impl FieldRepr for SecretHolderBinding {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.holderSecretCommitment.field_repr(writer);
-        self.requestChallengeResponse.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.holderSecretCommitment.field_size() + self.requestChallengeResponse.field_size()
-    }
-}
-impl FromFieldRepr for SecretHolderBinding {
-    const FIELD_SIZE: usize = <[u8; 32] as FromFieldRepr>::FIELD_SIZE + <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let holderSecretCommitment = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let requestChallengeResponse = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(SecretHolderBinding {
-            holderSecretCommitment,
-            requestChallengeResponse,
-        })
-    }
-}
-impl From<SecretHolderBinding> for midnight_compact_runtime::Value {
-    fn from(s: SecretHolderBinding) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.holderSecretCommitment));
-        _v.push(midnight_compact_runtime::Value::from(s.requestChallengeResponse));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for SecretHolderBinding {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.holderSecretCommitment.binary_repr(writer);
-        self.requestChallengeResponse.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.holderSecretCommitment.binary_len() + self.requestChallengeResponse.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct BlindedSecretHolderBinding {
-    pub blindedHolderSecretCommitment: [u8; 32],
-    pub issuerNonce: [u8; 32],
-    pub requestChallengeResponse: [u8; 32],
-}
-impl Aligned for BlindedSecretHolderBinding {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<[u8; 32] as Aligned>::alignment(),
-            &<[u8; 32] as Aligned>::alignment(),
-            &<[u8; 32] as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for BlindedSecretHolderBinding {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.blindedHolderSecretCommitment.field_repr(writer);
-        self.issuerNonce.field_repr(writer);
-        self.requestChallengeResponse.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.blindedHolderSecretCommitment.field_size()
-            + self.issuerNonce.field_size()
-            + self.requestChallengeResponse.field_size()
-    }
-}
-impl FromFieldRepr for BlindedSecretHolderBinding {
-    const FIELD_SIZE: usize = <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let blindedHolderSecretCommitment = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let issuerNonce = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let requestChallengeResponse = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(BlindedSecretHolderBinding {
-            blindedHolderSecretCommitment,
-            issuerNonce,
-            requestChallengeResponse,
-        })
-    }
-}
-impl From<BlindedSecretHolderBinding> for midnight_compact_runtime::Value {
-    fn from(s: BlindedSecretHolderBinding) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.blindedHolderSecretCommitment));
-        _v.push(midnight_compact_runtime::Value::from(s.issuerNonce));
-        _v.push(midnight_compact_runtime::Value::from(s.requestChallengeResponse));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for BlindedSecretHolderBinding {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.blindedHolderSecretCommitment.binary_repr(writer);
-        self.issuerNonce.binary_repr(writer);
-        self.requestChallengeResponse.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.blindedHolderSecretCommitment.binary_len()
-            + self.issuerNonce.binary_len()
-            + self.requestChallengeResponse.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Proof {
     pub signerVerificationMethodRef: VerificationMethodRef,
     pub createdAt: u64,
@@ -950,18 +468,17 @@ impl midnight_compact_runtime::BinaryHashRepr for Proof {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 #[repr(u8)]
-pub enum HolderBindingProfile {
+pub enum SignerRole {
     #[default]
-    explicitDid = 0,
-    secretHolder = 1,
-    blindedSecretHolder = 2,
+    issuer = 0,
+    verifier = 1,
 }
-impl Aligned for HolderBindingProfile {
+impl Aligned for SignerRole {
     fn alignment() -> Alignment {
         u8::alignment()
     }
 }
-impl FieldRepr for HolderBindingProfile {
+impl FieldRepr for SignerRole {
     fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
         (*self as u8).field_repr(writer);
     }
@@ -969,24 +486,115 @@ impl FieldRepr for HolderBindingProfile {
         1
     }
 }
-impl FromFieldRepr for HolderBindingProfile {
+impl FromFieldRepr for SignerRole {
     const FIELD_SIZE: usize = 1;
     fn from_field_repr(r: &[Fr]) -> Option<Self> {
         let n = u8::from_field_repr(r)?;
         match n {
-            0 => Some(Self::explicitDid),
-            1 => Some(Self::secretHolder),
-            2 => Some(Self::blindedSecretHolder),
+            0 => Some(Self::issuer),
+            1 => Some(Self::verifier),
             _ => None,
         }
     }
 }
-impl From<HolderBindingProfile> for midnight_compact_runtime::Value {
-    fn from(v: HolderBindingProfile) -> midnight_compact_runtime::Value {
+impl From<SignerRole> for midnight_compact_runtime::Value {
+    fn from(v: SignerRole) -> midnight_compact_runtime::Value {
         midnight_compact_runtime::Value::from(v as u8)
     }
 }
-impl midnight_compact_runtime::BinaryHashRepr for HolderBindingProfile {
+impl midnight_compact_runtime::BinaryHashRepr for SignerRole {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        (*self as u8).binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        1
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[repr(u8)]
+pub enum AuthorizationState {
+    #[default]
+    active = 0,
+    suspended = 1,
+    revoked = 2,
+}
+impl Aligned for AuthorizationState {
+    fn alignment() -> Alignment {
+        u8::alignment()
+    }
+}
+impl FieldRepr for AuthorizationState {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        (*self as u8).field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        1
+    }
+}
+impl FromFieldRepr for AuthorizationState {
+    const FIELD_SIZE: usize = 1;
+    fn from_field_repr(r: &[Fr]) -> Option<Self> {
+        let n = u8::from_field_repr(r)?;
+        match n {
+            0 => Some(Self::active),
+            1 => Some(Self::suspended),
+            2 => Some(Self::revoked),
+            _ => None,
+        }
+    }
+}
+impl From<AuthorizationState> for midnight_compact_runtime::Value {
+    fn from(v: AuthorizationState) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for AuthorizationState {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        (*self as u8).binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        1
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[repr(u8)]
+pub enum VerificationRelationship {
+    #[default]
+    assertionMethod = 0,
+    authentication = 1,
+    capabilityInvocation = 2,
+}
+impl Aligned for VerificationRelationship {
+    fn alignment() -> Alignment {
+        u8::alignment()
+    }
+}
+impl FieldRepr for VerificationRelationship {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        (*self as u8).field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        1
+    }
+}
+impl FromFieldRepr for VerificationRelationship {
+    const FIELD_SIZE: usize = 1;
+    fn from_field_repr(r: &[Fr]) -> Option<Self> {
+        let n = u8::from_field_repr(r)?;
+        match n {
+            0 => Some(Self::assertionMethod),
+            1 => Some(Self::authentication),
+            2 => Some(Self::capabilityInvocation),
+            _ => None,
+        }
+    }
+}
+impl From<VerificationRelationship> for midnight_compact_runtime::Value {
+    fn from(v: VerificationRelationship) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for VerificationRelationship {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         (*self as u8).binary_repr(writer);
     }
@@ -995,148 +603,76 @@ impl midnight_compact_runtime::BinaryHashRepr for HolderBindingProfile {
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct CredentialProtocolFeatures {
-    pub supportsSelectiveDisclosure: bool,
-    pub supportsPredicateProofs: bool,
-    pub supportsVerifierScopedPseudonym: bool,
-    pub supportsSameHolderProof: bool,
-}
-impl Aligned for CredentialProtocolFeatures {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<bool as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for CredentialProtocolFeatures {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.supportsSelectiveDisclosure.field_repr(writer);
-        self.supportsPredicateProofs.field_repr(writer);
-        self.supportsVerifierScopedPseudonym.field_repr(writer);
-        self.supportsSameHolderProof.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.supportsSelectiveDisclosure.field_size()
-            + self.supportsPredicateProofs.field_size()
-            + self.supportsVerifierScopedPseudonym.field_size()
-            + self.supportsSameHolderProof.field_size()
-    }
-}
-impl FromFieldRepr for CredentialProtocolFeatures {
-    const FIELD_SIZE: usize = <bool as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let supportsSelectiveDisclosure =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let supportsPredicateProofs =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let supportsVerifierScopedPseudonym =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let supportsSameHolderProof =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(CredentialProtocolFeatures {
-            supportsSelectiveDisclosure,
-            supportsPredicateProofs,
-            supportsVerifierScopedPseudonym,
-            supportsSameHolderProof,
-        })
-    }
-}
-impl From<CredentialProtocolFeatures> for midnight_compact_runtime::Value {
-    fn from(s: CredentialProtocolFeatures) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.supportsSelectiveDisclosure));
-        _v.push(midnight_compact_runtime::Value::from(s.supportsPredicateProofs));
-        _v.push(midnight_compact_runtime::Value::from(s.supportsVerifierScopedPseudonym));
-        _v.push(midnight_compact_runtime::Value::from(s.supportsSameHolderProof));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for CredentialProtocolFeatures {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.supportsSelectiveDisclosure.binary_repr(writer);
-        self.supportsPredicateProofs.binary_repr(writer);
-        self.supportsVerifierScopedPseudonym.binary_repr(writer);
-        self.supportsSameHolderProof.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.supportsSelectiveDisclosure.binary_len()
-            + self.supportsPredicateProofs.binary_len()
-            + self.supportsVerifierScopedPseudonym.binary_len()
-            + self.supportsSameHolderProof.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ProtocolMessageEnvelope {
+pub struct AuthorizedSignerDescriptor {
     pub version: u16,
-    pub messageId: [u8; 32],
-    pub threadId: [u8; 32],
-    pub initialMessage: bool,
-    pub respondsToMessageId: [u8; 32],
-    pub createdAt: u64,
-    pub hasExpiresAt: bool,
-    pub expiresAt: u64,
+    pub authorizationId: [u8; 32],
+    pub decisionSequence: u64,
+    pub state: AuthorizationState,
+    pub role: SignerRole,
+    pub signerVerificationMethodRef: VerificationMethodRef,
+    pub signerPublicKey: JubjubPoint,
+    pub didStateVersion: u64,
+    pub verificationRelationship: VerificationRelationship,
+    pub scopeCommitment: [u8; 32],
+    pub policyCommitment: [u8; 32],
 }
-impl Aligned for ProtocolMessageEnvelope {
+impl Aligned for AuthorizedSignerDescriptor {
     fn alignment() -> Alignment {
         Alignment::concat([
             &<u16 as Aligned>::alignment(),
             &<[u8; 32] as Aligned>::alignment(),
-            &<[u8; 32] as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-            &<[u8; 32] as Aligned>::alignment(),
             &<u64 as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
+            &<AuthorizationState as Aligned>::alignment(),
+            &<SignerRole as Aligned>::alignment(),
+            &<VerificationMethodRef as Aligned>::alignment(),
+            &<JubjubPoint as Aligned>::alignment(),
             &<u64 as Aligned>::alignment(),
+            &<VerificationRelationship as Aligned>::alignment(),
+            &<[u8; 32] as Aligned>::alignment(),
+            &<[u8; 32] as Aligned>::alignment(),
         ])
     }
 }
-impl FieldRepr for ProtocolMessageEnvelope {
+impl FieldRepr for AuthorizedSignerDescriptor {
     fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
         self.version.field_repr(writer);
-        self.messageId.field_repr(writer);
-        self.threadId.field_repr(writer);
-        self.initialMessage.field_repr(writer);
-        self.respondsToMessageId.field_repr(writer);
-        self.createdAt.field_repr(writer);
-        self.hasExpiresAt.field_repr(writer);
-        self.expiresAt.field_repr(writer);
+        self.authorizationId.field_repr(writer);
+        self.decisionSequence.field_repr(writer);
+        self.state.field_repr(writer);
+        self.role.field_repr(writer);
+        self.signerVerificationMethodRef.field_repr(writer);
+        midnight_compact_runtime::jubjub_point_field_repr(&self.signerPublicKey, writer);
+        self.didStateVersion.field_repr(writer);
+        self.verificationRelationship.field_repr(writer);
+        self.scopeCommitment.field_repr(writer);
+        self.policyCommitment.field_repr(writer);
     }
     fn field_size(&self) -> usize {
         self.version.field_size()
-            + self.messageId.field_size()
-            + self.threadId.field_size()
-            + self.initialMessage.field_size()
-            + self.respondsToMessageId.field_size()
-            + self.createdAt.field_size()
-            + self.hasExpiresAt.field_size()
-            + self.expiresAt.field_size()
+            + self.authorizationId.field_size()
+            + self.decisionSequence.field_size()
+            + self.state.field_size()
+            + self.role.field_size()
+            + self.signerVerificationMethodRef.field_size()
+            + midnight_compact_runtime::jubjub_point_field_size(&self.signerPublicKey)
+            + self.didStateVersion.field_size()
+            + self.verificationRelationship.field_size()
+            + self.scopeCommitment.field_size()
+            + self.policyCommitment.field_size()
     }
 }
-impl FromFieldRepr for ProtocolMessageEnvelope {
+impl FromFieldRepr for AuthorizedSignerDescriptor {
     const FIELD_SIZE: usize = <u16 as FromFieldRepr>::FIELD_SIZE
         + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
         + <u64 as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE
-        + <u64 as FromFieldRepr>::FIELD_SIZE;
+        + <AuthorizationState as FromFieldRepr>::FIELD_SIZE
+        + <SignerRole as FromFieldRepr>::FIELD_SIZE
+        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
+        + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE
+        + <u64 as FromFieldRepr>::FIELD_SIZE
+        + <VerificationRelationship as FromFieldRepr>::FIELD_SIZE
+        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
+        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
@@ -1145,77 +681,181 @@ impl FromFieldRepr for ProtocolMessageEnvelope {
         let version =
             <u16 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u16 as FromFieldRepr>::FIELD_SIZE])?;
         _offset += <u16 as FromFieldRepr>::FIELD_SIZE;
-        let messageId = <[u8; 32] as FromFieldRepr>::from_field_repr(
+        let authorizationId = <[u8; 32] as FromFieldRepr>::from_field_repr(
             &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
         )?;
         _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let threadId = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let initialMessage =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let respondsToMessageId = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let createdAt =
+        let decisionSequence =
             <u64 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u64 as FromFieldRepr>::FIELD_SIZE])?;
         _offset += <u64 as FromFieldRepr>::FIELD_SIZE;
-        let hasExpiresAt =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let expiresAt =
+        let state = <AuthorizationState as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <AuthorizationState as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <AuthorizationState as FromFieldRepr>::FIELD_SIZE;
+        let role = <SignerRole as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <SignerRole as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <SignerRole as FromFieldRepr>::FIELD_SIZE;
+        let signerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
+        let signerPublicKey = midnight_compact_runtime::jubjub_point_from_field_repr(
+            &_repr[_offset.._offset + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE],
+        )?;
+        _offset += midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
+        let didStateVersion =
             <u64 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u64 as FromFieldRepr>::FIELD_SIZE])?;
         _offset += <u64 as FromFieldRepr>::FIELD_SIZE;
+        let verificationRelationship = <VerificationRelationship as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationRelationship as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationRelationship as FromFieldRepr>::FIELD_SIZE;
+        let scopeCommitment = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+        let policyCommitment = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
-        Some(ProtocolMessageEnvelope {
+        Some(AuthorizedSignerDescriptor {
             version,
-            messageId,
-            threadId,
-            initialMessage,
-            respondsToMessageId,
-            createdAt,
-            hasExpiresAt,
-            expiresAt,
+            authorizationId,
+            decisionSequence,
+            state,
+            role,
+            signerVerificationMethodRef,
+            signerPublicKey,
+            didStateVersion,
+            verificationRelationship,
+            scopeCommitment,
+            policyCommitment,
         })
     }
 }
-impl From<ProtocolMessageEnvelope> for midnight_compact_runtime::Value {
-    fn from(s: ProtocolMessageEnvelope) -> midnight_compact_runtime::Value {
+impl From<AuthorizedSignerDescriptor> for midnight_compact_runtime::Value {
+    fn from(s: AuthorizedSignerDescriptor) -> midnight_compact_runtime::Value {
         let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
         _v.push(midnight_compact_runtime::Value::from(s.version));
-        _v.push(midnight_compact_runtime::Value::from(s.messageId));
-        _v.push(midnight_compact_runtime::Value::from(s.threadId));
-        _v.push(midnight_compact_runtime::Value::from(s.initialMessage));
-        _v.push(midnight_compact_runtime::Value::from(s.respondsToMessageId));
-        _v.push(midnight_compact_runtime::Value::from(s.createdAt));
-        _v.push(midnight_compact_runtime::Value::from(s.hasExpiresAt));
-        _v.push(midnight_compact_runtime::Value::from(s.expiresAt));
+        _v.push(midnight_compact_runtime::Value::from(s.authorizationId));
+        _v.push(midnight_compact_runtime::Value::from(s.decisionSequence));
+        _v.push(midnight_compact_runtime::Value::from(s.state));
+        _v.push(midnight_compact_runtime::Value::from(s.role));
+        _v.push(midnight_compact_runtime::Value::from(s.signerVerificationMethodRef));
+        _v.push(midnight_compact_runtime::Value::from(s.signerPublicKey));
+        _v.push(midnight_compact_runtime::Value::from(s.didStateVersion));
+        _v.push(midnight_compact_runtime::Value::from(s.verificationRelationship));
+        _v.push(midnight_compact_runtime::Value::from(s.scopeCommitment));
+        _v.push(midnight_compact_runtime::Value::from(s.policyCommitment));
         midnight_compact_runtime::Value::concat(_v.iter())
     }
 }
-impl midnight_compact_runtime::BinaryHashRepr for ProtocolMessageEnvelope {
+impl midnight_compact_runtime::BinaryHashRepr for AuthorizedSignerDescriptor {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
         self.version.binary_repr(writer);
-        self.messageId.binary_repr(writer);
-        self.threadId.binary_repr(writer);
-        self.initialMessage.binary_repr(writer);
-        self.respondsToMessageId.binary_repr(writer);
-        self.createdAt.binary_repr(writer);
-        self.hasExpiresAt.binary_repr(writer);
-        self.expiresAt.binary_repr(writer);
+        self.authorizationId.binary_repr(writer);
+        self.decisionSequence.binary_repr(writer);
+        self.state.binary_repr(writer);
+        self.role.binary_repr(writer);
+        self.signerVerificationMethodRef.binary_repr(writer);
+        midnight_compact_runtime::jubjub_point_binary_repr(&self.signerPublicKey, writer);
+        self.didStateVersion.binary_repr(writer);
+        self.verificationRelationship.binary_repr(writer);
+        self.scopeCommitment.binary_repr(writer);
+        self.policyCommitment.binary_repr(writer);
     }
     fn binary_len(&self) -> usize {
         self.version.binary_len()
-            + self.messageId.binary_len()
-            + self.threadId.binary_len()
-            + self.initialMessage.binary_len()
-            + self.respondsToMessageId.binary_len()
-            + self.createdAt.binary_len()
-            + self.hasExpiresAt.binary_len()
-            + self.expiresAt.binary_len()
+            + self.authorizationId.binary_len()
+            + self.decisionSequence.binary_len()
+            + self.state.binary_len()
+            + self.role.binary_len()
+            + self.signerVerificationMethodRef.binary_len()
+            + midnight_compact_runtime::jubjub_point_binary_len(&self.signerPublicKey)
+            + self.didStateVersion.binary_len()
+            + self.verificationRelationship.binary_len()
+            + self.scopeCommitment.binary_len()
+            + self.policyCommitment.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct SignerAuthorizationAuthority {
+    pub domainCommitment: [u8; 32],
+    pub verificationMethodRef: VerificationMethodRef,
+    pub publicKey: JubjubPoint,
+}
+impl Aligned for SignerAuthorizationAuthority {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<[u8; 32] as Aligned>::alignment(),
+            &<VerificationMethodRef as Aligned>::alignment(),
+            &<JubjubPoint as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for SignerAuthorizationAuthority {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.domainCommitment.field_repr(writer);
+        self.verificationMethodRef.field_repr(writer);
+        midnight_compact_runtime::jubjub_point_field_repr(&self.publicKey, writer);
+    }
+    fn field_size(&self) -> usize {
+        self.domainCommitment.field_size()
+            + self.verificationMethodRef.field_size()
+            + midnight_compact_runtime::jubjub_point_field_size(&self.publicKey)
+    }
+}
+impl FromFieldRepr for SignerAuthorizationAuthority {
+    const FIELD_SIZE: usize = <[u8; 32] as FromFieldRepr>::FIELD_SIZE
+        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
+        + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let domainCommitment = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+        let verificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
+        let publicKey = midnight_compact_runtime::jubjub_point_from_field_repr(
+            &_repr[_offset.._offset + midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE],
+        )?;
+        _offset += midnight_compact_runtime::JUBJUB_POINT_FIELD_SIZE;
+        let _ = _offset;
+        Some(SignerAuthorizationAuthority {
+            domainCommitment,
+            verificationMethodRef,
+            publicKey,
+        })
+    }
+}
+impl From<SignerAuthorizationAuthority> for midnight_compact_runtime::Value {
+    fn from(s: SignerAuthorizationAuthority) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.domainCommitment));
+        _v.push(midnight_compact_runtime::Value::from(s.verificationMethodRef));
+        _v.push(midnight_compact_runtime::Value::from(s.publicKey));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for SignerAuthorizationAuthority {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.domainCommitment.binary_repr(writer);
+        self.verificationMethodRef.binary_repr(writer);
+        midnight_compact_runtime::jubjub_point_binary_repr(&self.publicKey, writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.domainCommitment.binary_len()
+            + self.verificationMethodRef.binary_len()
+            + midnight_compact_runtime::jubjub_point_binary_len(&self.publicKey)
     }
 }
 
@@ -1317,58 +957,14 @@ impl midnight_compact_runtime::BinaryHashRepr for NoStatusBinding {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-#[repr(u8)]
-pub enum StatusType {
-    #[default]
-    revocationRegistry = 0,
-}
-impl Aligned for StatusType {
-    fn alignment() -> Alignment {
-        u8::alignment()
-    }
-}
-impl FieldRepr for StatusType {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        (*self as u8).field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        1
-    }
-}
-impl FromFieldRepr for StatusType {
-    const FIELD_SIZE: usize = 1;
-    fn from_field_repr(r: &[Fr]) -> Option<Self> {
-        let n = u8::from_field_repr(r)?;
-        match n {
-            0 => Some(Self::revocationRegistry),
-            _ => None,
-        }
-    }
-}
-impl From<StatusType> for midnight_compact_runtime::Value {
-    fn from(v: StatusType) -> midnight_compact_runtime::Value {
-        midnight_compact_runtime::Value::from(v as u8)
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for StatusType {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        (*self as u8).binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        1
-    }
-}
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct RegistryBoundStatusBinding {
-    pub statusType: StatusType,
     pub registryRef: StatusRegistryRef,
     pub statusHandleCommitment: [u8; 32],
 }
 impl Aligned for RegistryBoundStatusBinding {
     fn alignment() -> Alignment {
         Alignment::concat([
-            &<StatusType as Aligned>::alignment(),
             &<StatusRegistryRef as Aligned>::alignment(),
             &<[u8; 32] as Aligned>::alignment(),
         ])
@@ -1376,27 +972,21 @@ impl Aligned for RegistryBoundStatusBinding {
 }
 impl FieldRepr for RegistryBoundStatusBinding {
     fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.statusType.field_repr(writer);
         self.registryRef.field_repr(writer);
         self.statusHandleCommitment.field_repr(writer);
     }
     fn field_size(&self) -> usize {
-        self.statusType.field_size() + self.registryRef.field_size() + self.statusHandleCommitment.field_size()
+        self.registryRef.field_size() + self.statusHandleCommitment.field_size()
     }
 }
 impl FromFieldRepr for RegistryBoundStatusBinding {
-    const FIELD_SIZE: usize = <StatusType as FromFieldRepr>::FIELD_SIZE
-        + <StatusRegistryRef as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+    const FIELD_SIZE: usize =
+        <StatusRegistryRef as FromFieldRepr>::FIELD_SIZE + <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
     fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
         if _repr.len() < Self::FIELD_SIZE {
             return None;
         }
         let mut _offset = 0usize;
-        let statusType = <StatusType as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <StatusType as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <StatusType as FromFieldRepr>::FIELD_SIZE;
         let registryRef = <StatusRegistryRef as FromFieldRepr>::from_field_repr(
             &_repr[_offset.._offset + <StatusRegistryRef as FromFieldRepr>::FIELD_SIZE],
         )?;
@@ -1407,7 +997,6 @@ impl FromFieldRepr for RegistryBoundStatusBinding {
         _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
         let _ = _offset;
         Some(RegistryBoundStatusBinding {
-            statusType,
             registryRef,
             statusHandleCommitment,
         })
@@ -1416,7 +1005,6 @@ impl FromFieldRepr for RegistryBoundStatusBinding {
 impl From<RegistryBoundStatusBinding> for midnight_compact_runtime::Value {
     fn from(s: RegistryBoundStatusBinding) -> midnight_compact_runtime::Value {
         let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.statusType));
         _v.push(midnight_compact_runtime::Value::from(s.registryRef));
         _v.push(midnight_compact_runtime::Value::from(s.statusHandleCommitment));
         midnight_compact_runtime::Value::concat(_v.iter())
@@ -1424,12 +1012,11 @@ impl From<RegistryBoundStatusBinding> for midnight_compact_runtime::Value {
 }
 impl midnight_compact_runtime::BinaryHashRepr for RegistryBoundStatusBinding {
     fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.statusType.binary_repr(writer);
         self.registryRef.binary_repr(writer);
         self.statusHandleCommitment.binary_repr(writer);
     }
     fn binary_len(&self) -> usize {
-        self.statusType.binary_len() + self.registryRef.binary_len() + self.statusHandleCommitment.binary_len()
+        self.registryRef.binary_len() + self.statusHandleCommitment.binary_len()
     }
 }
 
@@ -2212,6 +1799,273 @@ impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportPresentationReq
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[repr(u8)]
+pub enum HolderBindingProfile {
+    #[default]
+    explicitDid = 0,
+}
+impl Aligned for HolderBindingProfile {
+    fn alignment() -> Alignment {
+        u8::alignment()
+    }
+}
+impl FieldRepr for HolderBindingProfile {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        (*self as u8).field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        1
+    }
+}
+impl FromFieldRepr for HolderBindingProfile {
+    const FIELD_SIZE: usize = 1;
+    fn from_field_repr(r: &[Fr]) -> Option<Self> {
+        let n = u8::from_field_repr(r)?;
+        match n {
+            0 => Some(Self::explicitDid),
+            _ => None,
+        }
+    }
+}
+impl From<HolderBindingProfile> for midnight_compact_runtime::Value {
+    fn from(v: HolderBindingProfile) -> midnight_compact_runtime::Value {
+        midnight_compact_runtime::Value::from(v as u8)
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for HolderBindingProfile {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        (*self as u8).binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        1
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct CredentialProtocolFeatures {
+    pub supportsSelectiveDisclosure: bool,
+    pub supportsPredicateProofs: bool,
+    pub supportsVerifierScopedPseudonym: bool,
+    pub supportsSameHolderProof: bool,
+}
+impl Aligned for CredentialProtocolFeatures {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<bool as Aligned>::alignment(),
+            &<bool as Aligned>::alignment(),
+            &<bool as Aligned>::alignment(),
+            &<bool as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for CredentialProtocolFeatures {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.supportsSelectiveDisclosure.field_repr(writer);
+        self.supportsPredicateProofs.field_repr(writer);
+        self.supportsVerifierScopedPseudonym.field_repr(writer);
+        self.supportsSameHolderProof.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.supportsSelectiveDisclosure.field_size()
+            + self.supportsPredicateProofs.field_size()
+            + self.supportsVerifierScopedPseudonym.field_size()
+            + self.supportsSameHolderProof.field_size()
+    }
+}
+impl FromFieldRepr for CredentialProtocolFeatures {
+    const FIELD_SIZE: usize = <bool as FromFieldRepr>::FIELD_SIZE
+        + <bool as FromFieldRepr>::FIELD_SIZE
+        + <bool as FromFieldRepr>::FIELD_SIZE
+        + <bool as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let supportsSelectiveDisclosure =
+            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
+        let supportsPredicateProofs =
+            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
+        let supportsVerifierScopedPseudonym =
+            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
+        let supportsSameHolderProof =
+            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(CredentialProtocolFeatures {
+            supportsSelectiveDisclosure,
+            supportsPredicateProofs,
+            supportsVerifierScopedPseudonym,
+            supportsSameHolderProof,
+        })
+    }
+}
+impl From<CredentialProtocolFeatures> for midnight_compact_runtime::Value {
+    fn from(s: CredentialProtocolFeatures) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.supportsSelectiveDisclosure));
+        _v.push(midnight_compact_runtime::Value::from(s.supportsPredicateProofs));
+        _v.push(midnight_compact_runtime::Value::from(s.supportsVerifierScopedPseudonym));
+        _v.push(midnight_compact_runtime::Value::from(s.supportsSameHolderProof));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for CredentialProtocolFeatures {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.supportsSelectiveDisclosure.binary_repr(writer);
+        self.supportsPredicateProofs.binary_repr(writer);
+        self.supportsVerifierScopedPseudonym.binary_repr(writer);
+        self.supportsSameHolderProof.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.supportsSelectiveDisclosure.binary_len()
+            + self.supportsPredicateProofs.binary_len()
+            + self.supportsVerifierScopedPseudonym.binary_len()
+            + self.supportsSameHolderProof.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct ProtocolMessageEnvelope {
+    pub version: u16,
+    pub messageId: [u8; 32],
+    pub threadId: [u8; 32],
+    pub initialMessage: bool,
+    pub respondsToMessageId: [u8; 32],
+    pub createdAt: u64,
+    pub hasExpiresAt: bool,
+    pub expiresAt: u64,
+}
+impl Aligned for ProtocolMessageEnvelope {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<u16 as Aligned>::alignment(),
+            &<[u8; 32] as Aligned>::alignment(),
+            &<[u8; 32] as Aligned>::alignment(),
+            &<bool as Aligned>::alignment(),
+            &<[u8; 32] as Aligned>::alignment(),
+            &<u64 as Aligned>::alignment(),
+            &<bool as Aligned>::alignment(),
+            &<u64 as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for ProtocolMessageEnvelope {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.version.field_repr(writer);
+        self.messageId.field_repr(writer);
+        self.threadId.field_repr(writer);
+        self.initialMessage.field_repr(writer);
+        self.respondsToMessageId.field_repr(writer);
+        self.createdAt.field_repr(writer);
+        self.hasExpiresAt.field_repr(writer);
+        self.expiresAt.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.version.field_size()
+            + self.messageId.field_size()
+            + self.threadId.field_size()
+            + self.initialMessage.field_size()
+            + self.respondsToMessageId.field_size()
+            + self.createdAt.field_size()
+            + self.hasExpiresAt.field_size()
+            + self.expiresAt.field_size()
+    }
+}
+impl FromFieldRepr for ProtocolMessageEnvelope {
+    const FIELD_SIZE: usize = <u16 as FromFieldRepr>::FIELD_SIZE
+        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
+        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
+        + <bool as FromFieldRepr>::FIELD_SIZE
+        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
+        + <u64 as FromFieldRepr>::FIELD_SIZE
+        + <bool as FromFieldRepr>::FIELD_SIZE
+        + <u64 as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let version =
+            <u16 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u16 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u16 as FromFieldRepr>::FIELD_SIZE;
+        let messageId = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+        let threadId = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+        let initialMessage =
+            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
+        let respondsToMessageId = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+        let createdAt =
+            <u64 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u64 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u64 as FromFieldRepr>::FIELD_SIZE;
+        let hasExpiresAt =
+            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
+        let expiresAt =
+            <u64 as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <u64 as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <u64 as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(ProtocolMessageEnvelope {
+            version,
+            messageId,
+            threadId,
+            initialMessage,
+            respondsToMessageId,
+            createdAt,
+            hasExpiresAt,
+            expiresAt,
+        })
+    }
+}
+impl From<ProtocolMessageEnvelope> for midnight_compact_runtime::Value {
+    fn from(s: ProtocolMessageEnvelope) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.version));
+        _v.push(midnight_compact_runtime::Value::from(s.messageId));
+        _v.push(midnight_compact_runtime::Value::from(s.threadId));
+        _v.push(midnight_compact_runtime::Value::from(s.initialMessage));
+        _v.push(midnight_compact_runtime::Value::from(s.respondsToMessageId));
+        _v.push(midnight_compact_runtime::Value::from(s.createdAt));
+        _v.push(midnight_compact_runtime::Value::from(s.hasExpiresAt));
+        _v.push(midnight_compact_runtime::Value::from(s.expiresAt));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for ProtocolMessageEnvelope {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.version.binary_repr(writer);
+        self.messageId.binary_repr(writer);
+        self.threadId.binary_repr(writer);
+        self.initialMessage.binary_repr(writer);
+        self.respondsToMessageId.binary_repr(writer);
+        self.createdAt.binary_repr(writer);
+        self.hasExpiresAt.binary_repr(writer);
+        self.expiresAt.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.version.binary_len()
+            + self.messageId.binary_len()
+            + self.threadId.binary_len()
+            + self.initialMessage.binary_len()
+            + self.respondsToMessageId.binary_len()
+            + self.createdAt.binary_len()
+            + self.hasExpiresAt.binary_len()
+            + self.expiresAt.binary_len()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct DigitalPassportIssuanceOfferBody {
     pub supportsExpiration: bool,
@@ -2750,6 +2604,651 @@ impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportVerificationRes
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct DigitalPassportIssuance_OfferMessage {
+    pub envelope: ProtocolMessageEnvelope,
+    pub schema: SchemaRef,
+    pub issuerVerificationMethodRef: VerificationMethodRef,
+    pub holderBindingProfile: HolderBindingProfile,
+    pub features: CredentialProtocolFeatures,
+    pub body: DigitalPassportIssuanceOfferBody,
+}
+impl Aligned for DigitalPassportIssuance_OfferMessage {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<ProtocolMessageEnvelope as Aligned>::alignment(),
+            &<SchemaRef as Aligned>::alignment(),
+            &<VerificationMethodRef as Aligned>::alignment(),
+            &<HolderBindingProfile as Aligned>::alignment(),
+            &<CredentialProtocolFeatures as Aligned>::alignment(),
+            &<DigitalPassportIssuanceOfferBody as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for DigitalPassportIssuance_OfferMessage {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.envelope.field_repr(writer);
+        self.schema.field_repr(writer);
+        self.issuerVerificationMethodRef.field_repr(writer);
+        self.holderBindingProfile.field_repr(writer);
+        self.features.field_repr(writer);
+        self.body.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.envelope.field_size()
+            + self.schema.field_size()
+            + self.issuerVerificationMethodRef.field_size()
+            + self.holderBindingProfile.field_size()
+            + self.features.field_size()
+            + self.body.field_size()
+    }
+}
+impl FromFieldRepr for DigitalPassportIssuance_OfferMessage {
+    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
+        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
+        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
+        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
+        + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE
+        + <DigitalPassportIssuanceOfferBody as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
+        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
+        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
+        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
+        let features = <CredentialProtocolFeatures as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE;
+        let body = <DigitalPassportIssuanceOfferBody as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <DigitalPassportIssuanceOfferBody as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <DigitalPassportIssuanceOfferBody as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(DigitalPassportIssuance_OfferMessage {
+            envelope,
+            schema,
+            issuerVerificationMethodRef,
+            holderBindingProfile,
+            features,
+            body,
+        })
+    }
+}
+impl From<DigitalPassportIssuance_OfferMessage> for midnight_compact_runtime::Value {
+    fn from(s: DigitalPassportIssuance_OfferMessage) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.envelope));
+        _v.push(midnight_compact_runtime::Value::from(s.schema));
+        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
+        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
+        _v.push(midnight_compact_runtime::Value::from(s.features));
+        _v.push(midnight_compact_runtime::Value::from(s.body));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportIssuance_OfferMessage {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.envelope.binary_repr(writer);
+        self.schema.binary_repr(writer);
+        self.issuerVerificationMethodRef.binary_repr(writer);
+        self.holderBindingProfile.binary_repr(writer);
+        self.features.binary_repr(writer);
+        self.body.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.envelope.binary_len()
+            + self.schema.binary_len()
+            + self.issuerVerificationMethodRef.binary_len()
+            + self.holderBindingProfile.binary_len()
+            + self.features.binary_len()
+            + self.body.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct DigitalPassportIssuance_RequestMessage {
+    pub envelope: ProtocolMessageEnvelope,
+    pub schema: SchemaRef,
+    pub issuerVerificationMethodRef: VerificationMethodRef,
+    pub holderBindingProfile: HolderBindingProfile,
+    pub body: DigitalPassportIssuanceRequestBody,
+}
+impl Aligned for DigitalPassportIssuance_RequestMessage {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<ProtocolMessageEnvelope as Aligned>::alignment(),
+            &<SchemaRef as Aligned>::alignment(),
+            &<VerificationMethodRef as Aligned>::alignment(),
+            &<HolderBindingProfile as Aligned>::alignment(),
+            &<DigitalPassportIssuanceRequestBody as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for DigitalPassportIssuance_RequestMessage {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.envelope.field_repr(writer);
+        self.schema.field_repr(writer);
+        self.issuerVerificationMethodRef.field_repr(writer);
+        self.holderBindingProfile.field_repr(writer);
+        self.body.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.envelope.field_size()
+            + self.schema.field_size()
+            + self.issuerVerificationMethodRef.field_size()
+            + self.holderBindingProfile.field_size()
+            + self.body.field_size()
+    }
+}
+impl FromFieldRepr for DigitalPassportIssuance_RequestMessage {
+    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
+        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
+        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
+        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
+        + <DigitalPassportIssuanceRequestBody as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
+        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
+        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
+        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
+        let body = <DigitalPassportIssuanceRequestBody as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <DigitalPassportIssuanceRequestBody as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <DigitalPassportIssuanceRequestBody as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(DigitalPassportIssuance_RequestMessage {
+            envelope,
+            schema,
+            issuerVerificationMethodRef,
+            holderBindingProfile,
+            body,
+        })
+    }
+}
+impl From<DigitalPassportIssuance_RequestMessage> for midnight_compact_runtime::Value {
+    fn from(s: DigitalPassportIssuance_RequestMessage) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.envelope));
+        _v.push(midnight_compact_runtime::Value::from(s.schema));
+        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
+        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
+        _v.push(midnight_compact_runtime::Value::from(s.body));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportIssuance_RequestMessage {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.envelope.binary_repr(writer);
+        self.schema.binary_repr(writer);
+        self.issuerVerificationMethodRef.binary_repr(writer);
+        self.holderBindingProfile.binary_repr(writer);
+        self.body.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.envelope.binary_len()
+            + self.schema.binary_len()
+            + self.issuerVerificationMethodRef.binary_len()
+            + self.holderBindingProfile.binary_len()
+            + self.body.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct DigitalPassportIssuance_ResultMessage {
+    pub envelope: ProtocolMessageEnvelope,
+    pub schema: SchemaRef,
+    pub issuerVerificationMethodRef: VerificationMethodRef,
+    pub holderBindingProfile: HolderBindingProfile,
+    pub body: DigitalPassportIssuanceResultBody,
+}
+impl Aligned for DigitalPassportIssuance_ResultMessage {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<ProtocolMessageEnvelope as Aligned>::alignment(),
+            &<SchemaRef as Aligned>::alignment(),
+            &<VerificationMethodRef as Aligned>::alignment(),
+            &<HolderBindingProfile as Aligned>::alignment(),
+            &<DigitalPassportIssuanceResultBody as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for DigitalPassportIssuance_ResultMessage {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.envelope.field_repr(writer);
+        self.schema.field_repr(writer);
+        self.issuerVerificationMethodRef.field_repr(writer);
+        self.holderBindingProfile.field_repr(writer);
+        self.body.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.envelope.field_size()
+            + self.schema.field_size()
+            + self.issuerVerificationMethodRef.field_size()
+            + self.holderBindingProfile.field_size()
+            + self.body.field_size()
+    }
+}
+impl FromFieldRepr for DigitalPassportIssuance_ResultMessage {
+    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
+        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
+        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
+        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
+        + <DigitalPassportIssuanceResultBody as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
+        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
+        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
+        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
+        let body = <DigitalPassportIssuanceResultBody as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <DigitalPassportIssuanceResultBody as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <DigitalPassportIssuanceResultBody as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(DigitalPassportIssuance_ResultMessage {
+            envelope,
+            schema,
+            issuerVerificationMethodRef,
+            holderBindingProfile,
+            body,
+        })
+    }
+}
+impl From<DigitalPassportIssuance_ResultMessage> for midnight_compact_runtime::Value {
+    fn from(s: DigitalPassportIssuance_ResultMessage) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.envelope));
+        _v.push(midnight_compact_runtime::Value::from(s.schema));
+        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
+        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
+        _v.push(midnight_compact_runtime::Value::from(s.body));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportIssuance_ResultMessage {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.envelope.binary_repr(writer);
+        self.schema.binary_repr(writer);
+        self.issuerVerificationMethodRef.binary_repr(writer);
+        self.holderBindingProfile.binary_repr(writer);
+        self.body.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.envelope.binary_len()
+            + self.schema.binary_len()
+            + self.issuerVerificationMethodRef.binary_len()
+            + self.holderBindingProfile.binary_len()
+            + self.body.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct DigitalPassportVerification_RequestMessage {
+    pub envelope: ProtocolMessageEnvelope,
+    pub schema: SchemaRef,
+    pub issuerVerificationMethodRef: VerificationMethodRef,
+    pub holderBindingProfile: HolderBindingProfile,
+    pub features: CredentialProtocolFeatures,
+    pub verifierChallengeHash: [u8; 32],
+    pub body: DigitalPassportVerificationRequestBody,
+}
+impl Aligned for DigitalPassportVerification_RequestMessage {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<ProtocolMessageEnvelope as Aligned>::alignment(),
+            &<SchemaRef as Aligned>::alignment(),
+            &<VerificationMethodRef as Aligned>::alignment(),
+            &<HolderBindingProfile as Aligned>::alignment(),
+            &<CredentialProtocolFeatures as Aligned>::alignment(),
+            &<[u8; 32] as Aligned>::alignment(),
+            &<DigitalPassportVerificationRequestBody as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for DigitalPassportVerification_RequestMessage {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.envelope.field_repr(writer);
+        self.schema.field_repr(writer);
+        self.issuerVerificationMethodRef.field_repr(writer);
+        self.holderBindingProfile.field_repr(writer);
+        self.features.field_repr(writer);
+        self.verifierChallengeHash.field_repr(writer);
+        self.body.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.envelope.field_size()
+            + self.schema.field_size()
+            + self.issuerVerificationMethodRef.field_size()
+            + self.holderBindingProfile.field_size()
+            + self.features.field_size()
+            + self.verifierChallengeHash.field_size()
+            + self.body.field_size()
+    }
+}
+impl FromFieldRepr for DigitalPassportVerification_RequestMessage {
+    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
+        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
+        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
+        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
+        + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE
+        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
+        + <DigitalPassportVerificationRequestBody as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
+        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
+        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
+        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
+        let features = <CredentialProtocolFeatures as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE;
+        let verifierChallengeHash = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+        let body = <DigitalPassportVerificationRequestBody as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <DigitalPassportVerificationRequestBody as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <DigitalPassportVerificationRequestBody as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(DigitalPassportVerification_RequestMessage {
+            envelope,
+            schema,
+            issuerVerificationMethodRef,
+            holderBindingProfile,
+            features,
+            verifierChallengeHash,
+            body,
+        })
+    }
+}
+impl From<DigitalPassportVerification_RequestMessage> for midnight_compact_runtime::Value {
+    fn from(s: DigitalPassportVerification_RequestMessage) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.envelope));
+        _v.push(midnight_compact_runtime::Value::from(s.schema));
+        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
+        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
+        _v.push(midnight_compact_runtime::Value::from(s.features));
+        _v.push(midnight_compact_runtime::Value::from(s.verifierChallengeHash));
+        _v.push(midnight_compact_runtime::Value::from(s.body));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportVerification_RequestMessage {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.envelope.binary_repr(writer);
+        self.schema.binary_repr(writer);
+        self.issuerVerificationMethodRef.binary_repr(writer);
+        self.holderBindingProfile.binary_repr(writer);
+        self.features.binary_repr(writer);
+        self.verifierChallengeHash.binary_repr(writer);
+        self.body.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.envelope.binary_len()
+            + self.schema.binary_len()
+            + self.issuerVerificationMethodRef.binary_len()
+            + self.holderBindingProfile.binary_len()
+            + self.features.binary_len()
+            + self.verifierChallengeHash.binary_len()
+            + self.body.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct DigitalPassportVerification_SubmissionMessage {
+    pub envelope: ProtocolMessageEnvelope,
+    pub schema: SchemaRef,
+    pub issuerVerificationMethodRef: VerificationMethodRef,
+    pub holderBindingProfile: HolderBindingProfile,
+    pub challengeHash: [u8; 32],
+    pub body: DigitalPassportVerificationSubmissionBody,
+}
+impl Aligned for DigitalPassportVerification_SubmissionMessage {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<ProtocolMessageEnvelope as Aligned>::alignment(),
+            &<SchemaRef as Aligned>::alignment(),
+            &<VerificationMethodRef as Aligned>::alignment(),
+            &<HolderBindingProfile as Aligned>::alignment(),
+            &<[u8; 32] as Aligned>::alignment(),
+            &<DigitalPassportVerificationSubmissionBody as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for DigitalPassportVerification_SubmissionMessage {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.envelope.field_repr(writer);
+        self.schema.field_repr(writer);
+        self.issuerVerificationMethodRef.field_repr(writer);
+        self.holderBindingProfile.field_repr(writer);
+        self.challengeHash.field_repr(writer);
+        self.body.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.envelope.field_size()
+            + self.schema.field_size()
+            + self.issuerVerificationMethodRef.field_size()
+            + self.holderBindingProfile.field_size()
+            + self.challengeHash.field_size()
+            + self.body.field_size()
+    }
+}
+impl FromFieldRepr for DigitalPassportVerification_SubmissionMessage {
+    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
+        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
+        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
+        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
+        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
+        + <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
+        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
+        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
+        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
+        let challengeHash = <[u8; 32] as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
+        let body = <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(DigitalPassportVerification_SubmissionMessage {
+            envelope,
+            schema,
+            issuerVerificationMethodRef,
+            holderBindingProfile,
+            challengeHash,
+            body,
+        })
+    }
+}
+impl From<DigitalPassportVerification_SubmissionMessage> for midnight_compact_runtime::Value {
+    fn from(s: DigitalPassportVerification_SubmissionMessage) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.envelope));
+        _v.push(midnight_compact_runtime::Value::from(s.schema));
+        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
+        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
+        _v.push(midnight_compact_runtime::Value::from(s.challengeHash));
+        _v.push(midnight_compact_runtime::Value::from(s.body));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportVerification_SubmissionMessage {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.envelope.binary_repr(writer);
+        self.schema.binary_repr(writer);
+        self.issuerVerificationMethodRef.binary_repr(writer);
+        self.holderBindingProfile.binary_repr(writer);
+        self.challengeHash.binary_repr(writer);
+        self.body.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.envelope.binary_len()
+            + self.schema.binary_len()
+            + self.issuerVerificationMethodRef.binary_len()
+            + self.holderBindingProfile.binary_len()
+            + self.challengeHash.binary_len()
+            + self.body.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct DigitalPassportVerification_ResultMessage {
+    pub envelope: ProtocolMessageEnvelope,
+    pub approved: bool,
+    pub body: DigitalPassportVerificationResultBody,
+}
+impl Aligned for DigitalPassportVerification_ResultMessage {
+    fn alignment() -> Alignment {
+        Alignment::concat([
+            &<ProtocolMessageEnvelope as Aligned>::alignment(),
+            &<bool as Aligned>::alignment(),
+            &<DigitalPassportVerificationResultBody as Aligned>::alignment(),
+        ])
+    }
+}
+impl FieldRepr for DigitalPassportVerification_ResultMessage {
+    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
+        self.envelope.field_repr(writer);
+        self.approved.field_repr(writer);
+        self.body.field_repr(writer);
+    }
+    fn field_size(&self) -> usize {
+        self.envelope.field_size() + self.approved.field_size() + self.body.field_size()
+    }
+}
+impl FromFieldRepr for DigitalPassportVerification_ResultMessage {
+    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
+        + <bool as FromFieldRepr>::FIELD_SIZE
+        + <DigitalPassportVerificationResultBody as FromFieldRepr>::FIELD_SIZE;
+    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
+        if _repr.len() < Self::FIELD_SIZE {
+            return None;
+        }
+        let mut _offset = 0usize;
+        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
+        let approved =
+            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
+        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
+        let body = <DigitalPassportVerificationResultBody as FromFieldRepr>::from_field_repr(
+            &_repr[_offset.._offset + <DigitalPassportVerificationResultBody as FromFieldRepr>::FIELD_SIZE],
+        )?;
+        _offset += <DigitalPassportVerificationResultBody as FromFieldRepr>::FIELD_SIZE;
+        let _ = _offset;
+        Some(DigitalPassportVerification_ResultMessage {
+            envelope,
+            approved,
+            body,
+        })
+    }
+}
+impl From<DigitalPassportVerification_ResultMessage> for midnight_compact_runtime::Value {
+    fn from(s: DigitalPassportVerification_ResultMessage) -> midnight_compact_runtime::Value {
+        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
+        _v.push(midnight_compact_runtime::Value::from(s.envelope));
+        _v.push(midnight_compact_runtime::Value::from(s.approved));
+        _v.push(midnight_compact_runtime::Value::from(s.body));
+        midnight_compact_runtime::Value::concat(_v.iter())
+    }
+}
+impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportVerification_ResultMessage {
+    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
+        self.envelope.binary_repr(writer);
+        self.approved.binary_repr(writer);
+        self.body.binary_repr(writer);
+    }
+    fn binary_len(&self) -> usize {
+        self.envelope.binary_len() + self.approved.binary_len() + self.body.binary_len()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct DigitalPassportCivilDate {
     pub year: u32,
     pub month: u32,
@@ -2869,123 +3368,6 @@ impl midnight_compact_runtime::BinaryHashRepr for DigitalPassportCivilDate {
             + self.yearAdjustedQuotient100.binary_len()
             + self.yearAdjustedQuotient400.binary_len()
             + self.marchBasedMonthDayOffset.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct OfferMessage {
-    pub envelope: ProtocolMessageEnvelope,
-    pub schema: SchemaRef,
-    pub issuerVerificationMethodRef: VerificationMethodRef,
-    pub holderBindingProfile: HolderBindingProfile,
-    pub features: CredentialProtocolFeatures,
-    pub body: DigitalPassportIssuanceOfferBody,
-}
-impl Aligned for OfferMessage {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<ProtocolMessageEnvelope as Aligned>::alignment(),
-            &<SchemaRef as Aligned>::alignment(),
-            &<VerificationMethodRef as Aligned>::alignment(),
-            &<HolderBindingProfile as Aligned>::alignment(),
-            &<CredentialProtocolFeatures as Aligned>::alignment(),
-            &<DigitalPassportIssuanceOfferBody as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for OfferMessage {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.envelope.field_repr(writer);
-        self.schema.field_repr(writer);
-        self.issuerVerificationMethodRef.field_repr(writer);
-        self.holderBindingProfile.field_repr(writer);
-        self.features.field_repr(writer);
-        self.body.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.envelope.field_size()
-            + self.schema.field_size()
-            + self.issuerVerificationMethodRef.field_size()
-            + self.holderBindingProfile.field_size()
-            + self.features.field_size()
-            + self.body.field_size()
-    }
-}
-impl FromFieldRepr for OfferMessage {
-    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
-        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
-        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
-        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
-        + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE
-        + <DigitalPassportIssuanceOfferBody as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
-        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
-        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
-        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
-        let features = <CredentialProtocolFeatures as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE;
-        let body = <DigitalPassportIssuanceOfferBody as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <DigitalPassportIssuanceOfferBody as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <DigitalPassportIssuanceOfferBody as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(OfferMessage {
-            envelope,
-            schema,
-            issuerVerificationMethodRef,
-            holderBindingProfile,
-            features,
-            body,
-        })
-    }
-}
-impl From<OfferMessage> for midnight_compact_runtime::Value {
-    fn from(s: OfferMessage) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.envelope));
-        _v.push(midnight_compact_runtime::Value::from(s.schema));
-        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
-        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
-        _v.push(midnight_compact_runtime::Value::from(s.features));
-        _v.push(midnight_compact_runtime::Value::from(s.body));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for OfferMessage {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.envelope.binary_repr(writer);
-        self.schema.binary_repr(writer);
-        self.issuerVerificationMethodRef.binary_repr(writer);
-        self.holderBindingProfile.binary_repr(writer);
-        self.features.binary_repr(writer);
-        self.body.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.envelope.binary_len()
-            + self.schema.binary_len()
-            + self.issuerVerificationMethodRef.binary_len()
-            + self.holderBindingProfile.binary_len()
-            + self.features.binary_len()
-            + self.body.binary_len()
     }
 }
 
@@ -3331,534 +3713,6 @@ impl midnight_compact_runtime::BinaryHashRepr for Presentation {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct SubmissionMessage {
-    pub envelope: ProtocolMessageEnvelope,
-    pub schema: SchemaRef,
-    pub issuerVerificationMethodRef: VerificationMethodRef,
-    pub holderBindingProfile: HolderBindingProfile,
-    pub challengeHash: [u8; 32],
-    pub body: DigitalPassportVerificationSubmissionBody,
-}
-impl Aligned for SubmissionMessage {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<ProtocolMessageEnvelope as Aligned>::alignment(),
-            &<SchemaRef as Aligned>::alignment(),
-            &<VerificationMethodRef as Aligned>::alignment(),
-            &<HolderBindingProfile as Aligned>::alignment(),
-            &<[u8; 32] as Aligned>::alignment(),
-            &<DigitalPassportVerificationSubmissionBody as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for SubmissionMessage {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.envelope.field_repr(writer);
-        self.schema.field_repr(writer);
-        self.issuerVerificationMethodRef.field_repr(writer);
-        self.holderBindingProfile.field_repr(writer);
-        self.challengeHash.field_repr(writer);
-        self.body.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.envelope.field_size()
-            + self.schema.field_size()
-            + self.issuerVerificationMethodRef.field_size()
-            + self.holderBindingProfile.field_size()
-            + self.challengeHash.field_size()
-            + self.body.field_size()
-    }
-}
-impl FromFieldRepr for SubmissionMessage {
-    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
-        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
-        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
-        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
-        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
-        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
-        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
-        let challengeHash = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let body = <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <DigitalPassportVerificationSubmissionBody as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(SubmissionMessage {
-            envelope,
-            schema,
-            issuerVerificationMethodRef,
-            holderBindingProfile,
-            challengeHash,
-            body,
-        })
-    }
-}
-impl From<SubmissionMessage> for midnight_compact_runtime::Value {
-    fn from(s: SubmissionMessage) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.envelope));
-        _v.push(midnight_compact_runtime::Value::from(s.schema));
-        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
-        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
-        _v.push(midnight_compact_runtime::Value::from(s.challengeHash));
-        _v.push(midnight_compact_runtime::Value::from(s.body));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for SubmissionMessage {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.envelope.binary_repr(writer);
-        self.schema.binary_repr(writer);
-        self.issuerVerificationMethodRef.binary_repr(writer);
-        self.holderBindingProfile.binary_repr(writer);
-        self.challengeHash.binary_repr(writer);
-        self.body.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.envelope.binary_len()
-            + self.schema.binary_len()
-            + self.issuerVerificationMethodRef.binary_len()
-            + self.holderBindingProfile.binary_len()
-            + self.challengeHash.binary_len()
-            + self.body.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ResultMessage_1 {
-    pub envelope: ProtocolMessageEnvelope,
-    pub schema: SchemaRef,
-    pub issuerVerificationMethodRef: VerificationMethodRef,
-    pub holderBindingProfile: HolderBindingProfile,
-    pub body: DigitalPassportIssuanceResultBody,
-}
-impl Aligned for ResultMessage_1 {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<ProtocolMessageEnvelope as Aligned>::alignment(),
-            &<SchemaRef as Aligned>::alignment(),
-            &<VerificationMethodRef as Aligned>::alignment(),
-            &<HolderBindingProfile as Aligned>::alignment(),
-            &<DigitalPassportIssuanceResultBody as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for ResultMessage_1 {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.envelope.field_repr(writer);
-        self.schema.field_repr(writer);
-        self.issuerVerificationMethodRef.field_repr(writer);
-        self.holderBindingProfile.field_repr(writer);
-        self.body.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.envelope.field_size()
-            + self.schema.field_size()
-            + self.issuerVerificationMethodRef.field_size()
-            + self.holderBindingProfile.field_size()
-            + self.body.field_size()
-    }
-}
-impl FromFieldRepr for ResultMessage_1 {
-    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
-        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
-        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
-        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
-        + <DigitalPassportIssuanceResultBody as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
-        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
-        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
-        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
-        let body = <DigitalPassportIssuanceResultBody as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <DigitalPassportIssuanceResultBody as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <DigitalPassportIssuanceResultBody as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(ResultMessage_1 {
-            envelope,
-            schema,
-            issuerVerificationMethodRef,
-            holderBindingProfile,
-            body,
-        })
-    }
-}
-impl From<ResultMessage_1> for midnight_compact_runtime::Value {
-    fn from(s: ResultMessage_1) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.envelope));
-        _v.push(midnight_compact_runtime::Value::from(s.schema));
-        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
-        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
-        _v.push(midnight_compact_runtime::Value::from(s.body));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for ResultMessage_1 {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.envelope.binary_repr(writer);
-        self.schema.binary_repr(writer);
-        self.issuerVerificationMethodRef.binary_repr(writer);
-        self.holderBindingProfile.binary_repr(writer);
-        self.body.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.envelope.binary_len()
-            + self.schema.binary_len()
-            + self.issuerVerificationMethodRef.binary_len()
-            + self.holderBindingProfile.binary_len()
-            + self.body.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct RequestMessage {
-    pub envelope: ProtocolMessageEnvelope,
-    pub schema: SchemaRef,
-    pub issuerVerificationMethodRef: VerificationMethodRef,
-    pub holderBindingProfile: HolderBindingProfile,
-    pub features: CredentialProtocolFeatures,
-    pub verifierChallengeHash: [u8; 32],
-    pub body: DigitalPassportVerificationRequestBody,
-}
-impl Aligned for RequestMessage {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<ProtocolMessageEnvelope as Aligned>::alignment(),
-            &<SchemaRef as Aligned>::alignment(),
-            &<VerificationMethodRef as Aligned>::alignment(),
-            &<HolderBindingProfile as Aligned>::alignment(),
-            &<CredentialProtocolFeatures as Aligned>::alignment(),
-            &<[u8; 32] as Aligned>::alignment(),
-            &<DigitalPassportVerificationRequestBody as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for RequestMessage {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.envelope.field_repr(writer);
-        self.schema.field_repr(writer);
-        self.issuerVerificationMethodRef.field_repr(writer);
-        self.holderBindingProfile.field_repr(writer);
-        self.features.field_repr(writer);
-        self.verifierChallengeHash.field_repr(writer);
-        self.body.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.envelope.field_size()
-            + self.schema.field_size()
-            + self.issuerVerificationMethodRef.field_size()
-            + self.holderBindingProfile.field_size()
-            + self.features.field_size()
-            + self.verifierChallengeHash.field_size()
-            + self.body.field_size()
-    }
-}
-impl FromFieldRepr for RequestMessage {
-    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
-        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
-        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
-        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
-        + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE
-        + <[u8; 32] as FromFieldRepr>::FIELD_SIZE
-        + <DigitalPassportVerificationRequestBody as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
-        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
-        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
-        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
-        let features = <CredentialProtocolFeatures as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <CredentialProtocolFeatures as FromFieldRepr>::FIELD_SIZE;
-        let verifierChallengeHash = <[u8; 32] as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <[u8; 32] as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <[u8; 32] as FromFieldRepr>::FIELD_SIZE;
-        let body = <DigitalPassportVerificationRequestBody as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <DigitalPassportVerificationRequestBody as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <DigitalPassportVerificationRequestBody as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(RequestMessage {
-            envelope,
-            schema,
-            issuerVerificationMethodRef,
-            holderBindingProfile,
-            features,
-            verifierChallengeHash,
-            body,
-        })
-    }
-}
-impl From<RequestMessage> for midnight_compact_runtime::Value {
-    fn from(s: RequestMessage) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.envelope));
-        _v.push(midnight_compact_runtime::Value::from(s.schema));
-        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
-        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
-        _v.push(midnight_compact_runtime::Value::from(s.features));
-        _v.push(midnight_compact_runtime::Value::from(s.verifierChallengeHash));
-        _v.push(midnight_compact_runtime::Value::from(s.body));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for RequestMessage {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.envelope.binary_repr(writer);
-        self.schema.binary_repr(writer);
-        self.issuerVerificationMethodRef.binary_repr(writer);
-        self.holderBindingProfile.binary_repr(writer);
-        self.features.binary_repr(writer);
-        self.verifierChallengeHash.binary_repr(writer);
-        self.body.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.envelope.binary_len()
-            + self.schema.binary_len()
-            + self.issuerVerificationMethodRef.binary_len()
-            + self.holderBindingProfile.binary_len()
-            + self.features.binary_len()
-            + self.verifierChallengeHash.binary_len()
-            + self.body.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct RequestMessage_1 {
-    pub envelope: ProtocolMessageEnvelope,
-    pub schema: SchemaRef,
-    pub issuerVerificationMethodRef: VerificationMethodRef,
-    pub holderBindingProfile: HolderBindingProfile,
-    pub body: DigitalPassportIssuanceRequestBody,
-}
-impl Aligned for RequestMessage_1 {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<ProtocolMessageEnvelope as Aligned>::alignment(),
-            &<SchemaRef as Aligned>::alignment(),
-            &<VerificationMethodRef as Aligned>::alignment(),
-            &<HolderBindingProfile as Aligned>::alignment(),
-            &<DigitalPassportIssuanceRequestBody as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for RequestMessage_1 {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.envelope.field_repr(writer);
-        self.schema.field_repr(writer);
-        self.issuerVerificationMethodRef.field_repr(writer);
-        self.holderBindingProfile.field_repr(writer);
-        self.body.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.envelope.field_size()
-            + self.schema.field_size()
-            + self.issuerVerificationMethodRef.field_size()
-            + self.holderBindingProfile.field_size()
-            + self.body.field_size()
-    }
-}
-impl FromFieldRepr for RequestMessage_1 {
-    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
-        + <SchemaRef as FromFieldRepr>::FIELD_SIZE
-        + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE
-        + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE
-        + <DigitalPassportIssuanceRequestBody as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
-        let schema = <SchemaRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <SchemaRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <SchemaRef as FromFieldRepr>::FIELD_SIZE;
-        let issuerVerificationMethodRef = <VerificationMethodRef as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <VerificationMethodRef as FromFieldRepr>::FIELD_SIZE;
-        let holderBindingProfile = <HolderBindingProfile as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <HolderBindingProfile as FromFieldRepr>::FIELD_SIZE;
-        let body = <DigitalPassportIssuanceRequestBody as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <DigitalPassportIssuanceRequestBody as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <DigitalPassportIssuanceRequestBody as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(RequestMessage_1 {
-            envelope,
-            schema,
-            issuerVerificationMethodRef,
-            holderBindingProfile,
-            body,
-        })
-    }
-}
-impl From<RequestMessage_1> for midnight_compact_runtime::Value {
-    fn from(s: RequestMessage_1) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.envelope));
-        _v.push(midnight_compact_runtime::Value::from(s.schema));
-        _v.push(midnight_compact_runtime::Value::from(s.issuerVerificationMethodRef));
-        _v.push(midnight_compact_runtime::Value::from(s.holderBindingProfile));
-        _v.push(midnight_compact_runtime::Value::from(s.body));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for RequestMessage_1 {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.envelope.binary_repr(writer);
-        self.schema.binary_repr(writer);
-        self.issuerVerificationMethodRef.binary_repr(writer);
-        self.holderBindingProfile.binary_repr(writer);
-        self.body.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.envelope.binary_len()
-            + self.schema.binary_len()
-            + self.issuerVerificationMethodRef.binary_len()
-            + self.holderBindingProfile.binary_len()
-            + self.body.binary_len()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ResultMessage {
-    pub envelope: ProtocolMessageEnvelope,
-    pub approved: bool,
-    pub body: DigitalPassportVerificationResultBody,
-}
-impl Aligned for ResultMessage {
-    fn alignment() -> Alignment {
-        Alignment::concat([
-            &<ProtocolMessageEnvelope as Aligned>::alignment(),
-            &<bool as Aligned>::alignment(),
-            &<DigitalPassportVerificationResultBody as Aligned>::alignment(),
-        ])
-    }
-}
-impl FieldRepr for ResultMessage {
-    fn field_repr<W: MemWrite<Fr>>(&self, writer: &mut W) {
-        self.envelope.field_repr(writer);
-        self.approved.field_repr(writer);
-        self.body.field_repr(writer);
-    }
-    fn field_size(&self) -> usize {
-        self.envelope.field_size() + self.approved.field_size() + self.body.field_size()
-    }
-}
-impl FromFieldRepr for ResultMessage {
-    const FIELD_SIZE: usize = <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE
-        + <bool as FromFieldRepr>::FIELD_SIZE
-        + <DigitalPassportVerificationResultBody as FromFieldRepr>::FIELD_SIZE;
-    fn from_field_repr(_repr: &[Fr]) -> Option<Self> {
-        if _repr.len() < Self::FIELD_SIZE {
-            return None;
-        }
-        let mut _offset = 0usize;
-        let envelope = <ProtocolMessageEnvelope as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <ProtocolMessageEnvelope as FromFieldRepr>::FIELD_SIZE;
-        let approved =
-            <bool as FromFieldRepr>::from_field_repr(&_repr[_offset.._offset + <bool as FromFieldRepr>::FIELD_SIZE])?;
-        _offset += <bool as FromFieldRepr>::FIELD_SIZE;
-        let body = <DigitalPassportVerificationResultBody as FromFieldRepr>::from_field_repr(
-            &_repr[_offset.._offset + <DigitalPassportVerificationResultBody as FromFieldRepr>::FIELD_SIZE],
-        )?;
-        _offset += <DigitalPassportVerificationResultBody as FromFieldRepr>::FIELD_SIZE;
-        let _ = _offset;
-        Some(ResultMessage {
-            envelope,
-            approved,
-            body,
-        })
-    }
-}
-impl From<ResultMessage> for midnight_compact_runtime::Value {
-    fn from(s: ResultMessage) -> midnight_compact_runtime::Value {
-        let mut _v: Vec<midnight_compact_runtime::Value> = Vec::new();
-        _v.push(midnight_compact_runtime::Value::from(s.envelope));
-        _v.push(midnight_compact_runtime::Value::from(s.approved));
-        _v.push(midnight_compact_runtime::Value::from(s.body));
-        midnight_compact_runtime::Value::concat(_v.iter())
-    }
-}
-impl midnight_compact_runtime::BinaryHashRepr for ResultMessage {
-    fn binary_repr<W: MemWrite<u8>>(&self, writer: &mut W) {
-        self.envelope.binary_repr(writer);
-        self.approved.binary_repr(writer);
-        self.body.binary_repr(writer);
-    }
-    fn binary_len(&self) -> usize {
-        self.envelope.binary_len() + self.approved.binary_len() + self.body.binary_len()
-    }
-}
-
 pub trait Witnesses<PS> {}
 impl<PS> Witnesses<PS> for NoWitnesses {}
 
@@ -3906,13 +3760,6 @@ impl<'a, D: DB> Ledger<'a, D> {}
 pub mod pure_circuits {
     use super::*;
 
-    pub fn no_schema_family_resolver_hint() -> Result<[u8; 32], CompactError> {
-        Ok([
-            109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 115, 99, 104, 101, 109, 97, 58, 110, 111, 45,
-            104, 105, 110, 116, 0, 0, 0, 0, 0, 0,
-        ])
-    }
-
     pub fn assert_valid_schema_ref(schema: SchemaRef) -> Result<(), CompactError> {
         compact_assert!(
             (schema.packageId
@@ -3933,53 +3780,78 @@ pub mod pure_circuits {
         Ok(())
     }
 
-    pub fn assert_valid_schema_capabilities(capabilities: SchemaCapabilities) -> Result<(), CompactError> {
-        Ok(())
-    }
-
-    pub fn assert_valid_schema_family_resolution_hint(hint: SchemaFamilyResolutionHint) -> Result<(), CompactError> {
-        let no_hint = pure_circuits::no_schema_family_resolver_hint()?;
-        Ok(if hint.hasResolverHint {
-            compact_assert!((hint.resolverHint != no_hint), "Schema resolver hint must be set");
-            compact_assert!(
-                (hint.resolverHint
-                    != [
-                        0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                        0
-                    ]),
-                "Schema resolver hint must not be empty"
-            );
-        } else {
-            compact_assert!(
-                (hint.resolverHint == no_hint),
-                "Absent schema resolver hint must use the no-hint sentinel"
-            );
-        })
-    }
-
-    pub fn assert_valid_schema_descriptor(descriptor: SchemaDescriptor) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_schema_ref(descriptor.schema.clone())?;
-        pure_circuits::assert_valid_schema_capabilities(descriptor.capabilities.clone())?;
-        Ok(pure_circuits::assert_valid_schema_family_resolution_hint(
-            descriptor.familyResolutionHint.clone(),
-        )?)
-    }
-
-    pub fn assert_matching_schema_capabilities(
-        expected: SchemaCapabilities,
-        actual: SchemaCapabilities,
-    ) -> Result<(), CompactError> {
+    pub fn assert_matching_schema_refs(expected: SchemaRef, actual: SchemaRef) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_schema_ref(expected.clone())?;
+        pure_circuits::assert_valid_schema_ref(actual.clone())?;
         compact_assert!(
-            ((((expected.supportsSelectiveDisclosure == actual.supportsSelectiveDisclosure)
-                && (expected.supportsPredicateProofs == actual.supportsPredicateProofs))
-                && (expected.supportsVerifierScopedPseudonym == actual.supportsVerifierScopedPseudonym))
-                && (expected.supportsSameHolderProof == actual.supportsSameHolderProof)),
-            "Schema capabilities mismatch"
+            ((((expected.packageId == actual.packageId) && (expected.schemaId == actual.schemaId))
+                && (expected.majorVersion == actual.majorVersion))
+                && (expected.minorVersion == actual.minorVersion)),
+            "Schema reference mismatch"
         );
         Ok(())
     }
 
+    pub fn assert_valid_verification_method_ref(
+        verification_method_ref: VerificationMethodRef,
+    ) -> Result<(), CompactError> {
+        compact_assert!(
+            (verification_method_ref.controllerAddress.bytes
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Verification method controller address must be set"
+        );
+        compact_assert!(
+            (verification_method_ref.methodId
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Verification method reference must be set"
+        );
+        Ok(())
+    }
+
+    pub(crate) fn assert_matching_jubjub_points(
+        expected: JubjubPoint,
+        actual: JubjubPoint,
+    ) -> Result<(), CompactError> {
+        compact_assert!(
+            ((midnight_compact_runtime::jubjub_point_x(expected.clone())
+                == midnight_compact_runtime::jubjub_point_x(actual.clone()))
+                && (midnight_compact_runtime::jubjub_point_y(expected.clone())
+                    == midnight_compact_runtime::jubjub_point_y(actual.clone()))),
+            "Jubjub points do not match"
+        );
+        Ok(())
+    }
+
+    pub(crate) fn assert_usable_jubjub_point(point: JubjubPoint) -> Result<(), CompactError> {
+        compact_assert!(
+            ((midnight_compact_runtime::jubjub_point_x(point.clone()) != Fr::from(0u64))
+                || (midnight_compact_runtime::jubjub_point_y(point.clone()) != Fr::from(1u64))),
+            "Jubjub point must not be the identity point"
+        );
+        let subgroup_projection = midnight_compact_runtime::ec_mul(
+            midnight_compact_runtime::ec_mul(
+                point.clone(),
+                Fr::from_le_bytes(&[
+                    0x97, 0xE5, 0xDE, 0xDA, 0xCB, 0xE1, 0x12, 0x5A, 0x10, 0x02, 0x99, 0x79, 0x12, 0x04, 0xCD, 0x14,
+                    0x60, 0x87, 0x26, 0x20, 0x60, 0xE7, 0xCC, 0x20, 0xF5, 0x75, 0xA6, 0x4C, 0x9D, 0xB6, 0xCF, 0x01,
+                ])
+                .expect("Field literal is canonical"),
+            ),
+            Fr::from(8u64),
+        );
+        Ok(pure_circuits::assert_matching_jubjub_points(
+            point.clone(),
+            subgroup_projection.clone(),
+        )?)
+    }
+
     pub fn verify_signature(pk: JubjubPoint, signature: Signature, challenge: Fr) -> Result<bool, CompactError> {
+        pure_circuits::assert_usable_jubjub_point(pk.clone())?;
+        pure_circuits::assert_usable_jubjub_point(signature.r.clone())?;
         let left_side = midnight_compact_runtime::ec_mul_generator(signature.s.clone());
         let c_pk = midnight_compact_runtime::ec_mul(pk.clone(), challenge);
         let right_side = midnight_compact_runtime::ec_add(signature.r.clone(), c_pk.clone());
@@ -4002,6 +3874,20 @@ pub mod pure_circuits {
         Ok([
             109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 112, 114, 101, 115, 101, 110, 116, 97, 116, 105,
             111, 110, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
+    }
+
+    pub fn signer_authorization_context_tag() -> Result<[u8; 32], CompactError> {
+        Ok([
+            109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 115, 105, 103, 110, 101, 114, 45, 97, 117, 116,
+            104, 58, 118, 49, 0, 0, 0, 0, 0, 0,
+        ])
+    }
+
+    pub fn verifier_request_context_tag() -> Result<[u8; 32], CompactError> {
+        Ok([
+            109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 118, 101, 114, 105, 102, 105, 101, 114, 45, 114,
+            101, 113, 58, 118, 49, 0, 0, 0, 0, 0,
         ])
     }
 
@@ -4058,6 +3944,7 @@ pub mod pure_circuits {
         context_tag: [u8; 32],
         proof: Proof,
     ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_verification_method_ref(proof.signerVerificationMethodRef.clone())?;
         compact_assert!(
             pure_circuits::verify_signature(
                 proof.publicKey.clone(),
@@ -4101,6 +3988,25 @@ pub mod pure_circuits {
         )?)
     }
 
+    pub fn signer_authorization_proof_challenge(body_root: [u8; 32], proof: Proof) -> Result<Fr, CompactError> {
+        Ok(pure_circuits::proof_challenge_for_context(
+            body_root,
+            pure_circuits::signer_authorization_context_tag()?,
+            proof.clone(),
+        )?)
+    }
+
+    pub fn verifier_request_proof_challenge(
+        request_scope_commitment: [u8; 32],
+        proof: Proof,
+    ) -> Result<Fr, CompactError> {
+        Ok(pure_circuits::proof_challenge_for_context(
+            request_scope_commitment,
+            pure_circuits::verifier_request_context_tag()?,
+            proof.clone(),
+        )?)
+    }
+
     pub fn assert_valid_issuance_context_proof(body_root: [u8; 32], proof: Proof) -> Result<(), CompactError> {
         Ok(pure_circuits::assert_valid_proof_for_context(
             body_root,
@@ -4115,6 +4021,252 @@ pub mod pure_circuits {
             pure_circuits::presentation_context_tag()?,
             proof.clone(),
         )?)
+    }
+
+    pub fn assert_valid_signer_authorization_context_proof(
+        body_root: [u8; 32],
+        proof: Proof,
+    ) -> Result<(), CompactError> {
+        Ok(pure_circuits::assert_valid_proof_for_context(
+            body_root,
+            pure_circuits::signer_authorization_context_tag()?,
+            proof.clone(),
+        )?)
+    }
+
+    pub fn assert_valid_verifier_request_context_proof(
+        request_scope_commitment: [u8; 32],
+        proof: Proof,
+    ) -> Result<(), CompactError> {
+        Ok(pure_circuits::assert_valid_proof_for_context(
+            request_scope_commitment,
+            pure_circuits::verifier_request_context_tag()?,
+            proof.clone(),
+        )?)
+    }
+
+    pub fn assert_valid_authorized_signer_descriptor(
+        descriptor: AuthorizedSignerDescriptor,
+    ) -> Result<(), CompactError> {
+        compact_assert!((descriptor.version == 1), "Signer authorization version mismatch");
+        compact_assert!(
+            (descriptor.authorizationId
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Signer authorization id must be set"
+        );
+        let t = descriptor.decisionSequence;
+        compact_assert!((t > 0), "Signer authorization decision sequence must be positive");
+        pure_circuits::assert_valid_verification_method_ref(descriptor.signerVerificationMethodRef.clone())?;
+        pure_circuits::assert_usable_jubjub_point(descriptor.signerPublicKey.clone())?;
+        let t_0 = descriptor.didStateVersion;
+        compact_assert!((t_0 > 0), "Signer authorization DID state version must be positive");
+        compact_assert!(
+            (descriptor.scopeCommitment
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Signer authorization scope commitment must be set"
+        );
+        compact_assert!(
+            (descriptor.policyCommitment
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Signer authorization policy commitment must be set"
+        );
+        Ok(if (descriptor.role == SignerRole::issuer) {
+            compact_assert!(
+                (descriptor.verificationRelationship == VerificationRelationship::assertionMethod),
+                "Issuer authorization requires assertionMethod"
+            );
+        } else {
+            compact_assert!(
+                ((descriptor.verificationRelationship == VerificationRelationship::authentication)
+                    || (descriptor.verificationRelationship == VerificationRelationship::capabilityInvocation)),
+                "Verifier authorization requires authentication or capabilityInvocation"
+            );
+        })
+    }
+
+    pub fn authorized_signer_descriptor_root(descriptor: AuthorizedSignerDescriptor) -> Result<[u8; 32], CompactError> {
+        pure_circuits::assert_valid_authorized_signer_descriptor(descriptor.clone())?;
+        Ok(pure_circuits::authorized_signer_descriptor_hash(descriptor.clone())?)
+    }
+
+    pub(crate) fn authorized_signer_descriptor_hash(
+        descriptor: AuthorizedSignerDescriptor,
+    ) -> Result<[u8; 32], CompactError> {
+        Ok(midnight_compact_runtime::std_lib::persistent_hash_aligned(&[
+            midnight_compact_runtime::AlignedValue::from(descriptor),
+        ]))
+    }
+
+    pub fn issuer_scope_commitment(schema: SchemaRef) -> Result<[u8; 32], CompactError> {
+        pure_circuits::assert_valid_schema_ref(schema.clone())?;
+        Ok(midnight_compact_runtime::std_lib::persistent_hash_aligned(&[
+            midnight_compact_runtime::AlignedValue::from(schema),
+        ]))
+    }
+
+    pub fn assert_proof_signer_matches_authorization(
+        proof: Proof,
+        descriptor: AuthorizedSignerDescriptor,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_authorized_signer_descriptor(descriptor.clone())?;
+        compact_assert!(
+            (descriptor.state == AuthorizationState::active),
+            "Signer authorization must be active"
+        );
+        compact_assert!(
+            (proof.signerVerificationMethodRef.controllerAddress
+                == descriptor.signerVerificationMethodRef.controllerAddress),
+            "Proof signer controller does not match authorization"
+        );
+        compact_assert!(
+            (proof.signerVerificationMethodRef.methodId == descriptor.signerVerificationMethodRef.methodId),
+            "Proof signer method does not match authorization"
+        );
+        Ok(pure_circuits::assert_matching_jubjub_points(
+            descriptor.signerPublicKey.clone(),
+            proof.publicKey.clone(),
+        )?)
+    }
+
+    pub fn assert_authorized_issuer_descriptor(
+        schema: SchemaRef,
+        proof: Proof,
+        descriptor: AuthorizedSignerDescriptor,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_proof_signer_matches_authorization(proof.clone(), descriptor.clone())?;
+        compact_assert!(
+            (descriptor.role == SignerRole::issuer),
+            "Signer authorization role must be issuer"
+        );
+        compact_assert!(
+            (descriptor.scopeCommitment == pure_circuits::issuer_scope_commitment(schema.clone())?),
+            "Issuer authorization scope does not match schema"
+        );
+        Ok(())
+    }
+
+    pub fn assert_authorized_verifier_proof(
+        request_scope_commitment: [u8; 32],
+        proof: Proof,
+        descriptor: AuthorizedSignerDescriptor,
+    ) -> Result<(), CompactError> {
+        compact_assert!(
+            (request_scope_commitment
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Verifier request scope commitment must be set"
+        );
+        pure_circuits::assert_proof_signer_matches_authorization(proof.clone(), descriptor.clone())?;
+        compact_assert!(
+            (descriptor.role == SignerRole::verifier),
+            "Signer authorization role must be verifier"
+        );
+        compact_assert!(
+            (descriptor.scopeCommitment == request_scope_commitment),
+            "Verifier authorization scope does not match request"
+        );
+        Ok(pure_circuits::assert_valid_verifier_request_context_proof(
+            request_scope_commitment,
+            proof.clone(),
+        )?)
+    }
+
+    pub fn assert_valid_signer_authorization_authority(
+        authority: SignerAuthorizationAuthority,
+    ) -> Result<(), CompactError> {
+        compact_assert!(
+            (authority.domainCommitment
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Signer authorization authority domain must be set"
+        );
+        pure_circuits::assert_valid_verification_method_ref(authority.verificationMethodRef.clone())?;
+        Ok(pure_circuits::assert_usable_jubjub_point(authority.publicKey.clone())?)
+    }
+
+    pub fn signer_authorization_decision_root(
+        descriptor: AuthorizedSignerDescriptor,
+        domain_commitment: [u8; 32],
+    ) -> Result<[u8; 32], CompactError> {
+        pure_circuits::assert_valid_authorized_signer_descriptor(descriptor.clone())?;
+        compact_assert!(
+            (domain_commitment
+                != [
+                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ]),
+            "Signer authorization authority domain must be set"
+        );
+        Ok(midnight_compact_runtime::std_lib::persistent_hash_aligned(&[
+            midnight_compact_runtime::AlignedValue::from(domain_commitment),
+            midnight_compact_runtime::AlignedValue::from(pure_circuits::authorized_signer_descriptor_hash(
+                descriptor.clone(),
+            )?),
+        ]))
+    }
+
+    pub fn assert_valid_signer_authorization_proof(
+        descriptor: AuthorizedSignerDescriptor,
+        authorization_proof: Proof,
+        authority: SignerAuthorizationAuthority,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_authorized_signer_descriptor(descriptor.clone())?;
+        pure_circuits::assert_valid_signer_authorization_authority(authority.clone())?;
+        compact_assert!(
+            (authorization_proof.createdAt == descriptor.decisionSequence),
+            "Authorization proof sequence does not match descriptor"
+        );
+        compact_assert!(
+            (authorization_proof.signerVerificationMethodRef.controllerAddress
+                == authority.verificationMethodRef.controllerAddress),
+            "Authorization proof controller does not match authority"
+        );
+        compact_assert!(
+            (authorization_proof.signerVerificationMethodRef.methodId == authority.verificationMethodRef.methodId),
+            "Authorization proof method does not match authority"
+        );
+        pure_circuits::assert_matching_jubjub_points(
+            authority.publicKey.clone(),
+            authorization_proof.publicKey.clone(),
+        )?;
+        Ok(pure_circuits::assert_valid_signer_authorization_context_proof(
+            pure_circuits::signer_authorization_decision_root(descriptor.clone(), authority.domainCommitment.clone())?,
+            authorization_proof.clone(),
+        )?)
+    }
+
+    pub fn assert_valid_signer_authorization_update(
+        previous: AuthorizedSignerDescriptor,
+        next: AuthorizedSignerDescriptor,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_authorized_signer_descriptor(previous.clone())?;
+        pure_circuits::assert_valid_authorized_signer_descriptor(next.clone())?;
+        compact_assert!(
+            (previous.authorizationId == next.authorizationId),
+            "Signer authorization update id mismatch"
+        );
+        let t = next.decisionSequence;
+        compact_assert!(
+            (t > previous.decisionSequence),
+            "Signer authorization update sequence must increase"
+        );
+        let t_0 = next.didStateVersion;
+        compact_assert!(
+            (t_0 >= previous.didStateVersion),
+            "Signer authorization DID state version must not decrease"
+        );
+        compact_assert!(
+            ((previous.state != AuthorizationState::revoked) || (next.state == AuthorizationState::revoked)),
+            "Revoked signer authorization must remain revoked"
+        );
+        Ok(())
     }
 
     pub(crate) fn credential_body_root(credential: Credential) -> Result<[u8; 32], CompactError> {
@@ -4140,22 +4292,22 @@ pub mod pure_circuits {
 
     pub(crate) fn assert_valid_credential_proof(credential: Credential, proof: Proof) -> Result<(), CompactError> {
         let body_root = pure_circuits::credential_body_root(credential.clone())?;
-        Ok(pure_circuits::assert_valid_credential_proof_for_body_root(
+        Ok(pure_circuits::assert_valid_credential_proof_for_canonical_body_root(
             credential.clone(),
             proof.clone(),
             body_root.clone(),
         )?)
     }
 
-    pub(crate) fn assert_valid_credential_proof_for_body_root(
+    pub(crate) fn assert_valid_credential_proof_for_canonical_body_root(
         credential: Credential,
         proof: Proof,
         body_root: [u8; 32],
     ) -> Result<(), CompactError> {
         compact_assert!(
-            (credential.issuerVerificationMethodRef.didContractAddress
-                == proof.signerVerificationMethodRef.didContractAddress),
-            "Issuer proof contract address does not match issuer verification method"
+            (credential.issuerVerificationMethodRef.controllerAddress
+                == proof.signerVerificationMethodRef.controllerAddress),
+            "Issuer proof controller address does not match issuer verification method"
         );
         compact_assert!(
             (credential.issuerVerificationMethodRef.methodId == proof.signerVerificationMethodRef.methodId),
@@ -4182,14 +4334,15 @@ pub mod pure_circuits {
         credential: Credential,
         presentation: Presentation,
     ) -> Result<(), CompactError> {
+        pure_circuits::assert_matching_schema_refs(credential.schema.clone(), presentation.schema.clone())?;
         compact_assert!(
             (presentation.credentialClaimRoot == credential.claimRoot),
             "Presentation must reference the credential claim root"
         );
         compact_assert!(
-            (presentation.issuerVerificationMethodRef.didContractAddress
-                == credential.issuerVerificationMethodRef.didContractAddress),
-            "Presentation issuer contract does not match credential issuer"
+            (presentation.issuerVerificationMethodRef.controllerAddress
+                == credential.issuerVerificationMethodRef.controllerAddress),
+            "Presentation issuer controller does not match credential issuer"
         );
         compact_assert!(
             (presentation.issuerVerificationMethodRef.methodId == credential.issuerVerificationMethodRef.methodId),
@@ -4199,31 +4352,21 @@ pub mod pure_circuits {
     }
 
     pub fn assert_valid_explicit_holder_binding(binding: ExplicitHolderBinding) -> Result<(), CompactError> {
-        compact_assert!(
-            (binding.holderVerificationMethodRef.didContractAddress.bytes
-                != [
-                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                ]),
-            "Explicit holder binding DID contract address must be set"
-        );
-        compact_assert!(
-            (binding.holderVerificationMethodRef.methodId
-                != [
-                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                ]),
-            "Explicit holder binding method reference must be set"
-        );
-        Ok(())
+        Ok(pure_circuits::assert_valid_verification_method_ref(
+            binding.holderVerificationMethodRef.clone(),
+        )?)
     }
 
     pub fn assert_matching_explicit_holder_bindings(
         credential_binding: ExplicitHolderBinding,
         presentation_binding: ExplicitHolderBinding,
     ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_explicit_holder_binding(credential_binding.clone())?;
+        pure_circuits::assert_valid_explicit_holder_binding(presentation_binding.clone())?;
         compact_assert!(
-            (presentation_binding.holderVerificationMethodRef.didContractAddress
-                == credential_binding.holderVerificationMethodRef.didContractAddress),
-            "Presentation holder contract does not match credential holder binding"
+            (presentation_binding.holderVerificationMethodRef.controllerAddress
+                == credential_binding.holderVerificationMethodRef.controllerAddress),
+            "Presentation holder controller does not match credential holder binding"
         );
         compact_assert!(
             (presentation_binding.holderVerificationMethodRef.methodId
@@ -4237,9 +4380,11 @@ pub mod pure_circuits {
         binding: ExplicitHolderBinding,
         presentation_proof: Proof,
     ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_explicit_holder_binding(binding.clone())?;
+        pure_circuits::assert_valid_verification_method_ref(presentation_proof.signerVerificationMethodRef.clone())?;
         compact_assert!(
-            (binding.holderVerificationMethodRef.didContractAddress
-                == presentation_proof.signerVerificationMethodRef.didContractAddress),
+            (binding.holderVerificationMethodRef.controllerAddress
+                == presentation_proof.signerVerificationMethodRef.controllerAddress),
             "Presentation proof signer must match holder binding"
         );
         compact_assert!(
@@ -4247,531 +4392,6 @@ pub mod pure_circuits {
             "Presentation proof signer method reference must match holder binding"
         );
         Ok(())
-    }
-
-    pub fn assert_valid_jubjub_holder_binding(binding: JubjubHolderBinding) -> Result<(), CompactError> {
-        compact_assert!(
-            ((midnight_compact_runtime::jubjub_point_x(binding.holderPublicKey.clone()) != Fr::from(0u64))
-                || (midnight_compact_runtime::jubjub_point_y(binding.holderPublicKey.clone()) != Fr::from(0u64))),
-            "Jubjub holder binding public key must be set"
-        );
-        Ok(())
-    }
-
-    pub fn assert_matching_jubjub_holder_bindings(
-        credential_binding: JubjubHolderBinding,
-        presentation_binding: JubjubHolderBinding,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            ((midnight_compact_runtime::jubjub_point_x(presentation_binding.holderPublicKey.clone())
-                == midnight_compact_runtime::jubjub_point_x(credential_binding.holderPublicKey.clone()))
-                && (midnight_compact_runtime::jubjub_point_y(presentation_binding.holderPublicKey.clone())
-                    == midnight_compact_runtime::jubjub_point_y(credential_binding.holderPublicKey.clone()))),
-            "Presentation Jubjub holder key does not match the credential holder binding"
-        );
-        Ok(())
-    }
-
-    pub fn assert_proof_matches_jubjub_holder_binding(
-        binding: JubjubHolderBinding,
-        presentation_proof: Proof,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            ((midnight_compact_runtime::jubjub_point_x(binding.holderPublicKey.clone())
-                == midnight_compact_runtime::jubjub_point_x(presentation_proof.publicKey.clone()))
-                && (midnight_compact_runtime::jubjub_point_y(binding.holderPublicKey.clone())
-                    == midnight_compact_runtime::jubjub_point_y(presentation_proof.publicKey.clone()))),
-            "Presentation proof public key must match the Jubjub holder binding"
-        );
-        Ok(())
-    }
-
-    pub fn assert_valid_offchain_midnight_holder_binding(
-        binding: OffchainMidnightHolderBinding,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (binding.holderDidStateHash
-                != [
-                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                ]),
-            "Offchain Midnight holder state hash must be set"
-        );
-        compact_assert!(
-            (binding.holderMethodId
-                != [
-                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                ]),
-            "Offchain Midnight holder method id must be set"
-        );
-        let jubjub_binding = JubjubHolderBinding {
-            holderPublicKey: binding.holderPublicKey,
-        };
-        Ok(pure_circuits::assert_valid_jubjub_holder_binding(
-            jubjub_binding.clone(),
-        )?)
-    }
-
-    pub fn assert_matching_offchain_midnight_holder_bindings(
-        credential_binding: OffchainMidnightHolderBinding,
-        presentation_binding: OffchainMidnightHolderBinding,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (presentation_binding.holderDidStateHash == credential_binding.holderDidStateHash),
-            "Offchain Midnight holder state hash does not match the credential holder binding"
-        );
-        compact_assert!(
-            (presentation_binding.holderMethodId == credential_binding.holderMethodId),
-            "Offchain Midnight holder method id does not match the credential holder binding"
-        );
-        let credential_jubjub_binding = JubjubHolderBinding {
-            holderPublicKey: credential_binding.holderPublicKey,
-        };
-        let presentation_jubjub_binding = JubjubHolderBinding {
-            holderPublicKey: presentation_binding.holderPublicKey,
-        };
-        Ok(pure_circuits::assert_matching_jubjub_holder_bindings(
-            credential_jubjub_binding.clone(),
-            presentation_jubjub_binding.clone(),
-        )?)
-    }
-
-    pub fn assert_proof_matches_offchain_midnight_holder_binding(
-        binding: OffchainMidnightHolderBinding,
-        presentation_proof: Proof,
-    ) -> Result<(), CompactError> {
-        let jubjub_binding = JubjubHolderBinding {
-            holderPublicKey: binding.holderPublicKey,
-        };
-        Ok(pure_circuits::assert_proof_matches_jubjub_holder_binding(
-            jubjub_binding.clone(),
-            presentation_proof.clone(),
-        )?)
-    }
-
-    pub fn no_secret_holder_challenge_response() -> Result<[u8; 32], CompactError> {
-        Ok([
-            109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 110, 111, 45, 104, 111, 108, 100, 101, 114, 45,
-            114, 101, 115, 112, 111, 110, 115, 101, 0, 0,
-        ])
-    }
-
-    pub fn secret_holder_binding_commitment(
-        holder_secret: [u8; 32],
-        opening: [u8; 32],
-    ) -> Result<[u8; 32], CompactError> {
-        Ok(midnight_compact_runtime::persistent_commit(
-            &holder_secret,
-            midnight_compact_runtime::base_crypto::hash::HashOutput(opening),
-        )
-        .0)
-    }
-
-    pub fn secret_holder_binding_challenge_response(
-        holder_secret: [u8; 32],
-        verifier_challenge_hash: [u8; 32],
-    ) -> Result<[u8; 32], CompactError> {
-        Ok(midnight_compact_runtime::std_lib::persistent_hash_aligned(&[
-            midnight_compact_runtime::AlignedValue::from([
-                109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 104, 111, 108, 100, 101, 114, 45, 99, 104,
-                97, 108, 108, 0, 0, 0, 0, 0, 0, 0, 0,
-            ]),
-            midnight_compact_runtime::AlignedValue::from(holder_secret),
-            midnight_compact_runtime::AlignedValue::from(verifier_challenge_hash),
-        ]))
-    }
-
-    pub fn verifier_scoped_pseudonym(
-        holder_secret: [u8; 32],
-        verifier_domain_hash: [u8; 32],
-    ) -> Result<[u8; 32], CompactError> {
-        Ok(midnight_compact_runtime::std_lib::persistent_hash_aligned(&[
-            midnight_compact_runtime::AlignedValue::from([
-                109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 104, 111, 108, 100, 101, 114, 45, 112, 115,
-                101, 117, 100, 111, 110, 121, 109, 0, 0, 0, 0,
-            ]),
-            midnight_compact_runtime::AlignedValue::from(holder_secret),
-            midnight_compact_runtime::AlignedValue::from(verifier_domain_hash),
-        ]))
-    }
-
-    pub fn assert_verifier_scoped_pseudonym(
-        pseudonym: [u8; 32],
-        holder_secret: [u8; 32],
-        verifier_domain_hash: [u8; 32],
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (pseudonym == pure_circuits::verifier_scoped_pseudonym(holder_secret, verifier_domain_hash)?),
-            "Verifier-scoped pseudonym does not match the holder secret and verifier domain"
-        );
-        Ok(())
-    }
-
-    pub fn blinded_secret_holder_commitment(
-        holder_secret_commitment: [u8; 32],
-        issuer_nonce: [u8; 32],
-        blinding_factor: [u8; 32],
-    ) -> Result<[u8; 32], CompactError> {
-        Ok(midnight_compact_runtime::std_lib::persistent_hash_aligned(&[
-            midnight_compact_runtime::AlignedValue::from([
-                109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 98, 108, 105, 110, 100, 45, 104, 111, 108,
-                100, 101, 114, 0, 0, 0, 0, 0, 0, 0, 0,
-            ]),
-            midnight_compact_runtime::AlignedValue::from(holder_secret_commitment),
-            midnight_compact_runtime::AlignedValue::from(issuer_nonce),
-            midnight_compact_runtime::AlignedValue::from(blinding_factor),
-        ]))
-    }
-
-    pub fn assert_valid_secret_holder_credential_binding(binding: SecretHolderBinding) -> Result<(), CompactError> {
-        compact_assert!(
-            (binding.requestChallengeResponse == pure_circuits::no_secret_holder_challenge_response()?),
-            "Credential secret holder binding must not embed a request challenge response"
-        );
-        Ok(())
-    }
-
-    pub fn assert_valid_secret_holder_presentation_binding(binding: SecretHolderBinding) -> Result<(), CompactError> {
-        compact_assert!(
-            (binding.requestChallengeResponse != pure_circuits::no_secret_holder_challenge_response()?),
-            "Presentation secret holder binding must include a request challenge response"
-        );
-        Ok(())
-    }
-
-    pub fn assert_matching_secret_holder_bindings(
-        credential_binding: SecretHolderBinding,
-        presentation_binding: SecretHolderBinding,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (credential_binding.holderSecretCommitment == presentation_binding.holderSecretCommitment),
-            "Presentation holder secret commitment does not match the credential holder binding"
-        );
-        Ok(())
-    }
-
-    pub fn assert_valid_blinded_secret_holder_credential_binding(
-        binding: BlindedSecretHolderBinding,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (binding.requestChallengeResponse == pure_circuits::no_secret_holder_challenge_response()?),
-            "Credential blinded holder binding must not embed a request challenge response"
-        );
-        Ok(())
-    }
-
-    pub fn assert_valid_blinded_secret_holder_presentation_binding(
-        binding: BlindedSecretHolderBinding,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (binding.requestChallengeResponse != pure_circuits::no_secret_holder_challenge_response()?),
-            "Presentation blinded holder binding must include a request challenge response"
-        );
-        Ok(())
-    }
-
-    pub fn assert_matching_blinded_secret_holder_bindings(
-        credential_binding: BlindedSecretHolderBinding,
-        presentation_binding: BlindedSecretHolderBinding,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (credential_binding.blindedHolderSecretCommitment == presentation_binding.blindedHolderSecretCommitment),
-            "Presentation blinded holder commitment does not match the credential holder binding"
-        );
-        compact_assert!(
-            (credential_binding.issuerNonce == presentation_binding.issuerNonce),
-            "Presentation issuer nonce does not match the credential holder binding"
-        );
-        Ok(())
-    }
-
-    pub fn assert_secret_holder_binding_witness(
-        binding: SecretHolderBinding,
-        verifier_challenge_hash: [u8; 32],
-        holder_secret: [u8; 32],
-        opening: [u8; 32],
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (pure_circuits::secret_holder_binding_commitment(holder_secret, opening)?
-                == binding.holderSecretCommitment),
-            "Holder secret witness does not match the holder-binding commitment"
-        );
-        compact_assert!(
-            (pure_circuits::secret_holder_binding_challenge_response(holder_secret, verifier_challenge_hash)?
-                == binding.requestChallengeResponse),
-            "Holder secret challenge response does not match the verifier challenge"
-        );
-        Ok(())
-    }
-
-    pub fn assert_blinded_secret_holder_binding_witness(
-        binding: BlindedSecretHolderBinding,
-        verifier_challenge_hash: [u8; 32],
-        holder_secret: [u8; 32],
-        opening: [u8; 32],
-        blinding_factor: [u8; 32],
-    ) -> Result<(), CompactError> {
-        let holder_commitment = pure_circuits::secret_holder_binding_commitment(holder_secret, opening)?;
-        compact_assert!(
-            (pure_circuits::blinded_secret_holder_commitment(
-                holder_commitment.clone(),
-                binding.issuerNonce.clone(),
-                blinding_factor
-            )? == binding.blindedHolderSecretCommitment),
-            "Blinded holder commitment does not match the hidden holder secret witness"
-        );
-        compact_assert!(
-            (pure_circuits::secret_holder_binding_challenge_response(holder_secret, verifier_challenge_hash)?
-                == binding.requestChallengeResponse),
-            "Blinded holder challenge response does not match the verifier challenge"
-        );
-        Ok(())
-    }
-
-    pub fn protocol_features_as_schema_capabilities(
-        features: CredentialProtocolFeatures,
-    ) -> Result<SchemaCapabilities, CompactError> {
-        Ok(SchemaCapabilities {
-            supportsSelectiveDisclosure: features.supportsSelectiveDisclosure,
-            supportsPredicateProofs: features.supportsPredicateProofs,
-            supportsVerifierScopedPseudonym: features.supportsVerifierScopedPseudonym,
-            supportsSameHolderProof: features.supportsSameHolderProof,
-        })
-    }
-
-    pub fn assert_protocol_features_match_schema_capabilities(
-        features: CredentialProtocolFeatures,
-        capabilities: SchemaCapabilities,
-    ) -> Result<(), CompactError> {
-        Ok(pure_circuits::assert_matching_schema_capabilities(
-            pure_circuits::protocol_features_as_schema_capabilities(features.clone())?,
-            capabilities.clone(),
-        )?)
-    }
-
-    pub fn no_protocol_response_reference() -> Result<[u8; 32], CompactError> {
-        Ok([
-            109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 112, 114, 111, 116, 111, 99, 111, 108, 58, 110,
-            111, 110, 101, 0, 0, 0, 0, 0, 0, 0,
-        ])
-    }
-
-    pub fn assert_valid_verification_method_ref(
-        verification_method_ref: VerificationMethodRef,
-    ) -> Result<(), CompactError> {
-        compact_assert!(
-            (verification_method_ref.methodId
-                != [
-                    0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                ]),
-            "Verification method reference must be set"
-        );
-        Ok(())
-    }
-
-    pub fn assert_matching_schema_refs(expected: SchemaRef, actual: SchemaRef) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_schema_ref(expected.clone())?;
-        pure_circuits::assert_valid_schema_ref(actual.clone())?;
-        compact_assert!(
-            ((((expected.packageId == actual.packageId) && (expected.schemaId == actual.schemaId))
-                && (expected.majorVersion == actual.majorVersion))
-                && (expected.minorVersion == actual.minorVersion)),
-            "Schema reference mismatch"
-        );
-        Ok(())
-    }
-
-    pub fn assert_valid_protocol_message_envelope(envelope: ProtocolMessageEnvelope) -> Result<(), CompactError> {
-        let no_response = pure_circuits::no_protocol_response_reference()?;
-        compact_assert!((envelope.version == 1), "Protocol message version mismatch");
-        compact_assert!((envelope.messageId != no_response), "Protocol message id must be set");
-        compact_assert!((envelope.threadId != no_response), "Protocol thread id must be set");
-        if envelope.initialMessage {
-            compact_assert!(
-                (envelope.respondsToMessageId == no_response),
-                "Initial protocol message must not reference a previous message"
-            );
-        } else {
-            compact_assert!(
-                (envelope.respondsToMessageId != no_response),
-                "Protocol response message must reference a previous message"
-            );
-        }
-        Ok(if envelope.hasExpiresAt {
-            let t = envelope.expiresAt;
-            compact_assert!(
-                (t >= envelope.createdAt),
-                "Protocol message expiration must not precede creation"
-            );
-        })
-    }
-
-    pub fn assert_protocol_response_envelope(
-        request_envelope: ProtocolMessageEnvelope,
-        response_envelope: ProtocolMessageEnvelope,
-    ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_protocol_message_envelope(request_envelope.clone())?;
-        pure_circuits::assert_valid_protocol_message_envelope(response_envelope.clone())?;
-        compact_assert!(
-            (!(response_envelope.initialMessage)),
-            "Protocol response must not be initial"
-        );
-        compact_assert!(
-            (response_envelope.threadId == request_envelope.threadId),
-            "Protocol response thread id does not match the request thread id"
-        );
-        compact_assert!(
-            (response_envelope.respondsToMessageId == request_envelope.messageId),
-            "Protocol response does not reference the request message id"
-        );
-        let t = response_envelope.createdAt;
-        compact_assert!(
-            (t >= request_envelope.createdAt),
-            "Protocol response creation time must not precede the request"
-        );
-        Ok(())
-    }
-
-    pub(crate) fn assert_valid_offer_message(offer: OfferMessage) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_protocol_message_envelope(offer.envelope.clone())?;
-        compact_assert!(
-            offer.envelope.initialMessage,
-            "Issuance offer must be the initial message"
-        );
-        Ok(pure_circuits::assert_valid_verification_method_ref(
-            offer.issuerVerificationMethodRef.clone(),
-        )?)
-    }
-
-    pub(crate) fn assert_valid_request_message_0(request: RequestMessage_1) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_protocol_message_envelope(request.envelope.clone())?;
-        compact_assert!(
-            (!(request.envelope.initialMessage)),
-            "Issuance request must be a response message"
-        );
-        Ok(pure_circuits::assert_valid_verification_method_ref(
-            request.issuerVerificationMethodRef.clone(),
-        )?)
-    }
-
-    pub(crate) fn assert_offer_request_alignment(
-        offer: OfferMessage,
-        request: RequestMessage_1,
-    ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_offer_message(offer.clone())?;
-        pure_circuits::assert_valid_request_message_0(request.clone())?;
-        pure_circuits::assert_protocol_response_envelope(offer.envelope.clone(), request.envelope.clone())?;
-        pure_circuits::assert_matching_schema_refs(offer.schema.clone(), request.schema.clone())?;
-        compact_assert!(
-            ((offer.issuerVerificationMethodRef.didContractAddress
-                == request.issuerVerificationMethodRef.didContractAddress)
-                && (offer.issuerVerificationMethodRef.methodId == request.issuerVerificationMethodRef.methodId)),
-            "Issuance request issuer verification method does not match the offer"
-        );
-        compact_assert!(
-            (offer.holderBindingProfile == request.holderBindingProfile),
-            "Issuance request holder binding profile does not match the offer"
-        );
-        Ok(())
-    }
-
-    pub(crate) fn assert_valid_result_message_1(result: ResultMessage_1) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_protocol_message_envelope(result.envelope.clone())?;
-        compact_assert!(
-            (!(result.envelope.initialMessage)),
-            "Issuance result must be a response message"
-        );
-        Ok(pure_circuits::assert_valid_verification_method_ref(
-            result.issuerVerificationMethodRef.clone(),
-        )?)
-    }
-
-    pub(crate) fn assert_request_result_alignment(
-        request: RequestMessage_1,
-        result: ResultMessage_1,
-    ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_request_message_0(request.clone())?;
-        pure_circuits::assert_valid_result_message_1(result.clone())?;
-        pure_circuits::assert_protocol_response_envelope(request.envelope.clone(), result.envelope.clone())?;
-        pure_circuits::assert_matching_schema_refs(request.schema.clone(), result.schema.clone())?;
-        compact_assert!(
-            ((request.issuerVerificationMethodRef.didContractAddress
-                == result.issuerVerificationMethodRef.didContractAddress)
-                && (request.issuerVerificationMethodRef.methodId == result.issuerVerificationMethodRef.methodId)),
-            "Issuance result issuer verification method does not match the request"
-        );
-        compact_assert!(
-            (request.holderBindingProfile == result.holderBindingProfile),
-            "Issuance result holder binding profile does not match the request"
-        );
-        Ok(())
-    }
-
-    pub(crate) fn assert_valid_request_message_2(request: RequestMessage) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_protocol_message_envelope(request.envelope.clone())?;
-        compact_assert!(
-            request.envelope.initialMessage,
-            "Presentation request must be the initial message"
-        );
-        Ok(pure_circuits::assert_valid_verification_method_ref(
-            request.issuerVerificationMethodRef.clone(),
-        )?)
-    }
-
-    pub(crate) fn assert_valid_submission_message(submission: SubmissionMessage) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_protocol_message_envelope(submission.envelope.clone())?;
-        compact_assert!(
-            (!(submission.envelope.initialMessage)),
-            "Presentation submission must be a response message"
-        );
-        Ok(pure_circuits::assert_valid_verification_method_ref(
-            submission.issuerVerificationMethodRef.clone(),
-        )?)
-    }
-
-    pub(crate) fn assert_request_submission_alignment(
-        request: RequestMessage,
-        submission: SubmissionMessage,
-    ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_request_message_2(request.clone())?;
-        pure_circuits::assert_valid_submission_message(submission.clone())?;
-        pure_circuits::assert_protocol_response_envelope(request.envelope.clone(), submission.envelope.clone())?;
-        pure_circuits::assert_matching_schema_refs(request.schema.clone(), submission.schema.clone())?;
-        compact_assert!(
-            ((request.issuerVerificationMethodRef.didContractAddress
-                == submission.issuerVerificationMethodRef.didContractAddress)
-                && (request.issuerVerificationMethodRef.methodId == submission.issuerVerificationMethodRef.methodId)),
-            "Presentation submission issuer verification method does not match the request"
-        );
-        compact_assert!(
-            (request.holderBindingProfile == submission.holderBindingProfile),
-            "Presentation submission holder binding profile does not match the request"
-        );
-        compact_assert!(
-            (request.verifierChallengeHash == submission.challengeHash),
-            "Presentation submission challenge does not match the request challenge"
-        );
-        Ok(())
-    }
-
-    pub(crate) fn assert_valid_result_message_3(result: ResultMessage) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_protocol_message_envelope(result.envelope.clone())?;
-        compact_assert!(
-            (!(result.envelope.initialMessage)),
-            "Presentation result must be a response message"
-        );
-        Ok(())
-    }
-
-    pub(crate) fn assert_submission_result_alignment(
-        submission: SubmissionMessage,
-        result: ResultMessage,
-    ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_submission_message(submission.clone())?;
-        pure_circuits::assert_valid_result_message_3(result.clone())?;
-        Ok(pure_circuits::assert_protocol_response_envelope(
-            submission.envelope.clone(),
-            result.envelope.clone(),
-        )?)
     }
 
     pub fn assert_valid_status_registry_ref(registry_ref: StatusRegistryRef) -> Result<(), CompactError> {
@@ -4787,15 +4407,7 @@ pub mod pure_circuits {
         )?)
     }
 
-    pub fn assert_valid_no_status_binding(binding: NoStatusBinding) -> Result<(), CompactError> {
-        Ok(())
-    }
-
     pub fn assert_valid_registry_bound_status_binding(binding: RegistryBoundStatusBinding) -> Result<(), CompactError> {
-        compact_assert!(
-            (binding.statusType == StatusType::revocationRegistry),
-            "Registry-bound status type must be revocationRegistry"
-        );
         pure_circuits::assert_valid_status_registry_ref(binding.registryRef.clone())?;
         compact_assert!(
             (binding.statusHandleCommitment
@@ -4956,6 +4568,219 @@ pub mod pure_circuits {
         Ok(())
     }
 
+    pub fn no_protocol_response_reference() -> Result<[u8; 32], CompactError> {
+        Ok([
+            109u8, 105, 100, 110, 105, 103, 104, 116, 58, 118, 99, 58, 112, 114, 111, 116, 111, 99, 111, 108, 58, 110,
+            111, 110, 101, 0, 0, 0, 0, 0, 0, 0,
+        ])
+    }
+
+    pub fn assert_valid_protocol_message_envelope(envelope: ProtocolMessageEnvelope) -> Result<(), CompactError> {
+        let no_response = pure_circuits::no_protocol_response_reference()?;
+        compact_assert!((envelope.version == 1), "Protocol message version mismatch");
+        compact_assert!((envelope.messageId != no_response), "Protocol message id must be set");
+        compact_assert!((envelope.threadId != no_response), "Protocol thread id must be set");
+        if envelope.initialMessage {
+            compact_assert!(
+                (envelope.respondsToMessageId == no_response),
+                "Initial protocol message must not reference a previous message"
+            );
+        } else {
+            compact_assert!(
+                (envelope.respondsToMessageId != no_response),
+                "Protocol response message must reference a previous message"
+            );
+        }
+        Ok(if envelope.hasExpiresAt {
+            let t = envelope.expiresAt;
+            compact_assert!(
+                (t >= envelope.createdAt),
+                "Protocol message expiration must not precede creation"
+            );
+        })
+    }
+
+    pub fn assert_protocol_response_envelope(
+        request_envelope: ProtocolMessageEnvelope,
+        response_envelope: ProtocolMessageEnvelope,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_protocol_message_envelope(request_envelope.clone())?;
+        pure_circuits::assert_valid_protocol_message_envelope(response_envelope.clone())?;
+        compact_assert!(
+            (!(response_envelope.initialMessage)),
+            "Protocol response must not be initial"
+        );
+        compact_assert!(
+            (response_envelope.threadId == request_envelope.threadId),
+            "Protocol response thread id does not match the request thread id"
+        );
+        compact_assert!(
+            (response_envelope.respondsToMessageId == request_envelope.messageId),
+            "Protocol response does not reference the request message id"
+        );
+        let t = response_envelope.createdAt;
+        compact_assert!(
+            (t >= request_envelope.createdAt),
+            "Protocol response creation time must not precede the request"
+        );
+        Ok(())
+    }
+
+    pub fn digital_passport_issuance_assert_valid_offer_message(
+        offer: DigitalPassportIssuance_OfferMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_protocol_message_envelope(offer.envelope.clone())?;
+        compact_assert!(
+            offer.envelope.initialMessage,
+            "Issuance offer must be the initial message"
+        );
+        Ok(pure_circuits::assert_valid_verification_method_ref(
+            offer.issuerVerificationMethodRef.clone(),
+        )?)
+    }
+
+    pub fn digital_passport_issuance_assert_valid_request_message(
+        request: DigitalPassportIssuance_RequestMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_protocol_message_envelope(request.envelope.clone())?;
+        compact_assert!(
+            (!(request.envelope.initialMessage)),
+            "Issuance request must be a response message"
+        );
+        Ok(pure_circuits::assert_valid_verification_method_ref(
+            request.issuerVerificationMethodRef.clone(),
+        )?)
+    }
+
+    pub fn digital_passport_issuance_assert_offer_request_alignment(
+        offer: DigitalPassportIssuance_OfferMessage,
+        request: DigitalPassportIssuance_RequestMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::digital_passport_issuance_assert_valid_offer_message(offer.clone())?;
+        pure_circuits::digital_passport_issuance_assert_valid_request_message(request.clone())?;
+        pure_circuits::assert_protocol_response_envelope(offer.envelope.clone(), request.envelope.clone())?;
+        pure_circuits::assert_matching_schema_refs(offer.schema.clone(), request.schema.clone())?;
+        compact_assert!(
+            ((offer.issuerVerificationMethodRef.controllerAddress
+                == request.issuerVerificationMethodRef.controllerAddress)
+                && (offer.issuerVerificationMethodRef.methodId == request.issuerVerificationMethodRef.methodId)),
+            "Issuance request issuer verification method does not match the offer"
+        );
+        compact_assert!(
+            (offer.holderBindingProfile == request.holderBindingProfile),
+            "Issuance request holder binding profile does not match the offer"
+        );
+        Ok(())
+    }
+
+    pub fn digital_passport_issuance_assert_valid_result_message(
+        result: DigitalPassportIssuance_ResultMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_protocol_message_envelope(result.envelope.clone())?;
+        compact_assert!(
+            (!(result.envelope.initialMessage)),
+            "Issuance result must be a response message"
+        );
+        Ok(pure_circuits::assert_valid_verification_method_ref(
+            result.issuerVerificationMethodRef.clone(),
+        )?)
+    }
+
+    pub fn digital_passport_issuance_assert_request_result_alignment(
+        request: DigitalPassportIssuance_RequestMessage,
+        result: DigitalPassportIssuance_ResultMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::digital_passport_issuance_assert_valid_request_message(request.clone())?;
+        pure_circuits::digital_passport_issuance_assert_valid_result_message(result.clone())?;
+        pure_circuits::assert_protocol_response_envelope(request.envelope.clone(), result.envelope.clone())?;
+        pure_circuits::assert_matching_schema_refs(request.schema.clone(), result.schema.clone())?;
+        compact_assert!(
+            ((request.issuerVerificationMethodRef.controllerAddress
+                == result.issuerVerificationMethodRef.controllerAddress)
+                && (request.issuerVerificationMethodRef.methodId == result.issuerVerificationMethodRef.methodId)),
+            "Issuance result issuer verification method does not match the request"
+        );
+        compact_assert!(
+            (request.holderBindingProfile == result.holderBindingProfile),
+            "Issuance result holder binding profile does not match the request"
+        );
+        Ok(())
+    }
+
+    pub fn digital_passport_verification_assert_valid_request_message(
+        request: DigitalPassportVerification_RequestMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_protocol_message_envelope(request.envelope.clone())?;
+        compact_assert!(
+            request.envelope.initialMessage,
+            "Presentation request must be the initial message"
+        );
+        Ok(pure_circuits::assert_valid_verification_method_ref(
+            request.issuerVerificationMethodRef.clone(),
+        )?)
+    }
+
+    pub fn digital_passport_verification_assert_valid_submission_message(
+        submission: DigitalPassportVerification_SubmissionMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_protocol_message_envelope(submission.envelope.clone())?;
+        compact_assert!(
+            (!(submission.envelope.initialMessage)),
+            "Presentation submission must be a response message"
+        );
+        Ok(pure_circuits::assert_valid_verification_method_ref(
+            submission.issuerVerificationMethodRef.clone(),
+        )?)
+    }
+
+    pub fn digital_passport_verification_assert_request_submission_alignment(
+        request: DigitalPassportVerification_RequestMessage,
+        submission: DigitalPassportVerification_SubmissionMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::digital_passport_verification_assert_valid_request_message(request.clone())?;
+        pure_circuits::digital_passport_verification_assert_valid_submission_message(submission.clone())?;
+        pure_circuits::assert_protocol_response_envelope(request.envelope.clone(), submission.envelope.clone())?;
+        pure_circuits::assert_matching_schema_refs(request.schema.clone(), submission.schema.clone())?;
+        compact_assert!(
+            ((request.issuerVerificationMethodRef.controllerAddress
+                == submission.issuerVerificationMethodRef.controllerAddress)
+                && (request.issuerVerificationMethodRef.methodId == submission.issuerVerificationMethodRef.methodId)),
+            "Presentation submission issuer verification method does not match the request"
+        );
+        compact_assert!(
+            (request.holderBindingProfile == submission.holderBindingProfile),
+            "Presentation submission holder binding profile does not match the request"
+        );
+        compact_assert!(
+            (request.verifierChallengeHash == submission.challengeHash),
+            "Presentation submission challenge does not match the request challenge"
+        );
+        Ok(())
+    }
+
+    pub fn digital_passport_verification_assert_valid_result_message(
+        result: DigitalPassportVerification_ResultMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::assert_valid_protocol_message_envelope(result.envelope.clone())?;
+        compact_assert!(
+            (!(result.envelope.initialMessage)),
+            "Presentation result must be a response message"
+        );
+        Ok(())
+    }
+
+    pub fn digital_passport_verification_assert_submission_result_alignment(
+        submission: DigitalPassportVerification_SubmissionMessage,
+        result: DigitalPassportVerification_ResultMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::digital_passport_verification_assert_valid_submission_message(submission.clone())?;
+        pure_circuits::digital_passport_verification_assert_valid_result_message(result.clone())?;
+        Ok(pure_circuits::assert_protocol_response_envelope(
+            submission.envelope.clone(),
+            result.envelope.clone(),
+        )?)
+    }
+
     pub fn digital_passport_credential_body_root(credential: Credential) -> Result<[u8; 32], CompactError> {
         Ok(pure_circuits::credential_body_root(credential.clone())?)
     }
@@ -5020,7 +4845,7 @@ pub mod pure_circuits {
     }
 
     pub fn digital_passport_presentation_request_from_protocol(
-        request: RequestMessage,
+        request: DigitalPassportVerification_RequestMessage,
     ) -> Result<DigitalPassportPresentationRequest, CompactError> {
         Ok(DigitalPassportPresentationRequest {
             version: 1u16,
@@ -5042,7 +4867,6 @@ pub mod pure_circuits {
             credential.clone(),
             pure_circuits::digital_passport_claim_root(credential.claimCommitments.clone())?,
         )?;
-        pure_circuits::assert_valid_no_status_binding(credential.statusBinding.clone())?;
         pure_circuits::assert_valid_explicit_holder_binding(credential.holderBinding.clone())?;
         Ok(pure_circuits::assert_valid_credential_proof(
             credential.clone(),
@@ -5132,8 +4956,8 @@ pub mod pure_circuits {
         pure_circuits::assert_matching_schema_refs(request.schema.clone(), credential.schema.clone())?;
         pure_circuits::assert_matching_schema_refs(request.schema.clone(), presentation.schema.clone())?;
         compact_assert!(
-            (request.issuerVerificationMethodRef.didContractAddress
-                == credential.issuerVerificationMethodRef.didContractAddress),
+            (request.issuerVerificationMethodRef.controllerAddress
+                == credential.issuerVerificationMethodRef.controllerAddress),
             "Presentation request issuer contract does not match the credential issuer"
         );
         compact_assert!(
@@ -5404,8 +5228,10 @@ pub mod pure_circuits {
         Ok(())
     }
 
-    pub fn assert_valid_digital_passport_issuance_offer(offer: OfferMessage) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_offer_message(offer.clone())?;
+    pub fn assert_valid_digital_passport_issuance_offer(
+        offer: DigitalPassportIssuance_OfferMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::digital_passport_issuance_assert_valid_offer_message(offer.clone())?;
         pure_circuits::assert_valid_digital_passport_schema_ref(offer.schema.clone())?;
         compact_assert!(
             (offer.holderBindingProfile == HolderBindingProfile::explicitDid),
@@ -5425,8 +5251,10 @@ pub mod pure_circuits {
         })
     }
 
-    pub fn assert_valid_digital_passport_issuance_request(request: RequestMessage_1) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_request_message_0(request.clone())?;
+    pub fn assert_valid_digital_passport_issuance_request(
+        request: DigitalPassportIssuance_RequestMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::digital_passport_issuance_assert_valid_request_message(request.clone())?;
         pure_circuits::assert_valid_digital_passport_schema_ref(request.schema.clone())?;
         compact_assert!(
             (request.holderBindingProfile == HolderBindingProfile::explicitDid),
@@ -5452,12 +5280,12 @@ pub mod pure_circuits {
     }
 
     pub fn assert_digital_passport_issuance_request_matches_offer(
-        offer: OfferMessage,
-        request: RequestMessage_1,
+        offer: DigitalPassportIssuance_OfferMessage,
+        request: DigitalPassportIssuance_RequestMessage,
     ) -> Result<(), CompactError> {
         pure_circuits::assert_valid_digital_passport_issuance_offer(offer.clone())?;
         pure_circuits::assert_valid_digital_passport_issuance_request(request.clone())?;
-        pure_circuits::assert_offer_request_alignment(offer.clone(), request.clone())?;
+        pure_circuits::digital_passport_issuance_assert_offer_request_alignment(offer.clone(), request.clone())?;
         Ok(if request.body.requestExpiration {
             compact_assert!(
                 offer.body.supportsExpiration,
@@ -5466,8 +5294,10 @@ pub mod pure_circuits {
         })
     }
 
-    pub fn assert_valid_digital_passport_issuance_result(result: ResultMessage_1) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_result_message_1(result.clone())?;
+    pub fn assert_valid_digital_passport_issuance_result(
+        result: DigitalPassportIssuance_ResultMessage,
+    ) -> Result<(), CompactError> {
+        pure_circuits::digital_passport_issuance_assert_valid_result_message(result.clone())?;
         pure_circuits::assert_valid_digital_passport_schema_ref(result.schema.clone())?;
         compact_assert!(
             (result.holderBindingProfile == HolderBindingProfile::explicitDid),
@@ -5489,12 +5319,12 @@ pub mod pure_circuits {
     }
 
     pub fn assert_digital_passport_issuance_result_matches_request(
-        request: RequestMessage_1,
-        result: ResultMessage_1,
+        request: DigitalPassportIssuance_RequestMessage,
+        result: DigitalPassportIssuance_ResultMessage,
     ) -> Result<(), CompactError> {
         pure_circuits::assert_valid_digital_passport_issuance_request(request.clone())?;
         pure_circuits::assert_valid_digital_passport_issuance_result(result.clone())?;
-        pure_circuits::assert_request_result_alignment(request.clone(), result.clone())?;
+        pure_circuits::digital_passport_issuance_assert_request_result_alignment(request.clone(), result.clone())?;
         compact_assert!(
             (request.body.holderChallengeHash == result.body.issuanceChallengeHash),
             "Digital-passport issuance result challenge must match the request challenge"
@@ -5514,9 +5344,9 @@ pub mod pure_circuits {
     }
 
     pub fn assert_valid_digital_passport_verification_request_message(
-        request: RequestMessage,
+        request: DigitalPassportVerification_RequestMessage,
     ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_request_message_2(request.clone())?;
+        pure_circuits::digital_passport_verification_assert_valid_request_message(request.clone())?;
         pure_circuits::assert_valid_digital_passport_schema_ref(request.schema.clone())?;
         compact_assert!(
             (request.holderBindingProfile == HolderBindingProfile::explicitDid),
@@ -5528,9 +5358,9 @@ pub mod pure_circuits {
     }
 
     pub fn assert_valid_digital_passport_verification_submission_message(
-        submission: SubmissionMessage,
+        submission: DigitalPassportVerification_SubmissionMessage,
     ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_submission_message(submission.clone())?;
+        pure_circuits::digital_passport_verification_assert_valid_submission_message(submission.clone())?;
         pure_circuits::assert_valid_digital_passport_schema_ref(submission.schema.clone())?;
         compact_assert!(
             (submission.holderBindingProfile == HolderBindingProfile::explicitDid),
@@ -5550,12 +5380,15 @@ pub mod pure_circuits {
     }
 
     pub fn assert_digital_passport_verification_submission_matches_request(
-        request: RequestMessage,
-        submission: SubmissionMessage,
+        request: DigitalPassportVerification_RequestMessage,
+        submission: DigitalPassportVerification_SubmissionMessage,
     ) -> Result<(), CompactError> {
         pure_circuits::assert_valid_digital_passport_verification_request_message(request.clone())?;
         pure_circuits::assert_valid_digital_passport_verification_submission_message(submission.clone())?;
-        pure_circuits::assert_request_submission_alignment(request.clone(), submission.clone())?;
+        pure_circuits::digital_passport_verification_assert_request_submission_alignment(
+            request.clone(),
+            submission.clone(),
+        )?;
         Ok(pure_circuits::assert_digital_passport_presentation_satisfies_request(
             submission.body.credential.clone(),
             pure_circuits::digital_passport_presentation_request_from_protocol(request.clone())?,
@@ -5565,9 +5398,9 @@ pub mod pure_circuits {
     }
 
     pub fn assert_valid_digital_passport_verification_result_message(
-        result: ResultMessage,
+        result: DigitalPassportVerification_ResultMessage,
     ) -> Result<(), CompactError> {
-        pure_circuits::assert_valid_result_message_3(result.clone())?;
+        pure_circuits::digital_passport_verification_assert_valid_result_message(result.clone())?;
         Ok(if result.approved {
             compact_assert!(
                 (result.body.credentialRoot != pure_circuits::no_protocol_response_reference()?),
@@ -5577,12 +5410,15 @@ pub mod pure_circuits {
     }
 
     pub fn assert_digital_passport_verification_result_matches_submission(
-        submission: SubmissionMessage,
-        result: ResultMessage,
+        submission: DigitalPassportVerification_SubmissionMessage,
+        result: DigitalPassportVerification_ResultMessage,
     ) -> Result<(), CompactError> {
         pure_circuits::assert_valid_digital_passport_verification_submission_message(submission.clone())?;
         pure_circuits::assert_valid_digital_passport_verification_result_message(result.clone())?;
-        pure_circuits::assert_submission_result_alignment(submission.clone(), result.clone())?;
+        pure_circuits::digital_passport_verification_assert_submission_result_alignment(
+            submission.clone(),
+            result.clone(),
+        )?;
         Ok(if result.approved {
             compact_assert!(
                 (result.body.credentialRoot

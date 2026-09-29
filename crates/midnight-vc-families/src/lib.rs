@@ -39,7 +39,7 @@
 //! Each family's generated module `include`s the core credentials primitive
 //! and therefore *redeclares* the core types (`Credential`, `Proof`, …).
 //! Do not mix types across family modules, or with
-//! [`midnight_vc_runtime`]'s core modules — they are distinct copies by
+//! [`midnight_vc_runtime`]'s core `credentials` module — they are distinct copies by
 //! construction, even where they carry the same names.
 //!
 //! [`midnight_vc_runtime`]: https://github.com/MediaNoxLabs/midnight-identity/tree/develop/crates/midnight-vc-runtime

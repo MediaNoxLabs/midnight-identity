@@ -42,55 +42,68 @@ codegen:
 codegen-check: codegen
     git diff --exit-code -- crates/midnight-did-runtime/src/contract crates/midnight-did-runtime/assets/keys
 
-# Re-generate the VC Rust bindings from the pinned VC contract sources.
+# Re-generate the VC Rust bindings from the pinned, released VC packages.
 #
-# The four core-contract modules land in midnight-vc-runtime from the frozen
-# monorepo pin. The Digital Passport family lands in midnight-vc-families from
-# its standalone v0.1.0-rc1 source. That family consumes the generic VC core
-# from the published npm package, so the recipe stages a pinned, checksummed
-# copy before invoking the compiler.
-vc_core_version := "0.1.0-rc3"
-vc_core_sha256 := "1066ac930221526fcf23608982285db659006a9be7f7b695e2bfe2820c856997"
+# Both inputs are sha256-pinned release tarballs, downloaded into target-gen/:
+#
+# - `@midnight-ntwrk/credential-compact` (npm) supplies the generic VC/VP core.
+#   Its `credentials.compact` lands in midnight-vc-runtime as `credentials`.
+# - `@midnight-ntwrk/midnight-vc-passport` supplies the Digital Passport family,
+#   which lands in midnight-vc-families as `digital_passport`. It is published
+#   on the GitHub Release for now; switch to npmjs once it is published there.
+#
+# The family `include`s the core from `../core-compact-staging/`, so the recipe
+# stages the same pinned core copy there before invoking the compiler.
+vc_core_version := "0.2.0"
+vc_core_sha256 := "095b6056912059e5b281b39d2d133a1048d42b5a6104da4367951c2773d70c4f"
+vc_passport_version := "0.1.0-rc2"
+vc_passport_sha256 := "83c96b756e3f4c3a71c6023ebfcb042164dfbecaff3bcc1f94161ff9dbfef6f2"
 
 codegen-vc:
     #!/usr/bin/env bash
     set -euo pipefail
-    git submodule update --init third_party/midnight-verifiable-credentials \
-        third_party/midnight-verifiable-credential-digital-passport
     mkdir -p target-gen crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract
-    vc=third_party/midnight-verifiable-credentials/packages
-    passport=third_party/midnight-verifiable-credential-digital-passport/packages/midnight-verifiable-credential-digital-passport
+
+    # fetch_package <tarball> <url> <sha256> <extract dir>: download once,
+    # verify the checksum on every run, then extract a fresh copy.
+    fetch_package() {
+        local tgz="$1" url="$2" sha="$3" dir="$4"
+        if [ ! -f "$tgz" ]; then
+            curl -sfL --output "$tgz" "$url"
+        fi
+        # `sha256sum -c` is shared by GNU coreutils and the Darwin-compatible
+        # implementation in our devshell; GNU-only `--strict` breaks macOS CI.
+        echo "$sha  $tgz" | sha256sum -c -
+        rm -rf "$dir"
+        mkdir -p "$dir"
+        tar -xzf "$tgz" -C "$dir"
+    }
 
     core_pkg="@midnight-ntwrk/credential-compact"
     core_ver="{{vc_core_version}}"
-    core_tgz="target-gen/${core_pkg##*/}-${core_ver}.tgz"
     core_dir="target-gen/${core_pkg##*/}-${core_ver}"
-    if [ ! -f "$core_tgz" ]; then
-        curl -sfL --output "$core_tgz" \
-            "https://registry.npmjs.org/${core_pkg}/-/${core_pkg##*/}-${core_ver}.tgz"
-    fi
-    # `sha256sum -c` is shared by GNU coreutils and the Darwin-compatible
-    # implementation in our devshell; GNU-only `--strict` breaks macOS CI.
-    echo "{{vc_core_sha256}}  $core_tgz" | sha256sum -c -
-    if [ ! -d "$core_dir/package/dist" ]; then
-        rm -rf "$core_dir"
-        mkdir -p "$core_dir"
-        tar -xzf "$core_tgz" -C "$core_dir"
-    fi
+    fetch_package "$core_dir.tgz" \
+        "https://registry.npmjs.org/${core_pkg}/-/${core_pkg##*/}-${core_ver}.tgz" \
+        "{{vc_core_sha256}}" "$core_dir"
+    core="$core_dir/package/dist"
+
+    passport_ver="{{vc_passport_version}}"
+    passport_dir="target-gen/midnight-vc-passport-${passport_ver}"
+    fetch_package "$passport_dir.tgz" \
+        "https://github.com/midnightntwrk/midnight-vc-passport/releases/download/v${passport_ver}/midnight-ntwrk-midnight-vc-passport-${passport_ver}.tgz" \
+        "{{vc_passport_sha256}}" "$passport_dir"
+    passport="$passport_dir/package"
+
     staging="$passport/core-compact-staging"
-    rm -rf "$staging"
     mkdir -p "$staging/credentials"
-    cp "$core_dir/package/dist/credentials.compact" "$staging/credentials.compact"
-    find "$core_dir/package/dist/credentials" -type f -name '*.compact' \
+    cp "$core/credentials.compact" "$staging/credentials.compact"
+    find "$core/credentials" -type f -name '*.compact' \
         -exec cp {} "$staging/credentials/" \;
 
     # "<module>:<crate>:<entry point>" — module name is the Rust file under
     # the selected crate's src/contract/ directory.
     contracts=(
-        "credentials:midnight-vc-runtime:$vc/core/primitives/credentials/src/credentials.compact"
-        "iso_registry:midnight-vc-runtime:$vc/core/primitives/iso-registry/src/iso-registry.compact"
-        "same_holder:midnight-vc-runtime:$vc/core/capabilities/same-holder/src/same-holder.compact"
-        "revocation_registry:midnight-vc-runtime:$vc/registry/status-registry/src/revocation-registry.compact"
+        "credentials:midnight-vc-runtime:$core/credentials.compact"
         "digital_passport:midnight-vc-families:$passport/src/digital-passport-credential.compact"
     )
     for entry in "${contracts[@]}"; do
@@ -105,13 +118,13 @@ codegen-vc:
             echo "//! GENERATED — do not edit; run \`just codegen-vc\`."
             echo "//!"
             if [ "$module" = "digital_passport" ]; then
-                echo "//! Family source: \`${entry_point#third_party/}\` at tag \`v0.1.0-rc1\`"
-                echo "//! in the pinned \`third_party/midnight-verifiable-credential-digital-passport\` submodule;"
-                echo "//! core contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm),"
-                echo "//! staged into the family repo's \`core-compact-staging/\` by this recipe."
+                echo "//! Family source: \`src/digital-passport-credential.compact\` in"
+                echo "//! \`@midnight-ntwrk/midnight-vc-passport@{{vc_passport_version}}\` (GitHub Release"
+                echo "//! tarball); core contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\`"
+                echo "//! (npm), staged into the package's \`core-compact-staging/\` by this recipe."
             else
-                echo "//! Source: \`${entry_point#third_party/midnight-verifiable-credentials/}\`"
-                echo "//! in the pinned \`third_party/midnight-verifiable-credentials\` submodule."
+                echo "//! Source: \`dist/credentials.compact\` in"
+                echo "//! \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm)."
             fi
             cat "$out/contract/lib.rs"
         } > "crates/${crate}/src/contract/${module}.rs"
@@ -160,11 +173,11 @@ coverage_floor := "87"
 # (gated by codegen-check, not tests) and service/demo bin entrypoints.
 coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-passport-account-source -p midnight-passport-account -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
 coverage_features := "--features midnight-vc-families/digital-passport"
-# `contract/generated\.rs` is the DID codegen artifact; the three
-# `contract/{credentials,iso_registry,same_holder}\.rs` files are the VC ones.
+# `contract/generated\.rs` is the DID codegen artifact;
+# `contract/{credentials,digital_passport}\.rs` are the VC ones.
 # Generated code is gated by `codegen-check` / `codegen-vc-check`, not by tests;
 # every hand-written line in those crates stays in scope.
-coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/iso_registry\.rs|contract/same_holder\.rs|contract/revocation_registry\.rs|contract/digital_passport\.rs|src/main\.rs|src/bin/'
+coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/digital_passport\.rs|src/main\.rs|src/bin/'
 
 # HTML coverage report for humans.
 coverage:
