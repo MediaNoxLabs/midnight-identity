@@ -56,8 +56,8 @@ codegen-check: codegen
 # stages the same pinned core copy there before invoking the compiler.
 vc_core_version := "0.2.0"
 vc_core_sha256 := "095b6056912059e5b281b39d2d133a1048d42b5a6104da4367951c2773d70c4f"
-vc_passport_version := "0.1.0-rc2"
-vc_passport_sha256 := "83c96b756e3f4c3a71c6023ebfcb042164dfbecaff3bcc1f94161ff9dbfef6f2"
+vc_passport_version := "0.1.0-rc3"
+vc_passport_sha256 := "8da5443407ea1d6b126dbf4c2e8963a4ae245c49f81ac8835556cbd2395a1623"
 
 codegen-vc:
     #!/usr/bin/env bash
