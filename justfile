@@ -49,8 +49,7 @@ codegen-check: codegen
 # - `@midnight-ntwrk/credential-compact` (npm) supplies the generic VC/VP core.
 #   Its `credentials.compact` lands in midnight-vc-runtime as `credentials`.
 # - `@midnight-ntwrk/midnight-vc-passport` supplies the Digital Passport family,
-#   which lands in midnight-vc-families as `digital_passport`. It is published
-#   on the GitHub Release for now; switch to npmjs once it is published there.
+#   which lands in midnight-vc-families as `digital_passport` (npm).
 #
 # The family `include`s the core from `../core-compact-staging/`, so the recipe
 # stages the same pinned core copy there before invoking the compiler.
@@ -87,10 +86,11 @@ codegen-vc:
         "{{vc_core_sha256}}" "$core_dir"
     core="$core_dir/package/dist"
 
+    passport_pkg="@midnight-ntwrk/midnight-vc-passport"
     passport_ver="{{vc_passport_version}}"
-    passport_dir="target-gen/midnight-vc-passport-${passport_ver}"
+    passport_dir="target-gen/${passport_pkg##*/}-${passport_ver}"
     fetch_package "$passport_dir.tgz" \
-        "https://github.com/midnightntwrk/midnight-vc-passport/releases/download/v${passport_ver}/midnight-ntwrk-midnight-vc-passport-${passport_ver}.tgz" \
+        "https://registry.npmjs.org/${passport_pkg}/-/${passport_pkg##*/}-${passport_ver}.tgz" \
         "{{vc_passport_sha256}}" "$passport_dir"
     passport="$passport_dir/package"
 
@@ -119,9 +119,9 @@ codegen-vc:
             echo "//!"
             if [ "$module" = "digital_passport" ]; then
                 echo "//! Family source: \`src/digital-passport-credential.compact\` in"
-                echo "//! \`@midnight-ntwrk/midnight-vc-passport@{{vc_passport_version}}\` (GitHub Release"
-                echo "//! tarball); core contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\`"
-                echo "//! (npm), staged into the package's \`core-compact-staging/\` by this recipe."
+                echo "//! \`@midnight-ntwrk/midnight-vc-passport@{{vc_passport_version}}\` (npm); core"
+                echo "//! contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm),"
+                echo "//! staged into the package's \`core-compact-staging/\` by this recipe."
             else
                 echo "//! Source: \`dist/credentials.compact\` in"
                 echo "//! \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm)."
