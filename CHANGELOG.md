@@ -12,6 +12,41 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Digital Passport family moves to `midnight-vc-passport@0.1.0-rc2`** —
+  `midnight-vc-families`' `digital-passport` bindings are generated from the
+  `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc2` release tarball
+  (`midnightntwrk/midnight-vc-passport`, SHA-256 pinned; published on the
+  GitHub Release until the npmjs mapping exists) against
+  `@midnight-ntwrk/credential-compact@0.2.0` (SHA-256 pinned). The generated
+  surface follows upstream: the protocol messages are now
+  `DigitalPassportIssuance_*` / `DigitalPassportVerification_*`, signer
+  authorization and verifier-request proofs are added, and the secret,
+  blinded-secret, Jubjub and off-chain-Midnight holder bindings, schema
+  capabilities/descriptors and verifier-scoped pseudonyms are removed.
+- **`midnight-vc-runtime` tracks VC Core 0.2.0** — `contract::credentials`
+  is generated from the `credential-compact@0.2.0` npm package instead of the
+  frozen `midnight-verifiable-credentials` monorepo pin.
+- **Compact compiler bumped to `codegen-rust@4f743ecc`** (0.31.122,
+  MediaNoxLabs/compact#92), which renders call arguments at the callee's
+  declared formal type and is required for Rust codegen of
+  `credential-compact@0.2.0`. DID codegen output is byte-identical under the
+  new compiler.
+
+### Removed
+
+- **BREAKING: `midnight-vc-runtime`'s `iso_registry`, `same_holder` and
+  `revocation_registry` modules** — VC Core 0.2.0 dropped these contracts from
+  the upstream repository. The `third_party/midnight-verifiable-credentials`
+  and `third_party/midnight-verifiable-credential-digital-passport` submodules
+  are removed with them; `just codegen-vc` downloads the pinned release
+  tarballs instead.
+- **BREAKING: `midnight_vc_proof::VerificationMethodRef::did_contract_address`**
+  is renamed to `controller_address`, matching VC Core 0.2.0's
+  `VerificationMethodRef.controllerAddress`; the `verification_method_ref`
+  parameter is renamed to match. Encoded proofs are unchanged.
+
 ### Fixed
 
 - **Light CI shell (issue #54)** — ordinary formatting, clippy, test, WASM,
@@ -22,6 +57,12 @@ and the project adheres to [SemVer](https://semver.org/).
   the full default shell with public Nix binary caches.
 
 ### Added
+
+- **TS↔Rust parity vectors for the digital-passport bindings** —
+  `midnight-vc-families/tests/ts_parity.rs` checks claim commitments, claim and
+  body roots, signer points, issuance/presentation challenges, and accept /
+  reject verdicts against golden vectors captured from the rc2 TS package
+  (`tests/fixtures/capture-ts-parity.mjs`).
 
 - **Passport account-custody crates (issue #79)** — new
   `midnight-passport-account-source` crate containing the Ledger 9.1 reference

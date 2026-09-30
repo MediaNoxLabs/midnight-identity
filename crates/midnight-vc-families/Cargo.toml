@@ -47,7 +47,10 @@ midnight-onchain-runtime = { workspace = true }
 midnight-serialize       = { workspace = true }
 
 [dev-dependencies]
-# SHA-256 for the deterministic test fixtures ported from the standalone
-# family repo's `src/testing/credential-fixtures.ts` (openings are
-# sha256("opening:<field>") there); no golden outputs are frozen.
+# SHA-256 for the deterministic test fixtures ported from the family
+# package's `src/testing/credential-fixtures.ts` (openings are
+# sha256("opening:<field>") there).
 sha2 = "0.10"
+# Decode the TS-captured golden vectors in `tests/fixtures/ts-parity.json`.
+hex        = { workspace = true }
+serde_json = { workspace = true }

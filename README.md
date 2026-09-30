@@ -40,7 +40,7 @@ and the opt-in `midnight-vc-families` bindings.
 | `midnight-did-uniffi` | Swift / Kotlin / Python bindings (UniFFI) | no (by design) |
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
 | `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
-| `midnight-vc-runtime` | `compactc --rust` codegen target for the VC contracts (credentials / iso-registry / same-holder bindings) | no (`publish = false`)² |
+| `midnight-vc-runtime` | `compactc --rust` codegen target for the VC Core `credentials` contract (`@midnight-ntwrk/credential-compact`) | no (`publish = false`)² |
 | `midnight-vc-families` | Feature-gated generated bindings for credential families (`digital-passport` today) | no (`publish = false`)² |
 | `midnight-passport-account-source` | Authenticated Passport account-custody Compact source and Ledger 9.1 compatibility descriptor (no runtime dependencies) | not in release workflow |
 | `midnight-passport-account` | Platform-neutral Passport account-custody signer, scoped-grant, InboxEntry, coin-store, and discovery primitives | blocked¹ |
@@ -194,3 +194,6 @@ FlakeHub account.
   — TS resolver service; the model for the planned Rust resolver.
 - [midnightntwrk/midnight-verifiable-credentials](https://github.com/midnightntwrk/midnight-verifiable-credentials)
   — Compact-first VC stack; the model for the planned shared SSI crates.
+- [midnightntwrk/midnight-vc-passport](https://github.com/midnightntwrk/midnight-vc-passport)
+  — Digital Passport credential family; its release tarball is the source of
+  the `midnight-vc-families` `digital-passport` bindings.

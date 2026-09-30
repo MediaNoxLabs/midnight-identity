@@ -20,7 +20,7 @@
 //! circuits *compute* — outputs are deterministic, of the documented
 //! `Bytes<32>` length, and sensitive to altered inputs — and the age
 //! predicate's witness-verification accepts only exact calendar
-//! decompositions. No golden outputs are frozen; codegen drift is the
+//! decompositions. TS parity is `ts_parity.rs`'s job; codegen drift is the
 //! codegen gate's job.
 
 #![cfg(feature = "digital-passport")]

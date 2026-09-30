@@ -16,15 +16,15 @@
 //! Deterministic digital-passport test fixture.
 //!
 //! Rust port of the testing slice of the standalone family repository's
-//! `packages/midnight-verifiable-credential-digital-passport/src/testing/`
-//! (pinned at tag `v0.1.0-rc1`): the claim-commitments fixture from
+//! `packages/midnight-vc-passport/src/testing/`
+//! (`midnightntwrk/midnight-vc-passport`, pinned at tag `v0.1.0-rc2`): the claim-commitments fixture from
 //! `credential-fixtures.ts` (same claim values, same
 //! `sha256("opening:<field>")` openings) and the civil-date decomposition
 //! helpers from `civil-date.ts` — everything the invariant-style smoke tests
 //! need and nothing more. Commitments, the claim root, and the civil-date
 //! witnesses are *derived* (through the generated circuits / the ported
-//! Hinnant algorithm), never hardcoded: there are no golden outputs to go
-//! stale.
+//! Hinnant algorithm), never hardcoded here; `tests/ts_parity.rs` checks
+//! them against golden vectors captured from the TS package.
 //!
 //! The `credential` / `presentation` bodies mirror upstream's fixture values
 //! where they feed the age-predicate circuit (schema refs, disclosure flags,
@@ -80,7 +80,7 @@ fn pad_text<const N: usize>(value: &str) -> [u8; N] {
 /// without the jubjub key pair (the smoke circuits never read the key).
 fn verification_method_ref(label: &str) -> VerificationMethodRef {
     VerificationMethodRef {
-        didContractAddress: midnight_vc_families::contract::digital_passport::ContractAddress {
+        controllerAddress: midnight_vc_families::contract::digital_passport::ContractAddress {
             bytes: sha256(&format!("contract:{label}")),
         },
         methodId: pad_text(&format!("#{label}-key-1")),

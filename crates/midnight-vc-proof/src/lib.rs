@@ -70,8 +70,9 @@ pub const MAX_COMPACT_VALUE_DEPTH: usize = 1;
 /// Verification method reference hashed into the issuance challenge.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VerificationMethodRef {
-    /// DID contract address bytes.
-    pub did_contract_address: [u8; 32],
+    /// Controller address bytes — the DID contract address for a Midnight DID
+    /// (VC Core's `VerificationMethodRef.controllerAddress`).
+    pub controller_address: [u8; 32],
     /// Method fragment bytes, UTF-8 right-padded by the caller's DID layer.
     pub method_id: [u8; 32],
 }
@@ -254,7 +255,7 @@ pub fn encode_detached_proof(proof: &IssuanceProof) -> Result<Vec<u8>, ProofErro
     let (pk_x, pk_y) = point_coordinates(&proof.public_key)?;
     let (r_x, r_y) = point_coordinates(&proof.announcement)?;
     Ok(encode_mcv1(&[
-        canonical_chunk(&proof.signer.did_contract_address),
+        canonical_chunk(&proof.signer.controller_address),
         canonical_chunk(&proof.signer.method_id),
         canonical_chunk(&proof.created_at.to_le_bytes()),
         canonical_chunk(&proof.challenge_hash),
@@ -271,7 +272,7 @@ pub fn decode_detached_proof(bytes: &[u8]) -> Result<IssuanceProof, ProofError> 
     let chunks = parse_mcv1(bytes, PROOF_CHUNKS, MAX_DETACHED_PROOF_BYTES)?;
     Ok(IssuanceProof {
         signer: VerificationMethodRef {
-            did_contract_address: fixed_32(chunks[0])?,
+            controller_address: fixed_32(chunks[0])?,
             method_id: fixed_32(chunks[1])?,
         },
         created_at: integer_u64(chunks[2])?,
@@ -363,8 +364,8 @@ pub fn verify_digital_passport(
             );
         }
     };
-    if credential.issuerVerificationMethodRef.didContractAddress.bytes
-        != expected_issuer.verification_method.did_contract_address
+    if credential.issuerVerificationMethodRef.controllerAddress.bytes
+        != expected_issuer.verification_method.controller_address
         || credential.issuerVerificationMethodRef.methodId != expected_issuer.verification_method.method_id
         || proof.signer != expected_issuer.verification_method
     {
@@ -458,7 +459,7 @@ fn digital_passport_invalid_report(
 
 /// Build a verification method reference from a 32-byte contract address and fragment bytes.
 pub fn verification_method_ref(
-    did_contract_address: [u8; 32],
+    controller_address: [u8; 32],
     method_fragment: &[u8],
 ) -> Result<VerificationMethodRef, ProofError> {
     if method_fragment.len() > 32 {
@@ -467,7 +468,7 @@ pub fn verification_method_ref(
     let mut method_id = [0u8; 32];
     method_id[..method_fragment.len()].copy_from_slice(method_fragment);
     Ok(VerificationMethodRef {
-        did_contract_address,
+        controller_address,
         method_id,
     })
 }
@@ -526,7 +527,7 @@ fn decode_digital_passport_credential(bytes: &[u8]) -> Result<passport::Credenti
 
 fn passport_vmr(address: &[u8], method: &[u8]) -> Result<passport::VerificationMethodRef, ProofError> {
     Ok(passport::VerificationMethodRef {
-        didContractAddress: passport::ContractAddress {
+        controllerAddress: passport::ContractAddress {
             bytes: fixed_32(address)?,
         },
         methodId: fixed_32(method)?,
@@ -536,8 +537,8 @@ fn passport_vmr(address: &[u8], method: &[u8]) -> Result<passport::VerificationM
 fn passport_proof(proof: &IssuanceProof) -> passport::Proof {
     passport::Proof {
         signerVerificationMethodRef: passport::VerificationMethodRef {
-            didContractAddress: passport::ContractAddress {
-                bytes: proof.signer.did_contract_address,
+            controllerAddress: passport::ContractAddress {
+                bytes: proof.signer.controller_address,
             },
             methodId: proof.signer.method_id,
         },
@@ -554,8 +555,8 @@ fn passport_proof(proof: &IssuanceProof) -> passport::Proof {
 fn runtime_proof(proof: &IssuanceProof, response: EmbeddedFr) -> core::Proof {
     core::Proof {
         signerVerificationMethodRef: core::VerificationMethodRef {
-            didContractAddress: core::ContractAddress {
-                bytes: proof.signer.did_contract_address,
+            controllerAddress: core::ContractAddress {
+                bytes: proof.signer.controller_address,
             },
             methodId: proof.signer.method_id,
         },

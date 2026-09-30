@@ -288,7 +288,7 @@ fn lace_portal_fixed_challenge_vector_matches_generated_runtime() {
     method_id[..b"#key-assert".len()].copy_from_slice(b"#key-assert");
     let proof = IssuanceProof {
         signer: VerificationMethodRef {
-            did_contract_address: [0x11; 32],
+            controller_address: [0x11; 32],
             method_id,
         },
         created_at: 123,
@@ -383,7 +383,7 @@ impl CryptoRng for ScriptedCryptoRng {}
 
 fn credential_with_attacker_issuer_and_chunk(vmr: VerificationMethodRef, index: usize, value: Vec<u8>) -> Vec<u8> {
     let mut chunks = parse_mcv1(&fixture(OXID_STANDALONE_BODY_B64));
-    chunks[5] = canonical_chunk(&vmr.did_contract_address);
+    chunks[5] = canonical_chunk(&vmr.controller_address);
     chunks[6] = canonical_chunk(&vmr.method_id);
     chunks[index] = value;
     encode_mcv1(&chunks)

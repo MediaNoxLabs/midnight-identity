@@ -48,7 +48,10 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
-      rev   = "611a3dda0c512326a2c15a2e68ce20f8dcf58105";
+      # `codegen-rust` at the MediaNoxLabs/compact#92 merge (0.31.122, call
+      # arguments rendered at the callee's declared formal type), which Rust
+      # codegen for `@midnight-ntwrk/credential-compact@0.2.0` requires.
+      rev   = "4f743ecca8542ebfdf5a7598baff7cc7aaa5c6dc";
       # The compiler revision's newer Nixpkgs pin fails while building
       # compiler-rt on aarch64-darwin. Keep the last repository-validated pin
       # until that upstream Darwin regression is fixed.

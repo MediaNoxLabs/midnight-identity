@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace      = true
 authors.workspace      = true
 repository.workspace   = true
-description            = "Codegen target for Midnight Verifiable Credentials — Rust bindings emitted from credentials.compact, iso-registry.compact and same-holder.compact."
+description            = "Codegen target for Midnight Verifiable Credentials — Rust bindings emitted from the VC Core credentials.compact."
 
 # `publish = false` per doc/publishing.md: this crate depends on
 # `midnight-compact-runtime` (path-mounted from third_party/compact/runtime-rs by the

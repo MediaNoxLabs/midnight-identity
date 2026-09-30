@@ -34,21 +34,19 @@
 //!
 //! ## Upstream provenance
 //!
-//! The Compact contract sources are vendored as the submodule
-//! `third_party/midnight-verifiable-credentials`, pinned to the codegen-surveyed
-//! rev `a9f1d451afc10c9c44a2937e880a22870e7b65ed` (2026-06-03). The TypeScript
-//! packages ported here (`packages/core/model`, `packages/core/status`) landed
-//! upstream **after** that rev, so this port follows `main` rev
-//! `b8646e2` — retrievable from the vendored submodule's history with:
+//! The TypeScript packages ported here (`packages/core/model`,
+//! `packages/core/status`) follow
+//! [`midnightntwrk/midnight-verifiable-credentials`](https://github.com/midnightntwrk/midnight-verifiable-credentials)
+//! `main` rev `b8646e2`:
 //!
 //! ```text
-//! git -C third_party/midnight-verifiable-credentials show \
+//! git -C <midnight-verifiable-credentials checkout> show \
 //!     b8646e2:packages/core/model/src/types.ts
 //! ```
 //!
-//! The submodule working tree stays on the surveyed rev because the credentials
-//! contract changed between the two (`verification-v1.compact`, +471 lines) and
-//! only the surveyed rev is known to compile TODO-free. See `CHANGELOG.md`.
+//! The generated Compact bindings no longer come from that repository's
+//! history: `midnight-vc-runtime` is generated from the released
+//! `@midnight-ntwrk/credential-compact` package. See `CHANGELOG.md`.
 //!
 //! ## Reuse, not duplication
 //!
