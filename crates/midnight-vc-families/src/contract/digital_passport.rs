@@ -1,7 +1,7 @@
 //! GENERATED — do not edit; run `just codegen-vc`.
 //!
 //! Family source: `src/digital-passport-credential.compact` in
-//! `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc3` (npm); core
+//! `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc5` (npm); core
 //! contract `@midnight-ntwrk/credential-compact@0.2.0` (npm),
 //! staged into the package's `core-compact-staging/` by this recipe.
 // This file is part of Compact.

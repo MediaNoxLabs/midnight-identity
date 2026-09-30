@@ -24,7 +24,7 @@
 //!
 //! | module | feature | entry point |
 //! |---|---|---|
-//! | `digital_passport` | `digital-passport` | `@midnight-ntwrk/midnight-vc-passport` release tarball (`midnightntwrk/midnight-vc-passport`, tag `v0.1.0-rc3`): `src/digital-passport-credential.compact` |
+//! | `digital_passport` | `digital-passport` | `@midnight-ntwrk/midnight-vc-passport` release tarball (`midnightntwrk/midnight-vc-passport`, tag `v0.1.0-rc5`): `src/digital-passport-credential.compact` |
 //!
 //! The modules are re-exported as modules rather than glob-re-exported:
 //! each family entry point includes the VC core contract
