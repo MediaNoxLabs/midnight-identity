@@ -14,9 +14,9 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
-- **Digital Passport family moves to `midnight-vc-passport@0.1.0-rc2`** —
+- **Digital Passport family moves to `midnight-vc-passport@0.1.0-rc3`** —
   `midnight-vc-families`' `digital-passport` bindings are generated from the
-  `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc2` release tarball
+  `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc3` release tarball
   (`midnightntwrk/midnight-vc-passport`, SHA-256 pinned; published on the
   GitHub Release until the npmjs mapping exists) against
   `@midnight-ntwrk/credential-compact@0.2.0` (SHA-256 pinned). The generated

@@ -21,7 +21,7 @@
 //
 //   dir=$(mktemp -d) && cd "$dir" && npm init -y >/dev/null \
 //     && npm install --ignore-scripts \
-//        https://github.com/midnightntwrk/midnight-vc-passport/releases/download/v0.1.0-rc2/midnight-ntwrk-midnight-vc-passport-0.1.0-rc2.tgz \
+//        https://github.com/midnightntwrk/midnight-vc-passport/releases/download/v0.1.0-rc3/midnight-ntwrk-midnight-vc-passport-0.1.0-rc3.tgz \
 //     && node <repo>/crates/midnight-vc-families/tests/fixtures/capture-ts-parity.mjs "$dir" \
 //        > <repo>/crates/midnight-vc-families/tests/fixtures/ts-parity.json
 //

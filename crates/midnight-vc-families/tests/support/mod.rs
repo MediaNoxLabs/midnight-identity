@@ -17,7 +17,7 @@
 //!
 //! Rust port of the testing slice of the standalone family repository's
 //! `packages/midnight-vc-passport/src/testing/`
-//! (`midnightntwrk/midnight-vc-passport`, pinned at tag `v0.1.0-rc2`): the claim-commitments fixture from
+//! (`midnightntwrk/midnight-vc-passport`, pinned at tag `v0.1.0-rc3`): the claim-commitments fixture from
 //! `credential-fixtures.ts` (same claim values, same
 //! `sha256("opening:<field>")` openings) and the civil-date decomposition
 //! helpers from `civil-date.ts` — everything the invariant-style smoke tests
