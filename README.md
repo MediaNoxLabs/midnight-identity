@@ -195,5 +195,5 @@ FlakeHub account.
 - [midnightntwrk/midnight-verifiable-credentials](https://github.com/midnightntwrk/midnight-verifiable-credentials)
   — Compact-first VC stack; the model for the planned shared SSI crates.
 - [midnightntwrk/midnight-vc-passport](https://github.com/midnightntwrk/midnight-vc-passport)
-  — Digital Passport credential family; its release tarball is the source of
-  the `midnight-vc-families` `digital-passport` bindings.
+  — Digital Passport credential family; the `@midnight-ntwrk/midnight-vc-passport`
+  npm package is the source of the `midnight-vc-families` `digital-passport` bindings.
