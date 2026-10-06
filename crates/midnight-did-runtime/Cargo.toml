@@ -14,7 +14,8 @@ path = "src/lib.rs"
 
 [features]
 default = [  ]
-http    = [ "dep:reqwest" ]
+http       = [ "dep:reqwest" ]
+node-subxt = [ "dep:futures", "dep:subxt", "dep:tokio" ]
 
 [dependencies]
 # The midnight-compact-runtime symbol the generated contract code calls into. The
@@ -68,9 +69,13 @@ blake2     = "0.10"
 thiserror = "2"
 rand      = "0.8"
 zeroize   = "1.9"
+futures   = { version = "0.3", optional = true }
+subxt     = { version = "0.44", optional = true }
+tokio     = { version = "1", features = [ "time" ], optional = true }
 reqwest   = { version = "0.13", default-features = false, features = [ "json", "rustls" ], optional = true }
 
 [dev-dependencies]
+midnight-did-jubjub-schnorr = { workspace = true }
 # R2-1: tokio runtime for the `Backend` impls' unit tests (current-thread,
 # no IO).
 tokio = { version = "1", features = [ "macros", "rt" ] }

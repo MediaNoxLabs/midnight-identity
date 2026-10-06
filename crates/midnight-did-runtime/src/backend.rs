@@ -1808,6 +1808,139 @@ impl LedgerNodeProvider for HttpNodeProvider {
     }
 }
 
+#[cfg(feature = "node-subxt")]
+/// Substrate WebSocket node adapter for Midnight `send_mn_transaction` submission.
+///
+/// This is the native Ledger8 standalone path: it wraps the tagged, sealed Ledger
+/// transaction in the node runtime call `Midnight.send_mn_transaction`, submits
+/// it as an unsigned extrinsic, waits for finalized inclusion, requires
+/// `System.ExtrinsicSuccess`, rejects finalized `System.ExtrinsicFailed`, and
+/// returns exact finalized transaction/block evidence.
+#[derive(Debug, Clone)]
+pub struct SubxtNodeProvider {
+    websocket_url: String,
+    connect_timeout: std::time::Duration,
+    submission_timeout: std::time::Duration,
+}
+
+#[cfg(feature = "node-subxt")]
+impl SubxtNodeProvider {
+    /// Create a WebSocket node provider, for example `ws://127.0.0.1:9944`.
+    pub fn new(websocket_url: impl Into<String>) -> Self {
+        Self {
+            websocket_url: websocket_url.into(),
+            connect_timeout: std::time::Duration::from_secs(15),
+            submission_timeout: std::time::Duration::from_secs(120),
+        }
+    }
+
+    /// Override default bounded timeouts.
+    pub fn with_timeouts(
+        mut self,
+        connect_timeout: std::time::Duration,
+        submission_timeout: std::time::Duration,
+    ) -> Self {
+        self.connect_timeout = connect_timeout;
+        self.submission_timeout = submission_timeout;
+        self
+    }
+}
+
+#[cfg(feature = "node-subxt")]
+#[async_trait]
+impl LedgerNodeProvider for SubxtNodeProvider {
+    async fn submit_and_wait(&self, tx: FinalizedDidTransaction) -> Result<LedgerFinalityReceipt, BackendError> {
+        use subxt::{OnlineClient, SubstrateConfig, dynamic};
+
+        let tagged_ledger_tx = tx.tagged_ledger_tx_bytes().to_vec();
+        let client = tokio::time::timeout(
+            self.connect_timeout,
+            OnlineClient::<SubstrateConfig>::from_insecure_url(&self.websocket_url),
+        )
+        .await
+        .map_err(|_| BackendError::Network("node websocket connection timed out".into()))?
+        .map_err(|e| BackendError::Network(format!("node websocket: {e}")))?;
+
+        let call = dynamic::tx(
+            "Midnight",
+            "send_mn_transaction",
+            vec![dynamic::Value::from_bytes(tagged_ledger_tx)],
+        );
+        let unsigned = client
+            .tx()
+            .create_unsigned(&call)
+            .map_err(|e| BackendError::Network(format!("create unsigned Midnight transaction: {e}")))?;
+        let tx_hash = unsigned.hash().0;
+        let mut progress = tokio::time::timeout(self.submission_timeout, unsigned.submit_and_watch())
+            .await
+            .map_err(|_| BackendError::Timeout("submit unsigned Midnight transaction timed out".into()))?
+            .map_err(|e| BackendError::Network(format!("submit unsigned Midnight transaction: {e}")))?;
+
+        tokio::time::timeout(self.submission_timeout, async {
+            use subxt::tx::TxStatus;
+            loop {
+                let status = progress
+                    .next()
+                    .await
+                    .ok_or_else(|| BackendError::Network("submission status stream ended before finality".into()))?
+                    .map_err(|e| BackendError::Network(format!("submission status: {e}")))?;
+                match status {
+                    TxStatus::InFinalizedBlock(in_block) => {
+                        if in_block.extrinsic_hash().0 != tx_hash {
+                            return Err(BackendError::Network(
+                                "finalized extrinsic hash did not match submitted transaction".into(),
+                            ));
+                        }
+                        let events = in_block
+                            .fetch_events()
+                            .await
+                            .map_err(|e| BackendError::Network(format!("fetch finalized events: {e}")))?;
+                        let mut succeeded = false;
+                        let mut failed = false;
+                        for event in events.iter() {
+                            let event =
+                                event.map_err(|e| BackendError::Network(format!("decode finalized event: {e}")))?;
+                            if event.pallet_name() == "System" && event.variant_name() == "ExtrinsicSuccess" {
+                                succeeded = true;
+                            }
+                            if event.pallet_name() == "System" && event.variant_name() == "ExtrinsicFailed" {
+                                failed = true;
+                            }
+                        }
+                        return match (succeeded, failed) {
+                            (true, false) => {
+                                let finalized = client
+                                    .blocks()
+                                    .at(in_block.block_hash())
+                                    .await
+                                    .map_err(|e| BackendError::Network(format!("fetch finalized block: {e}")))?;
+                                Ok(LedgerFinalityReceipt {
+                                    tx_hash: format!("0x{}", hex::encode(tx_hash)),
+                                    block_height: u64::from(finalized.header().number),
+                                    finality_token: Some(format!("0x{}", hex::encode(in_block.block_hash().0))),
+                                })
+                            }
+                            (false, true) => Err(BackendError::Network("finalized extrinsic failed".into())),
+                            _ => Err(BackendError::Network(
+                                "finalized extrinsic did not emit a decisive System outcome".into(),
+                            )),
+                        };
+                    }
+                    TxStatus::InBestBlock(_) => {}
+                    TxStatus::Error { .. } | TxStatus::Invalid { .. } | TxStatus::Dropped { .. } => {
+                        return Err(BackendError::Network(
+                            "submission outcome unknown before finalized inclusion".into(),
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+        })
+        .await
+        .map_err(|_| BackendError::Timeout("finalized inclusion timed out".into()))?
+    }
+}
+
 #[cfg(feature = "http")]
 /// Minimal GraphQL-over-HTTP indexer adapter for `contractAction(address){state}`.
 #[derive(Debug, Clone)]

@@ -210,13 +210,14 @@ Focused local evidence after this addendum:
 - `cargo test -p midnight-did-runtime backend::tests -- --nocapture` → 26 passed.
 
 `crates/midnight-did-runtime/tests/ledger8_standalone.rs` remains honest: full
-standalone submit/finality evidence still requires a node adapter that wraps the
-proven Ledger8 transaction in the chain's accepted outer Substrate extrinsic or a
-provider-owned finality receipt. The local wallet provider narrows #102 by
+standalone submit/finality evidence uses the native Subxt node adapter, which
+wraps the proven Ledger8 transaction as `Midnight.send_mn_transaction`, submits
+an unsigned extrinsic, waits for finalized inclusion, and requires
+`System.ExtrinsicSuccess`. The local wallet provider narrows #102 by
 providing wallet construction/balancing/prove-request primitives with checkpoint
 injection, but #102 is not closed and no finalized deploy/create lifecycle is
-claimed until standalone synchronization/submission/finality is exercised against
-node/indexer/proof.
+claimed until an operator supplies the standalone funding seed and the ignored
+lifecycle is exercised against node/indexer/proof.
 
 TS parity note: the Rust provider covers the same DID wallet boundary exercised by
 `third_party/midnight-did/packages/api/src/wallet-provider.ts` at the pinned DID
@@ -225,3 +226,42 @@ is accepted from the generated contract API, wallet code owns transaction
 construction and balancing, proof transport is provider-injected, and the final
 submission boundary remains separate from contract execution. No TypeScript or
 JS runtime bridge is introduced.
+
+
+## Subxt node submission addendum
+
+The previous generic HTTP `author_submitExtrinsic` assumption has been replaced
+for the native standalone path. `SubxtNodeProvider` (feature `node-subxt`) connects
+to the node WebSocket endpoint, creates the dynamic runtime call
+`Midnight.send_mn_transaction(tagged_sealed_ledger_tx)`, submits it as an
+unsigned extrinsic, waits for `TxStatus::InFinalizedBlock`, fetches finalized
+events, requires `System.ExtrinsicSuccess`, rejects `System.ExtrinsicFailed`, and
+returns the transaction hash plus finalized block hash/height.
+
+`HttpNodeProvider(author_submitExtrinsic)` remains only a guard/custom-provider
+path and refuses raw tagged Ledger8 bytes. The remaining blocker for local live
+evidence is not node submission; it is the absence of an operator-supplied
+standalone funding seed in this environment. The ignored lifecycle test accepts
+`MIDNIGHT_DID_LEDGER8_FUNDER_SEED_HEX` or `OXID_STANDALONE_FUNDER_SEED_HEX`
+without printing or persisting it, plus `MIDNIGHT_DID_ZK_CONFIG_PATH` and a
+private `MIDNIGHT_DID_LEDGER8_DUST_CHECKPOINT` produced by authoritative
+indexer replay.
+
+Additional focused checks:
+
+- `cargo +nightly fmt -p midnight-did-runtime --check` → passed.
+- `cargo check -p midnight-did-runtime --features node-subxt` → passed.
+- `cargo clippy --no-deps -p midnight-did-runtime --all-targets --features http,node-subxt -- -D warnings` → passed.
+
+- `cargo test -p midnight-did-runtime --features http,node-subxt --test ledger8_standalone --no-run` → passed (ignored lifecycle compiles with concrete providers).
+
+Lifecycle harness correction: the ignored standalone lifecycle no longer uses
+identity keys or zero signatures. It derives controller/recovery/rotation Jubjub
+keys from custody-local 32-byte seeds with `midnight-did-jubjub-schnorr`, signs
+controller/recovery authorization digests with real DID Schnorr signatures,
+zeroizes seed-bearing structs on drop, and uses verifier-backed
+`ContractOperation(Some(vk))` entries for exercised circuits. The harness asserts
+verification-method insertion, authentication relation insertion, controller
+rotation, deactivation, and restart-time indexer reconciliation. It remains
+ignored locally because the operator funding seed, managed ZK artifact root, and
+private DUST checkpoint are not available in this environment.
