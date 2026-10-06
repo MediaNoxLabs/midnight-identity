@@ -2085,6 +2085,7 @@ dependencies = [
  "blake2",
  "hex",
  "midnight-base-crypto",
+ "midnight-coin-structure",
  "midnight-compact-runtime",
  "midnight-did-domain",
  "midnight-did-method",

@@ -166,6 +166,367 @@ pub type LedgerProofKeyMap = HashMap<String, midnight_transient_crypto::proofs::
 /// Exact typed payload consumed by Ledger8 proof-server `/prove-tx`.
 pub type LedgerProveTxRequest = (LedgerProofInputTransaction, LedgerProofKeyMap);
 
+/// Local Rust wallet provider configuration for Ledger8 DID transactions.
+///
+/// The provider is deliberately custody-scoped: the DUST seed and mutable DUST
+/// state stay inside the provider, while public DID deployment/call DTOs remain
+/// non-secret.  `initial_dust` is intended for standalone/dev genesis funding
+/// where the test harness knows the owned DUST outputs in advance; production
+/// consumers should refresh it from their own checkpoint/indexer store before
+/// constructing the provider.
+pub struct LocalLedger8WalletConfig {
+    /// Ledger network identifier embedded in constructed Midnight transactions.
+    pub network_id: String,
+    /// Ledger parameters used for fee calculation and DUST decay.
+    pub ledger_parameters: midnight_ledger::structure::LedgerParameters,
+    /// Transaction TTL in seconds since the Ledger timestamp epoch.
+    pub ttl_seconds: u64,
+    /// Current Ledger timestamp in seconds used for DUST balancing.
+    pub current_time_seconds: u64,
+    /// Deployment metadata supplied by custody/wallet code.
+    pub deployment: LedgerDeploymentConfig,
+    /// Per-circuit call construction metadata, keyed by generated circuit id.
+    pub contract_calls: HashMap<String, LedgerContractCallConfig>,
+    /// Contract proving-key material carried by the exact Ledger8 `/prove-tx` request.
+    pub proving_keys: LedgerProofKeyMap,
+    /// Custody-owned seed used to derive the local DUST secret key.
+    dust_seed: [u8; 32],
+    /// Standalone/dev genesis DUST outputs owned by `dust_seed`.
+    pub initial_dust: Vec<LocalDustGenesisOutput>,
+}
+
+impl LocalLedger8WalletConfig {
+    /// Construct a config with Ledger8 initial parameters and no preloaded DUST.
+    pub fn new(
+        network_id: impl Into<String>,
+        ttl_seconds: u64,
+        current_time_seconds: u64,
+        deployment: LedgerDeploymentConfig,
+        dust_seed: [u8; 32],
+    ) -> Self {
+        Self {
+            network_id: network_id.into(),
+            ledger_parameters: midnight_ledger::structure::INITIAL_PARAMETERS,
+            ttl_seconds,
+            current_time_seconds,
+            deployment,
+            contract_calls: HashMap::new(),
+            proving_keys: HashMap::new(),
+            dust_seed,
+            initial_dust: Vec::new(),
+        }
+    }
+}
+
+/// One standalone/dev genesis DUST output owned by the local provider.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalDustGenesisOutput {
+    /// DUST value available at creation time.
+    pub initial_value: u128,
+    /// Backing NIGHT value used by Ledger8 DUST generation accounting.
+    pub backing_night_value: u128,
+    /// Stable backing NIGHT nonce from the standalone genesis/dev config.
+    pub backing_night_nonce: [u8; midnight_base_crypto::hash::PERSISTENT_HASH_BYTES],
+    /// Creation timestamp in seconds.
+    pub created_at_seconds: u64,
+    /// Generation tree index assigned by the standalone/dev genesis config.
+    pub generation_index: u64,
+    /// Commitment tree index assigned by the standalone/dev genesis config.
+    pub commitment_index: u64,
+}
+
+/// Reusable local Rust Ledger8 wallet provider for DID deploy/call transaction construction.
+///
+/// It constructs actual Ledger8 `Transaction<Signature, ProofPreimageMarker, ...>` values
+/// containing `ContractDeploy<DefaultDB>` or generated `PrePartitionContractCall<DefaultDB>`,
+/// balances fees with locally-custodied DUST, emits the exact `/prove-tx` tagged payload,
+/// and converts the tagged proven Ledger8 transaction into provider-native submission bytes.
+/// It does not expose the DUST seed or Compact witness/private transcript outputs.
+pub struct LocalLedger8WalletProvider {
+    config: LocalLedger8WalletConfig,
+    dust_key: midnight_ledger::dust::DustSecretKey,
+    dust_state: Mutex<midnight_ledger::dust::DustLocalState<DefaultDB>>,
+}
+
+impl fmt::Debug for LocalLedger8WalletProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LocalLedger8WalletProvider")
+            .field("network_id", &self.config.network_id)
+            .field("ttl_seconds", &self.config.ttl_seconds)
+            .field("current_time_seconds", &self.config.current_time_seconds)
+            .field("contract_call_count", &self.config.contract_calls.len())
+            .field("proving_key_count", &self.config.proving_keys.len())
+            .field("dust_key", &"<custody>")
+            .finish()
+    }
+}
+
+impl LocalLedger8WalletProvider {
+    /// Create a local provider and preload standalone/dev genesis DUST outputs.
+    pub fn new(config: LocalLedger8WalletConfig) -> Result<Self, BackendError> {
+        use midnight_base_crypto::{hash::HashOutput, time::Timestamp};
+        use midnight_ledger::dust::{
+            DustGenerationInfo, DustLocalState, DustPublicKey, DustSecretKey, InitialNonce, QualifiedDustOutput,
+            dust_first_nonce,
+        };
+
+        if config.network_id.is_empty() || config.ttl_seconds <= config.current_time_seconds {
+            return Err(BackendError::Other(
+                "local Ledger8 wallet requires non-empty network id and future ttl".into(),
+            ));
+        }
+        let dust_key = DustSecretKey::derive_secret_key(&config.dust_seed);
+        let owner = DustPublicKey::from(dust_key.clone());
+        let mut dust_state = DustLocalState::<DefaultDB>::new(config.ledger_parameters.dust);
+        for output in &config.initial_dust {
+            let backing_night = InitialNonce(HashOutput(output.backing_night_nonce));
+            let created = Timestamp::from_secs(output.created_at_seconds);
+            let generation = DustGenerationInfo {
+                value: output.backing_night_value,
+                owner,
+                nonce: backing_night,
+                dtime: created,
+            };
+            let qdo = QualifiedDustOutput {
+                initial_value: output.initial_value,
+                owner,
+                nonce: dust_first_nonce(&backing_night, &owner),
+                seq: 0,
+                ctime: created,
+                backing_night,
+                mt_index: output.commitment_index,
+            };
+            dust_state = dust_state
+                .insert_generation_info(output.generation_index, generation, Some(backing_night))
+                .map_err(|e| BackendError::Other(format!("insert genesis DUST generation: {e}")))?
+                .insert_commitment(output.commitment_index, qdo, true)
+                .map_err(|e| BackendError::Other(format!("insert genesis DUST commitment: {e}")))?
+                .add_utxo(&qdo.nullifier(&dust_key), &qdo, None)
+                .map_err(|e| BackendError::Other(format!("insert genesis DUST UTXO: {e}")))?;
+        }
+        Ok(Self {
+            config,
+            dust_key,
+            dust_state: Mutex::new(dust_state),
+        })
+    }
+
+    /// Current non-secret local DUST balance projection at the configured timestamp.
+    pub fn dust_balance(&self) -> Result<u128, BackendError> {
+        let state = self
+            .dust_state
+            .lock()
+            .map_err(|_| BackendError::Other("local DUST state lock poisoned".into()))?;
+        Ok(state.wallet_balance(midnight_base_crypto::time::Timestamp::from_secs(
+            self.config.current_time_seconds,
+        )))
+    }
+
+    fn serialize_unproven(tx: &LedgerProofInputTransaction) -> Result<UnbalancedDidTransaction, BackendError> {
+        let mut bytes = Vec::new();
+        midnight_serialize::tagged_serialize(tx, &mut bytes)
+            .map_err(|e| BackendError::Decode(format!("serialize unproven Ledger8 transaction: {e}")))?;
+        Ok(UnbalancedDidTransaction { bytes })
+    }
+
+    fn deserialize_unproven(tx: &UnbalancedDidTransaction) -> Result<LedgerProofInputTransaction, BackendError> {
+        midnight_serialize::tagged_deserialize(&tx.bytes[..])
+            .map_err(|e| BackendError::Decode(format!("decode unproven Ledger8 transaction: {e}")))
+    }
+
+    fn empty_transaction(
+        &self,
+    ) -> midnight_ledger::structure::StandardTransaction<
+        midnight_base_crypto::schnorr::Signature,
+        midnight_ledger::structure::ProofPreimageMarker,
+        midnight_transient_crypto::commitment::PedersenRandomness,
+        DefaultDB,
+    > {
+        midnight_ledger::structure::StandardTransaction::new(
+            self.config.network_id.clone(),
+            midnight_storage::storage::HashMap::new(),
+            None,
+            midnight_storage::storage::HashMap::new(),
+        )
+    }
+
+    fn balance_dust_transaction(
+        &self,
+        transaction: LedgerProofInputTransaction,
+    ) -> Result<LedgerProofInputTransaction, BackendError> {
+        use midnight_base_crypto::time::Timestamp;
+        use midnight_coin_structure::coin::TokenType;
+        use midnight_ledger::dust::{DustActions, DustOutput};
+        use midnight_ledger::structure::{Intent, StandardTransaction, Transaction};
+        use midnight_storage::{arena::Sp, storage::Array, storage::HashMap as LedgerHashMap};
+        use rand::rngs::OsRng;
+
+        const DUST_BALANCE_SEGMENT: u16 = u16::MAX;
+        const MAX_BALANCE_ITERATIONS: usize = 16;
+
+        let original_transaction = transaction.clone();
+        let mut dust_state = self
+            .dust_state
+            .lock()
+            .map_err(|_| BackendError::Other("local DUST state lock poisoned".into()))?;
+        let original_dust = dust_state.clone();
+        let mut current = transaction;
+        let mut accumulated_dust = 0_u128;
+        let current_time = Timestamp::from_secs(self.config.current_time_seconds);
+        let ttl = Timestamp::from_secs(self.config.ttl_seconds);
+
+        for _ in 0..MAX_BALANCE_ITERATIONS {
+            let fees = current
+                .fees(&self.config.ledger_parameters, false)
+                .map_err(|e| BackendError::Other(format!("compute Ledger8 fees: {e}")))?;
+            let balance = current
+                .balance(Some(fees))
+                .map_err(|e| BackendError::Other(format!("compute Ledger8 balance: {e}")))?;
+            let shortfall = match balance.get(&(TokenType::Dust, 0)).copied() {
+                Some(value) if value < 0 => value
+                    .checked_neg()
+                    .and_then(|value| u128::try_from(value).ok())
+                    .ok_or_else(|| BackendError::Other("DUST shortfall overflow".into()))?,
+                _ => 0,
+            };
+            if shortfall == 0 {
+                return Ok(current);
+            }
+            accumulated_dust = accumulated_dust
+                .checked_add(shortfall)
+                .ok_or_else(|| BackendError::Other("DUST accumulation overflow".into()))?;
+            *dust_state = original_dust.clone();
+            let mut remaining = accumulated_dust;
+            let mut spends = Array::new();
+            let outputs = dust_state.utxos().collect::<Vec<_>>();
+            for output in outputs {
+                if remaining == 0 {
+                    break;
+                }
+                let generation = dust_state
+                    .generation_info(&output)
+                    .ok_or_else(|| BackendError::Other("missing DUST generation info".into()))?;
+                let value = DustOutput::from(output).updated_value(
+                    &generation,
+                    current_time,
+                    &self.config.ledger_parameters.dust,
+                );
+                if value == 0 {
+                    continue;
+                }
+                let spend_value = value.min(remaining);
+                let (next_state, spend) = dust_state
+                    .clone()
+                    .spend(&self.dust_key, &output, spend_value, current_time)
+                    .map_err(|e| BackendError::Other(format!("spend local DUST: {e}")))?;
+                *dust_state = next_state;
+                spends = spends.push(spend);
+                remaining = remaining.saturating_sub(spend_value);
+            }
+            if remaining > 0 {
+                *dust_state = original_dust;
+                return Err(BackendError::Other("insufficient local DUST for Ledger8 fees".into()));
+            }
+            let mut intent = Intent::empty(&mut OsRng, ttl);
+            intent.dust_actions = Some(Sp::new(DustActions {
+                spends,
+                registrations: Array::new(),
+                ctime: current_time,
+            }));
+            let mut intents = LedgerHashMap::new();
+            intents = intents.insert(DUST_BALANCE_SEGMENT, intent);
+            let dust_transaction = Transaction::Standard(StandardTransaction::new(
+                self.config.network_id.clone(),
+                intents,
+                None,
+                LedgerHashMap::new(),
+            ));
+            current = original_transaction
+                .merge(&dust_transaction)
+                .map_err(|e| BackendError::Other(format!("merge DUST balance transaction: {e}")))?;
+        }
+        *dust_state = original_dust;
+        Err(BackendError::Other(
+            "Ledger8 DUST balancing did not converge within bounded iterations".into(),
+        ))
+    }
+}
+
+#[async_trait]
+impl LedgerWalletProvider for LocalLedger8WalletProvider {
+    async fn build_deployment_tx(
+        &self,
+        deployment: DidDeploymentRequest,
+    ) -> Result<UnbalancedDidTransaction, BackendError> {
+        use midnight_base_crypto::time::Timestamp;
+        use midnight_ledger::structure::{Intent, Transaction};
+        use midnight_storage::storage::HashMap as LedgerHashMap;
+        use rand::rngs::OsRng;
+
+        let deploy = deployment.to_contract_deploy(self.config.deployment.clone());
+        let mut intent = Intent::empty(&mut OsRng, Timestamp::from_secs(self.config.ttl_seconds));
+        intent = intent.add_deploy(deploy);
+        let mut intents = LedgerHashMap::new();
+        intents = intents.insert(1, intent);
+        let tx = Transaction::Standard(midnight_ledger::structure::StandardTransaction::new(
+            self.config.network_id.clone(),
+            intents,
+            None,
+            LedgerHashMap::new(),
+        ));
+        Self::serialize_unproven(&tx)
+    }
+
+    async fn build_unbalanced_tx(
+        &self,
+        call: DidPrePartitionContractCall,
+    ) -> Result<UnbalancedDidTransaction, BackendError> {
+        use midnight_base_crypto::time::Timestamp;
+        use midnight_ledger::construct::SegmentSpecifier;
+        use midnight_ledger::structure::Transaction;
+        use midnight_transient_crypto::proofs::ProofPreimage;
+        use rand::rngs::OsRng;
+
+        let circuit_id = call.circuit_id().to_owned();
+        let config = self
+            .config
+            .contract_calls
+            .get(&circuit_id)
+            .cloned()
+            .ok_or_else(|| BackendError::Unconfigured("LedgerContractCallConfig"))?;
+        let prepartition = call.into_ledger_prepartition_contract_call(config);
+        let tx = self
+            .empty_transaction()
+            .add_calls::<ProofPreimage>(
+                &mut OsRng,
+                SegmentSpecifier::First,
+                &[prepartition],
+                &self.config.ledger_parameters,
+                Timestamp::from_secs(self.config.ttl_seconds),
+                &[],
+                &[],
+                &[],
+            )
+            .map_err(|e| BackendError::Other(format!("partition Ledger8 DID call: {e}")))?;
+        Self::serialize_unproven(&Transaction::Standard(tx))
+    }
+
+    async fn balance_tx(&self, tx: UnbalancedDidTransaction) -> Result<BalancedDidTransaction, BackendError> {
+        let tx = Self::deserialize_unproven(&tx)?;
+        let balanced = self.balance_dust_transaction(tx)?;
+        BalancedDidTransaction::from_ledger_prove_tx_request(&(balanced, self.config.proving_keys.clone()))
+    }
+
+    async fn sign_tx(&self, tx: ProvedDidTransaction) -> Result<SignedDidTransaction, BackendError> {
+        // Ledger8 contract/DUST authorization is already carried inside the proven
+        // transaction.  The node adapter owns any outer Substrate extrinsic envelope;
+        // this boundary keeps the proven transaction bytes private until submission.
+        Ok(SignedDidTransaction {
+            bytes: tx.tagged_proven_tx,
+        })
+    }
+}
+
 /// Typed configuration needed to turn Compact proof material into Ledger8's
 /// pre-partition contract call.
 #[derive(Clone, Debug)]
@@ -1995,6 +2356,54 @@ mod tests {
         assert_eq!(deploy.initial_state.data, empty_charged_state::<DefaultDB>());
         assert_eq!(deploy.nonce, nonce);
         let _address = deploy.address();
+    }
+
+    #[test]
+    fn local_ledger8_wallet_builds_balanced_deploy_prove_tx_without_exposing_custody() {
+        let deployment = DidDeploymentRequest {
+            initial_contract_state: empty_charged_state::<DefaultDB>(),
+            initial_zswap_local_state: compact_runtime::ZswapLocalState::new(),
+            constructor: constructor_material(),
+        };
+        let mut config = LocalLedger8WalletConfig::new(
+            "midnight-devnet",
+            3_600,
+            1,
+            LedgerDeploymentConfig {
+                operations: midnight_storage::storage::HashMap::default(),
+                maintenance_authority: compact_runtime::ContractMaintenanceAuthority::default(),
+                nonce: midnight_base_crypto::hash::HashOutput([3; midnight_base_crypto::hash::PERSISTENT_HASH_BYTES]),
+            },
+            [0x5a; 32],
+        );
+        config.initial_dust.push(LocalDustGenesisOutput {
+            initial_value: u128::MAX / 8,
+            backing_night_value: u128::MAX / 8,
+            backing_night_nonce: [0x2a; midnight_base_crypto::hash::PERSISTENT_HASH_BYTES],
+            created_at_seconds: 1,
+            generation_index: 0,
+            commitment_index: 0,
+        });
+        let wallet = LocalLedger8WalletProvider::new(config).unwrap();
+        assert!(format!("{wallet:?}").contains("<custody>"));
+        assert!(wallet.dust_balance().unwrap() > 0);
+
+        let unbalanced = rt().block_on(wallet.build_deployment_tx(deployment)).unwrap();
+        let unbalanced_tx: LedgerProofInputTransaction =
+            midnight_serialize::tagged_deserialize(&unbalanced.bytes[..]).unwrap();
+        assert_eq!(unbalanced_tx.deploys().count(), 1);
+
+        let balanced = rt().block_on(wallet.balance_tx(unbalanced)).unwrap();
+        let (balanced_tx, proving_keys): LedgerProveTxRequest =
+            midnight_serialize::tagged_deserialize(balanced.tagged_prove_tx_request_bytes()).unwrap();
+        assert_eq!(proving_keys.len(), 0);
+        assert_eq!(balanced_tx.deploys().count(), 1);
+        assert!(
+            balanced_tx
+                .fees(&midnight_ledger::structure::INITIAL_PARAMETERS, false)
+                .unwrap()
+                > 0
+        );
     }
 
     #[test]

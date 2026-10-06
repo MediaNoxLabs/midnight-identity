@@ -184,3 +184,41 @@ Focused checks:
 - `nix develop --command cargo test -p midnight-did-runtime backend::tests -- --nocapture` → 25 passed.
 - `nix develop --command cargo test -p midnight-did-runtime --features http backend::tests::http_node_provider_waits -- --nocapture` → passed.
 - `nix develop --command cargo check -p midnight-did-runtime --features http` → passed.
+
+## Local Rust Ledger8 wallet provider addendum
+
+Added `LocalLedger8WalletProvider` in `crates/midnight-did-runtime/src/backend.rs`.
+It uses the same `b85f5d8e...` Ledger8 graph and does not depend on Oxid or any
+Ledger9/10/D941 revision. The provider:
+
+- accepts standalone/dev genesis DUST funding via `LocalDustGenesisOutput`;
+- derives and retains the DUST secret key and mutable `DustLocalState<DefaultDB>` internally;
+- constructs typed Ledger8 deploy transactions containing `ContractDeploy<DefaultDB>`;
+- constructs typed Ledger8 call transactions from generated `PrePartitionContractCall<DefaultDB>`;
+- balances DUST fees locally with bounded iterations;
+- emits the exact tagged Ledger8 `/prove-tx` request shape;
+- validates custody boundaries by omitting DUST seed/witness material from `Debug` and public DTOs;
+- hands tagged proven Ledger8 transaction bytes to the node-submission boundary without exposing proof transcripts.
+
+Focused local evidence after this addendum:
+
+- `node scripts/ci/target-plan.mjs --base origin/develop --head HEAD` → `production-ready/full: policy, rust, unit, wasm, coverage, did-codegen, vc-codegen`.
+- `rustfmt --edition 2024 crates/midnight-did-runtime/src/backend.rs` → passed. (`cargo fmt --all` still attempts to rewrite read-only Nix-store Ledger/Compact sources and fails with permission errors outside this repository.)
+- `cargo check -p midnight-did-runtime --features http` → passed.
+- `cargo test -p midnight-did-runtime backend::tests -- --nocapture` → 26 passed.
+
+`crates/midnight-did-runtime/tests/ledger8_standalone.rs` remains honest: full
+standalone submit/finality evidence still requires a node adapter that wraps the
+proven Ledger8 transaction in the chain's accepted outer Substrate extrinsic or a
+provider-owned finality receipt. The local wallet provider subsumes the
+wallet/funding/balancing/prove-request construction portion of #102, but this
+work does not claim a finalized deploy/create lifecycle until the standalone
+submission envelope is available and exercised against node/indexer/proof.
+
+TS parity note: the Rust provider covers the same DID wallet boundary exercised by
+`third_party/midnight-did/packages/api/src/wallet-provider.ts` at the pinned DID
+reference `42a8e4aca1c6043f7f2b73463fa3aa3cd3d48b06`: deployment/call material
+is accepted from the generated contract API, wallet code owns transaction
+construction and balancing, proof transport is provider-injected, and the final
+submission boundary remains separate from contract execution. No TypeScript or
+JS runtime bridge is introduced.
