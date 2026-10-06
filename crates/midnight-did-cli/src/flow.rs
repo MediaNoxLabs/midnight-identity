@@ -25,7 +25,7 @@
 //! capture-fixtures) renders to JSON.
 
 use anyhow::{Context, Result};
-use midnight_did_api::contract::DidLedgerSnapshot;
+use midnight_did_api::contract::{DidLedgerSnapshot, JubjubPointHex, NewJubjubPointHex};
 use midnight_did_api::did_operations::{create_did, recover_did_controller_key, rotate_did_controller_key};
 use midnight_did_api::document_operations::{add_also_known_as, deactivate};
 use midnight_did_api::ledger_mappers::service_to_ledger;
@@ -43,6 +43,12 @@ use crate::fixtures::{
     RECOVERED_CONTROLLER_PK_BYTES, RECOVERED_SECRET_KEY, ROTATED_CONTROLLER_PK_BYTES, ROTATED_SECRET_KEY,
     STEP_ADVANCE_MS, VM_FRAGMENT,
 };
+
+fn fixture_jubjub_point(bytes: [u8; 32]) -> JubjubPointHex {
+    let h = hex::encode(bytes);
+    JubjubPointHex::new(NewJubjubPointHex { x: h.clone(), y: h })
+        .expect("deterministic fixture public key is 32-byte hex")
+}
 
 /// Single step's serialized output.
 #[derive(Debug, Clone)]
@@ -337,7 +343,7 @@ impl FlowDriver {
             &self.contract,
             &self.store,
             ROTATED_SECRET_KEY,
-            ROTATED_CONTROLLER_PK_BYTES,
+            fixture_jubjub_point(ROTATED_CONTROLLER_PK_BYTES),
         )
         .await
         .context("rotate_controller_key failed")?;
@@ -371,7 +377,7 @@ impl FlowDriver {
             &self.contract,
             &self.store,
             RECOVERED_SECRET_KEY,
-            RECOVERED_CONTROLLER_PK_BYTES,
+            fixture_jubjub_point(RECOVERED_CONTROLLER_PK_BYTES),
         )
         .await
         .context("recover_controller_key failed")?;

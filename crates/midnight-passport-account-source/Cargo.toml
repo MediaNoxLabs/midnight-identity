@@ -1,0 +1,25 @@
+[package]
+name                   = "midnight-passport-account-source"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+documentation          = "https://docs.rs/midnight-passport-account-source"
+readme                 = "README.md"
+description            = "Authenticated Passport account-custody Compact source and compatibility descriptor."
+keywords               = [ "midnight", "compact", "custody", "account" ]
+categories             = [ "cryptography", "data-structures" ]
+include                = [ "src/**", "contract/**", "tests/**", "manifest.json", "README.md" ]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [ "--cfg", "docsrs" ]
+
+[dependencies]
+
+[dev-dependencies]
+serde_json.workspace = true
+sha2                 = "0.10"

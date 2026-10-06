@@ -15,43 +15,38 @@
 
 //! Integration tests for `midnight_did_method::hex_ext`.
 //!
-//! Validates the `HashOutputExt` extension trait that bridges the
-//! truncated `Display` impl on upstream `HashOutput` (10-char preview
-//! for logs) with the full 64-character hex round-trip the Midnight
-//! DID document wire format uses.
+//! Validates the full 64-character hex round-trip the Midnight DID document
+//! wire format uses without importing ledger/runtime hash types.
 
-use compact_runtime::ContractAddress;
-use midnight_base_crypto::hash::HashOutput;
 use midnight_did_method::hex_ext::{HashOutputExt, ParseHexError};
+use midnight_did_method::midnight_did::{ContractAddress, OffchainStateHashHex};
 
 const ZERO_HEX: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 const ARBITRARY_HEX: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 #[test]
-fn hash_output_round_trips_through_hex() {
-    let parsed = HashOutput::from_hex(ARBITRARY_HEX).expect("parse");
+fn offchain_hash_round_trips_through_hex() {
+    let parsed = OffchainStateHashHex::from_hex(ARBITRARY_HEX).expect("parse");
     let re_emitted = parsed.to_hex();
     assert_eq!(re_emitted, ARBITRARY_HEX);
 }
 
 #[test]
-fn hash_output_zero_round_trips() {
-    let parsed = HashOutput::from_hex(ZERO_HEX).expect("parse zero");
+fn offchain_hash_zero_round_trips() {
+    let parsed = OffchainStateHashHex::from_hex(ZERO_HEX).expect("parse zero");
     assert_eq!(parsed.0, [0u8; 32]);
     assert_eq!(parsed.to_hex(), ZERO_HEX);
 }
 
 #[test]
-fn hash_output_to_hex_is_full_64_chars() {
-    // Upstream Display truncates to 10 chars for logs; to_hex must
-    // emit the full 64.
-    let parsed = HashOutput::from_hex(ARBITRARY_HEX).expect("parse");
+fn offchain_hash_to_hex_is_full_64_chars() {
+    let parsed = OffchainStateHashHex::from_hex(ARBITRARY_HEX).expect("parse");
     assert_eq!(parsed.to_hex().len(), 64);
 }
 
 #[test]
-fn hash_output_from_hex_rejects_short_string() {
-    let err = HashOutput::from_hex("abcd").expect_err("short hex should be rejected");
+fn offchain_hash_from_hex_rejects_short_string() {
+    let err = OffchainStateHashHex::from_hex("abcd").expect_err("short hex should be rejected");
     match err {
         ParseHexError::WrongLength(n) => assert_eq!(n, 4),
         other => panic!("expected WrongLength(4), got {other:?}"),
@@ -59,9 +54,9 @@ fn hash_output_from_hex_rejects_short_string() {
 }
 
 #[test]
-fn hash_output_from_hex_rejects_long_string() {
+fn offchain_hash_from_hex_rejects_long_string() {
     let long = "a".repeat(65);
-    let err = HashOutput::from_hex(&long).expect_err("long hex rejected");
+    let err = OffchainStateHashHex::from_hex(&long).expect_err("long hex rejected");
     match err {
         ParseHexError::WrongLength(n) => assert_eq!(n, 65),
         other => panic!("expected WrongLength(65), got {other:?}"),
@@ -69,10 +64,10 @@ fn hash_output_from_hex_rejects_long_string() {
 }
 
 #[test]
-fn hash_output_from_hex_rejects_non_hex_chars() {
+fn offchain_hash_from_hex_rejects_non_hex_chars() {
     let bad = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
     assert_eq!(bad.len(), 64);
-    let err = HashOutput::from_hex(bad).expect_err("non-hex rejected");
+    let err = OffchainStateHashHex::from_hex(bad).expect_err("non-hex rejected");
     assert!(
         matches!(err, ParseHexError::InvalidHex(_)),
         "expected InvalidHex, got {err:?}",
@@ -87,13 +82,10 @@ fn contract_address_round_trips_through_hex() {
 }
 
 #[test]
-fn contract_address_inner_hash_output_matches() {
-    // ContractAddress(pub HashOutput) — from_hex(s) should produce
-    // a ContractAddress whose inner HashOutput's bytes match the
-    // hex-decoded input.
+fn contract_address_bytes_match() {
     let addr = ContractAddress::from_hex(ARBITRARY_HEX).expect("parse");
-    let expected_bytes = HashOutput::from_hex(ARBITRARY_HEX).expect("parse").0;
-    assert_eq!(addr.0.0, expected_bytes);
+    let expected_bytes = OffchainStateHashHex::from_hex(ARBITRARY_HEX).expect("parse").0;
+    assert_eq!(addr.0, expected_bytes);
 }
 
 #[test]
@@ -117,9 +109,9 @@ fn round_trip_property_for_random_byte_arrays() {
     // patterns rather than introducing a `rand`/`proptest` dep.
     for byte in (0u8..=255u8).step_by(7) {
         let bytes = [byte; 32];
-        let hash = HashOutput(bytes);
+        let hash = OffchainStateHashHex(bytes);
         let s = hash.to_hex();
-        let back = HashOutput::from_hex(&s).expect("round-trip");
+        let back = OffchainStateHashHex::from_hex(&s).expect("round-trip");
         assert_eq!(back.0, bytes, "round-trip failed for byte {byte}");
     }
 }

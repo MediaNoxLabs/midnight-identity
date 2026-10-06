@@ -52,15 +52,19 @@ pub mod uri;
 // Re-exports mirroring the TS `index.ts` so downstream callers can `use
 // midnight_did_domain::*` to get the most common items.
 pub use crypto_codecs::{
-    decode_base64url, decode_base64url_bytes, decode_base64url_bytes_32, decode_field_element, encode_base64url,
-    encode_field_element,
+    JUBJUB_JWK_COORDINATE_MODULUS_DECIMAL, decode_base64url, decode_base64url_bytes, decode_base64url_bytes_32,
+    decode_field_element, decode_jubjub_jwk_coordinate, decode_jubjub_jwk_coordinate_to_little_endian,
+    encode_base64url, encode_field_element, encode_jubjub_jwk_coordinate,
+    encode_jubjub_jwk_coordinate_from_little_endian,
 };
 pub use did_document::{
-    CurveType, DidDocument, DidDocumentMetadata, DidKeyId, DidResolutionErrorCode, DidResolutionResult, DidString,
-    DidUrl, KeyType, KnownDidMediaType, KnownDidResolutionErrorCode, PublicKeyJwk, RelativeUrl, Service,
-    ServiceEndpoint, ValidationError, ValidationIssue, VerificationMethod, VerificationMethodRelation,
-    VerificationMethodType, create_did_document, parse_did, parse_did_document, parse_did_key_id, parse_did_url,
-    parse_service, parse_verification_method,
+    CurveType, DidDocument, DidDocumentBuilder, DidDocumentMetadata, DidKeyId, DidResolutionErrorCode,
+    DidResolutionResult, DidString, DidUrl, KeyType, KnownDidMediaType, KnownDidResolutionErrorCode,
+    MAX_DID_DOCUMENT_ENTRIES, MAX_DID_DOCUMENT_EXTENSION_DEPTH, MAX_DID_DOCUMENT_TEXT_BYTES, MAX_DID_STRING_BYTES,
+    MAX_SERVICE_ENDPOINT_NODES, NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk, RelativeUrl, Service,
+    ServiceEndpoint, ServiceEndpointArrayEntry, ServiceType, ValidationError, ValidationIssue, VerificationMethod,
+    VerificationMethodRelation, VerificationMethodType, create_did_document, parse_did, parse_did_document,
+    parse_did_key_id, parse_did_url, parse_service, parse_verification_method,
 };
 pub use did_registrar::DidRegistrar;
 pub use did_resolver::MidnightDidResolver;

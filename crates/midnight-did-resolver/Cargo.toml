@@ -1,0 +1,36 @@
+# This file is part of MediaNoxLabs/midnight-identity.
+# Copyright (C) 2026 Midnight Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name                   = "midnight-did-resolver"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+description            = "HTTP DID resolution service for did:midnight — the Rust counterpart of midnightntwrk/midnight-did-resolver, over the indexer-backed read path."
+# Service binary; not a library for crates.io (and blocked on the same
+# unpublished upstream deps as midnight-did-runtime anyway).
+publish = false
+
+[dependencies]
+midnight-did-api     = { workspace = true }
+midnight-did-domain  = { workspace = true }
+midnight-did-indexer = { workspace = true }
+midnight-did-method  = { workspace = true }
+midnight-did-runtime = { workspace = true }
+axum                 = "0.8"
+serde                = { workspace = true }
+serde_json           = { workspace = true }
+thiserror            = "2"
+tokio                = { version = "1", features = [ "macros", "rt-multi-thread", "signal" ] }
+tracing              = "0.1"
+tracing-subscriber   = { version = "0.3", features = [ "env-filter" ] }
+url                  = "2"
+
+[dev-dependencies]
+hex     = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = [ "json", "rustls-tls" ] }

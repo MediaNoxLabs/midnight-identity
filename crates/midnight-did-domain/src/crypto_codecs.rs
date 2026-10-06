@@ -20,6 +20,14 @@
 //! wraps it so the public API mirrors the TS surface (`encodeBase64Url`,
 //! `decodeBase64UrlBytes(input, expectedLength)`), and so callers in this
 //! crate don't have to depend on a specific base64 crate directly.
+//!
+//! ## Canonical codec surface
+//!
+//! This module is the canonical JWK ↔ curve-point codec surface for
+//! VC-layer consumers. The TypeScript VC stack duplicates these codecs in
+//! two separate adapters; the Rust port must not repeat that split — any
+//! crate that needs base64url or field-element (de)coding of JWK
+//! coordinates consumes this module instead of re-implementing it.
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -57,6 +65,98 @@ pub enum CodecError {
         /// Operator-provided label.
         label: String,
     },
+    /// Decoded Jubjub coordinate is at or above the v0.7 base-field modulus.
+    #[error("{label} must be an integer below the Jubjub base-field modulus")]
+    CoordinateOutOfRange {
+        /// Operator-provided label.
+        label: String,
+    },
+}
+
+/// Jubjub base-field modulus used by Midnight DID v0.7.0 for `EC`/`Jubjub`
+/// JWK coordinates. Provenance: upstream `midnightntwrk/midnight-did` tag
+/// `v0.7.0` commit `4e7f6b0f69bf4e2c8506a9693f8d0c3dfe68e550`,
+/// `docs-site/architecture/adr-jubjub-jwk-coordinate-encoding.md`.
+pub const JUBJUB_JWK_COORDINATE_MODULUS_DECIMAL: &str =
+    "52435875175126190479447740508185965837690552500527637822603658699938581184513";
+
+const JUBJUB_JWK_COORDINATE_BYTES: usize = 32;
+const JUBJUB_MODULUS_BE: [u8; JUBJUB_JWK_COORDINATE_BYTES] = [
+    0x73, 0xed, 0xa7, 0x53, 0x29, 0x9d, 0x7d, 0x48, 0x33, 0x39, 0xd8, 0x08, 0x09, 0xa1, 0xd8, 0x05, 0x53, 0xbd, 0xa4,
+    0x02, 0xff, 0xfe, 0x5b, 0xfe, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01,
+];
+
+fn is_strictly_less_than_jubjub_modulus(bytes: &[u8; JUBJUB_JWK_COORDINATE_BYTES]) -> bool {
+    bytes < &JUBJUB_MODULUS_BE
+}
+
+/// Encode a Jubjub JWK coordinate as Midnight DID v0.7.0 canonical EC/Jubjub
+/// `x`/`y`: exactly 32 unsigned big-endian bytes, unpadded base64url.
+///
+/// The input is already in the domain-facing big-endian order. Use
+/// [`encode_jubjub_jwk_coordinate_from_little_endian`] at ledger or MOD1 v1
+/// boundaries, whose native fields remain little-endian.
+///
+/// # Errors
+///
+/// Returns [`CodecError::UnexpectedByteLength`] unless the input has exactly
+/// 32 bytes, or [`CodecError::CoordinateOutOfRange`] when the value is at or
+/// above the Jubjub base-field modulus.
+pub fn encode_jubjub_jwk_coordinate(bytes_be: &[u8], label: &str) -> Result<String, CodecError> {
+    let bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] =
+        bytes_be.try_into().map_err(|_| CodecError::UnexpectedByteLength {
+            label: label.into(),
+            expected: JUBJUB_JWK_COORDINATE_BYTES,
+            actual: bytes_be.len(),
+        })?;
+    if !is_strictly_less_than_jubjub_modulus(&bytes) {
+        return Err(CodecError::CoordinateOutOfRange { label: label.into() });
+    }
+    Ok(encode_base64url(&bytes))
+}
+
+/// Decode a Midnight DID v0.7.0 EC/Jubjub JWK coordinate to fixed-width
+/// unsigned big-endian bytes.
+///
+/// This is the canonical public-domain validation gate: unpadded base64url,
+/// exactly 32 decoded bytes, and integer value strictly below the Jubjub
+/// base-field modulus.
+///
+/// # Errors
+///
+/// Forwards canonical base64url errors from [`decode_base64url_bytes`] and
+/// returns [`CodecError::CoordinateOutOfRange`] for values at or above the modulus.
+pub fn decode_jubjub_jwk_coordinate(input: &str, label: &str) -> Result<[u8; JUBJUB_JWK_COORDINATE_BYTES], CodecError> {
+    let decoded = decode_base64url_bytes(input, JUBJUB_JWK_COORDINATE_BYTES, label)?;
+    let bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] = decoded.try_into().expect("decode_base64url_bytes enforced length");
+    if !is_strictly_less_than_jubjub_modulus(&bytes) {
+        return Err(CodecError::CoordinateOutOfRange { label: label.into() });
+    }
+    Ok(bytes)
+}
+
+/// Convert a historical little-endian Jubjub field (ledger/MOD1 v1) to the
+/// Midnight DID v0.7.0 domain JWK coordinate string.
+pub fn encode_jubjub_jwk_coordinate_from_little_endian(bytes_le: &[u8], label: &str) -> Result<String, CodecError> {
+    let mut bytes: [u8; JUBJUB_JWK_COORDINATE_BYTES] =
+        bytes_le.try_into().map_err(|_| CodecError::UnexpectedByteLength {
+            label: label.into(),
+            expected: JUBJUB_JWK_COORDINATE_BYTES,
+            actual: bytes_le.len(),
+        })?;
+    bytes.reverse();
+    encode_jubjub_jwk_coordinate(&bytes, label)
+}
+
+/// Decode a v0.7.0 domain JWK coordinate and convert it back to the
+/// historical little-endian ledger/MOD1 v1 field bytes.
+pub fn decode_jubjub_jwk_coordinate_to_little_endian(
+    input: &str,
+    label: &str,
+) -> Result<[u8; JUBJUB_JWK_COORDINATE_BYTES], CodecError> {
+    let mut bytes = decode_jubjub_jwk_coordinate(input, label)?;
+    bytes.reverse();
+    Ok(bytes)
 }
 
 /// Reference regex pattern accepted by the canonical-form check. Exposed
@@ -230,5 +330,169 @@ mod tests {
     fn regex_constant_is_documented() {
         // Sanity-check the doc-string constant matches the TS regex.
         assert_eq!(BASE64URL_TEXT_RE, "^[A-Za-z0-9_-]+$");
+    }
+
+    #[test]
+    fn roundtrips_every_padding_class() {
+        // Lengths 0..=8 cover every length-mod-4 class of the unpadded
+        // encoding (and both `==`/`=` re-padding branches in decode).
+        for len in 0usize..=8 {
+            let bytes: Vec<u8> = (0..len as u8).map(|b| b.wrapping_mul(37)).collect();
+            let encoded = encode_base64url(&bytes);
+            assert_eq!(decode_base64url(&encoded).expect("decode"), bytes, "len {len}");
+        }
+    }
+
+    #[test]
+    fn decode_rejects_impossible_length() {
+        // Length-mod-4 == 1 cannot occur in unpadded base64url.
+        assert_eq!(
+            decode_base64url("AAAAA").unwrap_err(),
+            CodecError::InvalidLength { label: "value".into() }
+        );
+    }
+
+    #[test]
+    fn decode_rejects_invalid_characters() {
+        assert_eq!(
+            decode_base64url("++++").unwrap_err(),
+            CodecError::InvalidCharacter { label: "value".into() }
+        );
+    }
+
+    #[test]
+    fn bytes_decode_rejects_empty_input() {
+        let err = decode_base64url_bytes("", 0, "coord").unwrap_err();
+        assert_eq!(err, CodecError::InvalidCharacter { label: "coord".into() });
+    }
+
+    #[test]
+    fn bytes_decode_rejects_non_zero_trailing_bits() {
+        // "AB" would decode to [0] but re-encode to "AA". The strict
+        // base64 engine already rejects the non-zero trailing bits, so
+        // the error surfaces as InvalidCharacter (the NotCanonical
+        // re-encode check is a defensive second line).
+        let err = decode_base64url_bytes("AB", 1, "coord").unwrap_err();
+        assert_eq!(err, CodecError::InvalidCharacter { label: "coord".into() });
+    }
+
+    #[test]
+    fn not_canonical_error_displays_label() {
+        assert_eq!(
+            CodecError::NotCanonical { label: "coord".into() }.to_string(),
+            "coord is not canonical unpadded base64url"
+        );
+    }
+
+    #[test]
+    fn coordinate_out_of_range_error_displays_label() {
+        assert_eq!(
+            CodecError::CoordinateOutOfRange { label: "coord".into() }.to_string(),
+            "coord must be an integer below the Jubjub base-field modulus"
+        );
+    }
+
+    #[test]
+    fn jubjub_decode_reports_modulus_range_distinct_from_canonicality() {
+        let modulus = "c-2nUymdfUgzOdgICaHYBVO9pAL__lv-_____wAAAAE";
+        assert_eq!(
+            decode_jubjub_jwk_coordinate(modulus, "publicKeyJwk.x").unwrap_err(),
+            CodecError::CoordinateOutOfRange {
+                label: "publicKeyJwk.x".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn bytes_decode_reports_length_mismatch_with_label() {
+        let sixteen = encode_base64url(&[1u8; 16]);
+        let err = decode_base64url_bytes(&sixteen, 32, "publicKeyJwk.x").unwrap_err();
+        assert_eq!(
+            err,
+            CodecError::UnexpectedByteLength {
+                label: "publicKeyJwk.x".into(),
+                expected: 32,
+                actual: 16,
+            }
+        );
+        assert_eq!(
+            err.to_string(),
+            "publicKeyJwk.x must decode to exactly 32 bytes (got 16)"
+        );
+    }
+
+    #[test]
+    fn error_display_propagates_labels() {
+        assert_eq!(
+            CodecError::InvalidCharacter { label: "x".into() }.to_string(),
+            "x contains an invalid base64url character"
+        );
+        assert_eq!(
+            CodecError::InvalidLength { label: "y".into() }.to_string(),
+            "y has an invalid unpadded base64url length"
+        );
+    }
+
+    #[test]
+    fn bytes_32_wrapper_checks_length() {
+        let thirty_two = encode_base64url(&[0xAB; 32]);
+        assert_eq!(
+            decode_base64url_bytes_32(&thirty_two, "hash").expect("decode"),
+            vec![0xAB; 32]
+        );
+        let thirty_one = encode_base64url(&[0xAB; 31]);
+        assert!(matches!(
+            decode_base64url_bytes_32(&thirty_one, "hash").unwrap_err(),
+            CodecError::UnexpectedByteLength {
+                expected: 32,
+                actual: 31,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn field_element_empty_string_decodes_to_zero() {
+        assert_eq!(
+            decode_field_element("").expect("decode"),
+            num_decode::BigUintBytes(vec![])
+        );
+    }
+
+    #[test]
+    fn field_element_decode_propagates_errors() {
+        assert!(matches!(
+            decode_field_element("AAAAA").unwrap_err(),
+            CodecError::InvalidLength { .. }
+        ));
+    }
+
+    #[test]
+    fn field_element_encodes_zero_as_single_byte() {
+        // The TS port treats 0n as the singleton [0].
+        let zero = encode_base64url(&[0u8]);
+        assert_eq!(encode_field_element(&num_decode::BigUintBytes(vec![])), zero);
+        assert_eq!(encode_field_element(&num_decode::BigUintBytes(vec![0])), zero);
+        assert_eq!(encode_field_element(&num_decode::BigUintBytes(vec![0, 0, 0])), zero);
+    }
+
+    #[test]
+    fn field_element_strips_leading_zeros() {
+        assert_eq!(
+            encode_field_element(&num_decode::BigUintBytes(vec![0, 0, 1])),
+            encode_field_element(&num_decode::BigUintBytes(vec![1]))
+        );
+        // Non-leading zeros are preserved.
+        assert_eq!(
+            encode_field_element(&num_decode::BigUintBytes(vec![0, 1, 0])),
+            encode_base64url(&[1, 0])
+        );
+    }
+
+    #[test]
+    fn field_element_max_value_round_trips() {
+        let max = num_decode::BigUintBytes(vec![0xFF; 32]);
+        let encoded = encode_field_element(&max);
+        assert_eq!(decode_field_element(&encoded).expect("decode"), max);
     }
 }

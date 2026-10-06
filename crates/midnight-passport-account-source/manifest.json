@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "package": "midnight-passport-account-source",
+  "contract": {
+    "name": "passport-account-custody",
+    "path": "contract/account.compact",
+    "bytes": 105970,
+    "sha256": "91f369beeb130c66c65d4726f26e1c2da2b6c4d25249c08e50d42ff5a6c3899d",
+    "languageConstraint": ">=0.17.0",
+    "license": "Apache-2.0",
+    "specVersion": 2,
+    "downstreamPatch": {
+      "reason": "Reject public construction of boot commitments, device entries, and grant identities that would later be rejected by activation, authorization, or grant-use guards.",
+      "baseRepository": "https://github.com/midnightntwrk/passport",
+      "baseRevision": "40072709e3f5ac5d9b89f9d92d02a4413cbe05cc",
+      "basePath": "contract/contracts/account.compact",
+      "patchedPath": "contract/account.compact",
+      "pristinePath": "contract/account.upstream.compact"
+    }
+  },
+  "provenance": {
+    "repository": "https://github.com/midnightntwrk/passport",
+    "revision": "40072709e3f5ac5d9b89f9d92d02a4413cbe05cc",
+    "path": "contract/contracts/account.compact",
+    "byteIdentical": false,
+    "patches": [
+      "downstream-jubjub-boot-small-order-guard",
+      "downstream-jubjub-device-entry-small-order-guard",
+      "downstream-k256-activation-envelope-guard",
+      "downstream-k256-boot-envelope-guard",
+      "downstream-k256-boot-live-key-guard",
+      "downstream-k256-device-entry-envelope-guard",
+      "downstream-k256-device-entry-live-key-guard",
+      "downstream-k256-grant-id-envelope-guard",
+      "downstream-k256-grant-id-live-key-guard",
+      "downstream-jubjub-grant-id-small-order-guard"
+    ],
+    "pristineSnapshot": {
+      "path": "contract/account.upstream.compact",
+      "bytes": 105349,
+      "sha256": "1064b1998a71b5ade418f136428d82721e6021d6d939ff2f12797383bb3f8d50",
+      "byteIdentical": true
+    }
+  },
+  "standards": [
+    "MIP-0012",
+    "MIP-0013"
+  ],
+  "authorizationArms": [
+    "jubjub-schnorr",
+    "ecdsa-secp256k1"
+  ],
+  "authorizationStatus": {
+    "normativeMip0013": "jubjub-schnorr",
+    "interimEngineering": "ecdsa-secp256k1"
+  },
+  "compatibility": {
+    "ledgerLine": "9.1",
+    "compactCompiler": "0.33.0-rc.2",
+    "compactRuntime": "0.18.0-rc.1",
+    "compactJs": "2.5.5-rc.6",
+    "midnightJs": "5.0.0-beta.4"
+  },
+  "importClosure": {
+    "kind": "standard-library-only",
+    "imports": [
+      "CompactStandardLibrary"
+    ],
+    "vendoredFiles": []
+  },
+  "knownLimitations": [
+    "Recovery is specified but this source exposes no recovery circuit.",
+    "The ecdsa-secp256k1 authorization arm is interim engineering, not normative MIP-0013.",
+    "Device removal is not sufficient revocation: an enrolled device can add another entry for the same key, so consumers must treat remove_device as entry removal rather than guaranteed key revocation.",
+    "The full contract requires wave deployment under the reviewed Ledger 9 block limits."
+  ],
+  "publicSurface": {
+    "ledgerEntries": [
+      "round",
+      "enc_key",
+      "inbox",
+      "inbox_count",
+      "unshielded_balances",
+      "spec_version",
+      "devices",
+      "device_epoch",
+      "device_count",
+      "auth_nonce",
+      "boot",
+      "booted",
+      "grants",
+      "grant_generation"
+    ],
+    "exportedCircuits": [
+      "activate_initial_device_with_jubjub",
+      "activate_initial_device_with_k256",
+      "derive_boot_commitment_with_jubjub",
+      "derive_boot_commitment_with_k256",
+      "derive_device_entry_with_jubjub",
+      "derive_device_entry_with_k256",
+      "envelope_digest",
+      "compute_public_point_with_jubjub",
+      "compute_public_point_with_k256",
+      "challenge_withdraw_unshielded_with_jubjub",
+      "challenge_withdraw_shielded_with_jubjub",
+      "challenge_withdraw_shielded_to_contract_with_jubjub",
+      "challenge_append_inbox_with_jubjub",
+      "challenge_rotate_enc_key_with_jubjub",
+      "challenge_add_device_with_jubjub",
+      "challenge_remove_device_with_jubjub",
+      "challenge_withdraw_unshielded_with_k256",
+      "challenge_withdraw_shielded_with_k256",
+      "challenge_withdraw_shielded_to_contract_with_k256",
+      "challenge_append_inbox_with_k256",
+      "challenge_rotate_enc_key_with_k256",
+      "challenge_add_device_with_k256",
+      "challenge_remove_device_with_k256",
+      "deposit_unshielded",
+      "withdraw_unshielded_with_jubjub",
+      "withdraw_unshielded_with_k256",
+      "deposit_shielded",
+      "append_inbox_with_jubjub",
+      "append_inbox_with_k256",
+      "withdraw_shielded_with_jubjub",
+      "withdraw_shielded_with_k256",
+      "withdraw_shielded_to_contract_with_jubjub",
+      "withdraw_shielded_to_contract_with_k256",
+      "rotate_enc_key_with_jubjub",
+      "rotate_enc_key_with_k256",
+      "add_device_with_jubjub",
+      "add_device_with_k256",
+      "remove_device_with_jubjub",
+      "remove_device_with_k256",
+      "derive_grant_id_with_k256",
+      "derive_grant_id_with_jubjub",
+      "derive_grant_object_commit",
+      "derive_grant_spent_commit",
+      "derive_grant_rp_commit",
+      "derive_grant_scope_digest",
+      "challenge_withdraw_unshielded_with_grant_k256",
+      "challenge_withdraw_shielded_with_grant_k256",
+      "challenge_withdraw_shielded_to_contract_with_grant_k256",
+      "challenge_withdraw_unshielded_with_grant_jubjub",
+      "challenge_withdraw_shielded_with_grant_jubjub",
+      "challenge_withdraw_shielded_to_contract_with_grant_jubjub",
+      "challenge_issue_grant_with_k256",
+      "challenge_revoke_grant_with_k256",
+      "challenge_revoke_all_grants_with_k256",
+      "challenge_issue_grant_with_jubjub",
+      "challenge_revoke_grant_with_jubjub",
+      "challenge_revoke_all_grants_with_jubjub",
+      "withdraw_unshielded_with_grant_k256",
+      "withdraw_shielded_with_grant_k256",
+      "withdraw_shielded_to_contract_with_grant_k256",
+      "withdraw_unshielded_with_grant_jubjub",
+      "withdraw_shielded_with_grant_jubjub",
+      "withdraw_shielded_to_contract_with_grant_jubjub",
+      "issue_grant_with_k256",
+      "revoke_grant_with_k256",
+      "revoke_all_grants_with_k256",
+      "issue_grant_with_jubjub",
+      "revoke_grant_with_jubjub",
+      "revoke_all_grants_with_jubjub"
+    ]
+  }
+}

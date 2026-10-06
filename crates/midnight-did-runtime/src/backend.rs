@@ -31,9 +31,9 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 // Re-export the upstream raw-state types under the backend module so
 // downstream consumers (api-layer tests, future custom backends) can
-// implement `Backend` without taking a direct `compact-runtime` dep.
-pub use compact_runtime::{ChargedState as RawChargedState, DefaultDB as RawDb};
-use compact_runtime::{ChargedState, DefaultDB, empty_charged_state};
+// implement `Backend` without taking a direct `midnight-compact-runtime` dep.
+pub use midnight_compact_runtime::{ChargedState as RawChargedState, DefaultDB as RawDb};
+use midnight_compact_runtime::{ChargedState, DefaultDB, empty_charged_state};
 
 use crate::contract_call::{
     DidContractCall, DidLedgerSnapshot, JubjubPointHex, LedgerSchnorrJubjubVerificationMethod, LedgerService,
@@ -178,6 +178,21 @@ pub struct LedgerContractCallConfig {
     pub key_location: midnight_transient_crypto::proofs::KeyLocation,
 }
 
+/// Typed Ledger8 deployment configuration supplied by wallet/custody code.
+#[derive(Clone)]
+pub struct LedgerDeploymentConfig {
+    /// Entry-point operation/verifier-key map for the deployed contract.
+    pub operations: midnight_storage::storage::HashMap<
+        compact_runtime::EntryPointBuf,
+        compact_runtime::ContractOperation,
+        DefaultDB,
+    >,
+    /// Maintenance authority for the deployed contract.
+    pub maintenance_authority: compact_runtime::ContractMaintenanceAuthority,
+    /// Deployment nonce used to derive/commit the contract deployment.
+    pub nonce: midnight_base_crypto::hash::HashOutput,
+}
+
 /// Secret-bearing Compact private transcript outputs.
 ///
 /// This wrapper intentionally omits `Debug`/serde so witness output material is
@@ -233,19 +248,36 @@ impl fmt::Debug for DidConstructorProofMaterial {
 
 /// Generated DID deployment material before wallet funding/proving.
 ///
-/// The constructor is typed: callers receive both the Compact-generated initial
-/// state and constructor proof material. Wallet providers can wrap the proof
-/// material in Ledger8's deploy/contract-call prototype for balancing/proving.
+/// This public DTO deliberately carries no private-state type or value.
+/// `GeneratedDidExecutor` persists the post-constructor private state inside
+/// its injected custody store before returning this material.
 #[derive(Clone)]
-pub struct DidDeploymentRequest<PS> {
+pub struct DidDeploymentRequest {
     /// Compact-generated initial on-chain contract state.
     pub initial_contract_state: ChargedState<DefaultDB>,
-    /// Post-constructor private state to persist inside custody.
-    pub initial_private_state: PS,
     /// Constructor-local zswap state from Compact runtime.
     pub initial_zswap_local_state: compact_runtime::ZswapLocalState<DefaultDB>,
     /// Generated constructor proof data and transcripts.
     pub constructor: DidConstructorProofMaterial,
+}
+
+impl DidDeploymentRequest {
+    /// Construct Ledger8's typed deploy action from generated initial state and
+    /// wallet/custody supplied operation/maintenance configuration.
+    pub fn to_contract_deploy(
+        &self,
+        config: LedgerDeploymentConfig,
+    ) -> midnight_ledger::structure::ContractDeploy<DefaultDB> {
+        midnight_ledger::structure::ContractDeploy {
+            initial_state: compact_runtime::ContractState {
+                data: self.initial_contract_state.clone(),
+                operations: config.operations,
+                maintenance_authority: config.maintenance_authority,
+                balance: midnight_storage::storage::HashMap::default(),
+            },
+            nonce: config.nonce,
+        }
+    }
 }
 
 /// Compact proof data and transcripts extracted from a generated DID circuit.
@@ -319,26 +351,6 @@ impl DidPrePartitionContractCall {
     ) -> midnight_ledger::construct::PrePartitionContractCall<DefaultDB> {
         ledger_prepartition_from_parts(
             &self.circuit_id,
-            self.contract_address,
-            self.initial_query_context,
-            self.public_transcript,
-            self.private_transcript_outputs,
-            self.input,
-            self.output,
-            config,
-        )
-    }
-}
-
-impl DidConstructorProofMaterial {
-    /// Convert generated Compact constructor proof material into Ledger8's typed
-    /// pre-partition contract call using injected wallet/custody configuration.
-    pub fn into_ledger_prepartition_contract_call(
-        self,
-        config: LedgerContractCallConfig,
-    ) -> midnight_ledger::construct::PrePartitionContractCall<DefaultDB> {
-        ledger_prepartition_from_parts(
-            &self.constructor_id,
             self.contract_address,
             self.initial_query_context,
             self.public_transcript,
@@ -515,7 +527,7 @@ impl<PS, W> GeneratedDidExecutor<PS, W> {
     }
 
     /// Execute the Compact constructor and return typed deployment material.
-    pub fn deployment_request(&self) -> Result<DidDeploymentRequest<PS>, BackendError>
+    pub fn deployment_request(&self) -> Result<DidDeploymentRequest, BackendError>
     where
         PS: Clone,
         W: crate::contract::Witnesses<PS> + Clone,
@@ -534,7 +546,6 @@ impl<PS, W> GeneratedDidExecutor<PS, W> {
         let constructor = constructor_material_from_generated(result.constructor_proof_data);
         Ok(DidDeploymentRequest {
             initial_contract_state: result.current_contract_state,
-            initial_private_state: result.current_private_state,
             initial_zswap_local_state: result.current_zswap_local_state,
             constructor,
         })
@@ -941,7 +952,7 @@ pub trait LedgerWalletProvider: Send + Sync {
     /// Materialize a provider-native unbalanced transaction from generated constructor proof data.
     async fn build_deployment_tx(
         &self,
-        deployment: DidConstructorProofMaterial,
+        deployment: DidDeploymentRequest,
     ) -> Result<UnbalancedDidTransaction, BackendError>;
 
     /// Materialize a provider-native unbalanced transaction from generated proof data.
@@ -1060,12 +1071,9 @@ impl LiveBackend {
 
     /// Submit a generated constructor/deployment request through the same
     /// wallet/proof/node/finality pipeline used by mutating calls.
-    pub async fn submit_deployment<PS>(
-        &self,
-        deployment: DidDeploymentRequest<PS>,
-    ) -> Result<FinalizedTxData, BackendError> {
+    pub async fn submit_deployment(&self, deployment: DidDeploymentRequest) -> Result<FinalizedTxData, BackendError> {
         let providers = self.providers()?;
-        let unbalanced = providers.wallet.build_deployment_tx(deployment.constructor).await?;
+        let unbalanced = providers.wallet.build_deployment_tx(deployment).await?;
         let balanced = providers.wallet.balance_tx(unbalanced).await?;
         let proved = providers.proof.prove_tx(balanced).await?;
         let signed = providers.wallet.sign_tx(proved).await?;
@@ -1609,6 +1617,116 @@ mod tests {
     }
 
     #[test]
+    fn backend_error_display_variants() {
+        assert_eq!(
+            BackendError::Network("indexer down".into()).to_string(),
+            "backend network failure: indexer down"
+        );
+        assert_eq!(
+            BackendError::Decode("bad envelope".into()).to_string(),
+            "backend decode failure: bad envelope"
+        );
+        assert_eq!(BackendError::ReadOnly.to_string(), "backend is read-only");
+        assert_eq!(
+            BackendError::Other("unmodelled".into()).to_string(),
+            "backend error: unmodelled"
+        );
+    }
+
+    #[test]
+    fn backend_error_is_a_std_error() {
+        // Display must flow through the `std::error::Error` object surface
+        // (the shape every `?`-based caller actually sees).
+        let err: Box<dyn std::error::Error> = Box::new(BackendError::ReadOnly);
+        assert_eq!(err.to_string(), "backend is read-only");
+        assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn live_backend_constructs_without_wiring() {
+        let via_new = LiveBackend::new();
+        let via_default = LiveBackend::default();
+        assert_eq!(format!("{via_new:?}"), format!("{via_default:?}"));
+        let dbg = format!("{via_new:?}");
+        assert!(dbg.contains("LiveBackend"), "got {dbg}");
+        assert!(dbg.contains("providers: None"), "got {dbg}");
+    }
+
+    #[test]
+    fn recording_backend_default_matches_new() {
+        let rt = rt();
+        let backend = RecordingBackend::default();
+        assert!(backend.recorded_calls().is_empty());
+        let state = rt.block_on(backend.read_state()).expect("read_state");
+        assert_eq!(state, empty_charged_state::<DefaultDB>());
+    }
+
+    #[test]
+    fn recording_backend_debug_reports_call_count() {
+        let rt = rt();
+        let backend = RecordingBackend::new();
+        assert!(format!("{backend:?}").contains("recorded_call_count: 0"));
+        rt.block_on(backend.submit_tx(BuiltTx {
+            bytes: DidContractCall::Deactivate.encode(),
+        }))
+        .unwrap();
+        assert!(format!("{backend:?}").contains("recorded_call_count: 1"));
+    }
+
+    #[test]
+    fn recording_backend_with_state_and_set_state_round_trip() {
+        let rt = rt();
+        let seeded = empty_charged_state::<DefaultDB>();
+        let backend = RecordingBackend::with_state(seeded.clone());
+        assert_eq!(rt.block_on(backend.read_state()).unwrap(), seeded);
+        assert!(backend.recorded_calls().is_empty(), "read_state must not record");
+
+        let replacement = empty_charged_state::<DefaultDB>();
+        backend.set_state(replacement.clone());
+        assert_eq!(rt.block_on(backend.read_state()).unwrap(), replacement);
+    }
+
+    #[test]
+    fn recording_backend_set_snapshot_replaces_served_snapshot() {
+        let rt = rt();
+        let backend = RecordingBackend::new();
+        assert_eq!(
+            rt.block_on(backend.read_snapshot()).unwrap(),
+            DidLedgerSnapshot::default()
+        );
+        let snap = DidLedgerSnapshot {
+            version: 9,
+            ..DidLedgerSnapshot::default()
+        };
+        backend.set_snapshot(snap.clone());
+        assert_eq!(rt.block_on(backend.read_snapshot()).unwrap(), snap);
+        // Both reads recorded a synthetic ReadLedger entry.
+        assert_eq!(
+            backend.recorded_calls(),
+            vec![DidContractCall::ReadLedger, DidContractCall::ReadLedger]
+        );
+    }
+
+    #[test]
+    fn synth_tx_hash_is_deterministic_and_short_hex() {
+        let a = synth_tx_hash(b"same-bytes");
+        let b = synth_tx_hash(b"same-bytes");
+        let c = synth_tx_hash(b"other-bytes");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+        assert_eq!(a.len(), 16);
+        assert!(a.chars().all(|ch| ch.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn resolver_backend_debug_is_opaque() {
+        let backend = ResolverBackend::new(empty_charged_state::<DefaultDB>());
+        let dbg = format!("{backend:?}");
+        assert!(dbg.contains("ResolverBackend"), "got {dbg}");
+        assert!(dbg.contains("<ChargedState<DefaultDB>>"), "got {dbg}");
+    }
+
+    #[test]
     fn resolver_backend_rejects_submit() {
         let rt = rt();
         let backend = ResolverBackend::new(empty_charged_state::<DefaultDB>());
@@ -1638,6 +1756,38 @@ mod tests {
     }
 
     #[test]
+    fn deployment_material_does_not_expose_private_state_surface() {
+        let source = include_str!("backend.rs");
+        let deployment_block = source
+            .split("pub struct DidDeploymentRequest")
+            .nth(1)
+            .and_then(|tail| tail.split("impl DidDeploymentRequest").next())
+            .expect("deployment request block present");
+        assert!(!deployment_block.contains("initial_private_state"));
+        assert!(!deployment_block.contains("PS"));
+        assert!(!deployment_block.contains("Debug"));
+        assert!(!deployment_block.contains("Serialize"));
+    }
+
+    #[test]
+    fn deployment_material_builds_actual_ledger_contract_deploy() {
+        let deployment = DidDeploymentRequest {
+            initial_contract_state: empty_charged_state::<DefaultDB>(),
+            initial_zswap_local_state: compact_runtime::ZswapLocalState::new(),
+            constructor: constructor_material(),
+        };
+        let nonce = midnight_base_crypto::hash::HashOutput([9u8; midnight_base_crypto::hash::PERSISTENT_HASH_BYTES]);
+        let deploy = deployment.to_contract_deploy(LedgerDeploymentConfig {
+            operations: midnight_storage::storage::HashMap::default(),
+            maintenance_authority: compact_runtime::ContractMaintenanceAuthority::default(),
+            nonce,
+        });
+        assert_eq!(deploy.initial_state.data, empty_charged_state::<DefaultDB>());
+        assert_eq!(deploy.nonce, nonce);
+        let _address = deploy.address();
+    }
+
+    #[test]
     fn generated_material_converts_to_ledger8_prepartition_shape() {
         let state = empty_charged_state::<DefaultDB>();
         let qctx = compact_runtime::QueryContext::new(state, compact_runtime::ContractAddress::default());
@@ -1656,14 +1806,6 @@ mod tests {
         assert_eq!(ledger.pre_transcript.program.len(), 0);
         assert_eq!(ledger.private_transcript_outputs.len(), 0);
         assert_eq!(ledger.communication_commitment_rand, compact_runtime::Fr::from(7u64));
-    }
-
-    #[test]
-    fn constructor_material_converts_to_ledger8_prepartition_shape() {
-        let ledger = constructor_material().into_ledger_prepartition_contract_call(ledger_config());
-        assert_eq!(&ledger.entry_point[..], b"constructor");
-        assert_eq!(ledger.pre_transcript.program.len(), 0);
-        assert_eq!(ledger.private_transcript_outputs.len(), 0);
     }
 
     #[derive(Default)]
@@ -1713,10 +1855,11 @@ mod tests {
     impl LedgerWalletProvider for FakeLive {
         async fn build_deployment_tx(
             &self,
-            deployment: DidConstructorProofMaterial,
+            deployment: DidDeploymentRequest,
         ) -> Result<UnbalancedDidTransaction, BackendError> {
             self.events.lock().unwrap().push("build_deployment");
-            assert_eq!(deployment.constructor_id, "constructor");
+            assert_eq!(deployment.constructor.constructor_id, "constructor");
+            assert_eq!(deployment.initial_contract_state, empty_charged_state::<DefaultDB>());
             Ok(UnbalancedDidTransaction {
                 bytes: b"unbalanced".to_vec(),
             })
@@ -1830,7 +1973,6 @@ mod tests {
         let backend = LiveBackend::with_providers(fake.providers());
         let deployment = DidDeploymentRequest {
             initial_contract_state: empty_charged_state::<DefaultDB>(),
-            initial_private_state: (),
             initial_zswap_local_state: compact_runtime::ZswapLocalState::new(),
             constructor: constructor_material(),
         };

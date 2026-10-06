@@ -38,6 +38,73 @@ midnight-did          (runtime, blocked on upstream halo2 skew)
 The trait-erasure split is documented in [ADR 0002][adr2] and the four-crate
 shape in [ADR 0003][adr3].
 
+
+## Public contract notes
+
+- DID documents, public JWKs, and verification methods preserve unknown JSON
+  members with serde `flatten` maps. Public parse/deserialization and
+  constructor paths still run validation, so extension preservation does not
+  permit invalid DID strings, dangling verification relationships, private JWK
+  material, duplicate services, or malformed service shapes.
+- Shared hardening limits are intentionally transport-neutral and wasm-clean:
+  DID/DID URL strings are capped at 8 KiB; DID document public text values
+  (`@context`, `alsoKnownAs`, service ids/types/endpoints, and extension
+  string values/keys) are capped at 8 KiB and reject empty,
+  leading/trailing-whitespace, or control-character text. Document lists and
+  extension/service endpoint object members are capped at 128 entries;
+  extension and service endpoint JSON nesting is capped at 32; service endpoint
+  JSON is capped at 1,024 visited nodes. URI-valued document fields and
+  service endpoint URI entries require a syntactically valid URI scheme.
+- `DidResolutionErrorCode::http_status()` exposes the complete numeric HTTP
+  status classifier without depending on an HTTP framework: `invalidDid`,
+  `invalidDidUrl`, and `invalidOptions` map to 400; `notFound` to 404;
+  `deactivated` to 410; `representationNotSupported` to 406;
+  `methodNotSupported` and `unsupportedPublicKeyType` to 501; all other known
+  or extension codes map to 500. The wire form remains the existing camelCase
+  keyword dialect. The exhaustive `KnownDidResolutionErrorCode` enum has no new
+  variants for `invalidDidUrl`, `invalidOptions`, or `deactivated`; use the
+  generic string wrapper for those additional standardized keywords.
+
+## Migration and compatibility
+
+
+### Midnight DID 0.7 Jubjub JWK coordinate profile
+
+Midnight DID v0.7.0 aligns `EC` / `Jubjub` `publicKeyJwk.x` and `y` with
+standard EC JWK coordinate semantics: canonical unpadded base64url over exactly
+32 unsigned **big-endian** octets, with the decoded integer strictly below the
+Jubjub base-field modulus
+`52435875175126190479447740508185965837690552500527637822603658699938581184513`.
+The canonical Rust helpers are `encode_jubjub_jwk_coordinate`,
+`decode_jubjub_jwk_coordinate`, and the explicit little-endian boundary helpers
+for ledger/MOD1 fields. Provenance: upstream `midnightntwrk/midnight-did` tag
+`v0.7.0`, commit `4e7f6b0f69bf4e2c8506a9693f8d0c3dfe68e550`,
+`docs-site/architecture/adr-jubjub-jwk-coordinate-encoding.md` (Apache-2.0).
+
+Ledger-native SchnorrJubjub points, signatures, contract state, and the MOD1 v1
+offchain wire fields remain fixed-width little-endian. The conversion happens
+only at the domain boundary: resolving ledger/MOD1 material exposes v0.7
+big-endian JWKs, while encoding MOD1 v1 converts canonical domain JWKs back to
+the historical little-endian fields so existing payload bytes, state hashes,
+short DIDs, and long-form DIDs are stable.
+
+Roll out producers and consumers together. Consumers that derive cache keys,
+indexes, JWK thumbprints, document hashes, or other identifiers from serialized
+JWK bytes must rebuild those values after re-resolving with a v0.7 resolver.
+Persisted 0.6 DID Document snapshots remain historical 0.6 evidence and should
+be verified under the 0.6 profile that created them. Do not add unmarked
+dual-endian fallback or heuristic byte-order detection: a 32-byte coordinate has
+no discriminator, and accepting both encodings makes interpretation
+non-deterministic.
+
+This release is additive for ordinary callers and does not add variants to the
+exhaustive known resolution error enum. Existing constructors continue to build
+values without extensions. Call `VerificationMethod::new_with_extensions`
+when native construction must retain verification-method extension members;
+serde and `parse_verification_method` retain them automatically. Direct serde
+loading of DID document types is now a validated entry point, so previously
+accepted invalid JSON fails closed instead of constructing an invalid value.
+
 ## Status
 
 - 51 unit tests passing.

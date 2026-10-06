@@ -1,0 +1,13 @@
+{
+  "repository": "MediaNoxLabs/oxid",
+  "remote": "https://github.com/MediaNoxLabs/oxid.git",
+  "reference": "origin/develop",
+  "headSha": "50a21b47d280f06cafad94961d4a40f0a83fb3b4",
+  "sourcePath": "nix/packages/passport-vault-compact-artifacts.nix",
+  "sourcePathSha256": "6a9a915aa29a22a0574dbd638deced8a529d0bdd278eb81e475feaa0812cb46a",
+  "licenseProvenance": "Apache-2.0 repository license; derivation headerless Nix expression observed read-only from Oxid baseline",
+  "oxidVaultRevision": "e4a92a6be2cc6dc34f68261f10c19c9312043807",
+  "oxidCredentialRevision": "39b1354212620b396e914b29603e6a38f2656546",
+  "oxidUpstreamVaultLockDigest": "c8d47db1b63785765b8875a3eaa33221b61c779ce7d7cc6e83d8d386a50c0e9f",
+  "compactInputRevision": "05b237a5e51f9c22853b424e7d4236dfa9384c24"
+}

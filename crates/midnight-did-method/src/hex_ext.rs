@@ -13,29 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Full-hex round-trip helpers for the upstream 32-byte hash types
-//! we reuse.
+//! Full-hex round-trip helpers for method-layer 32-byte identifier types.
 //!
-//! Upstream `Display for HashOutput` is intentionally truncated to
-//! the first 10 hex characters (a log-friendly preview, not a
-//! round-trippable serialisation — see
-//! `third_party/midnight-ledger/base-crypto/src/hash.rs:86`). The
 //! Midnight DID document wire format encodes hashes as the **full
-//! 64-character lowercase hex string**; the [`HashOutputExt`] trait
-//! below provides that round-trip without introducing yet another
-//! wrapper newtype around `[u8; 32]`.
+//! 64-character lowercase hex string**; [`HashOutputExt`] provides that
+//! canonical round-trip without a ledger/runtime dependency.
 //!
 //! ```
-//! use midnight_base_crypto::hash::HashOutput;
 //! use midnight_did_method::hex_ext::HashOutputExt;
+//! use midnight_did_method::midnight_did::OffchainStateHashHex;
 //!
 //! let s = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-//! let h = HashOutput::from_hex(s).unwrap();
+//! let h = OffchainStateHashHex::from_hex(s).unwrap();
 //! assert_eq!(h.to_hex(), s);
 //! ```
 
-use compact_runtime::ContractAddress;
-use midnight_base_crypto::hash::HashOutput;
+use crate::midnight_did::{ContractAddress, OffchainStateHashHex};
 
 /// Errors returned by [`HashOutputExt::from_hex`].
 ///
@@ -56,14 +49,9 @@ pub enum ParseHexError {
 /// Extension trait for round-tripping 32-byte hash-shaped types
 /// through their canonical 64-character lowercase hex string form.
 ///
-/// Implemented for the upstream Midnight ledger primitives we
-/// re-use directly:
-///
-/// - [`HashOutput`] — the generic 32-byte hash output from
-///   `midnight-base-crypto`. Backs `OffchainStateHash` and any
-///   identifier-shaped digest in the DID method.
-/// - [`ContractAddress`] — `ContractAddress(pub HashOutput)`, the
-///   on-chain identity slot. Delegates to the inner `HashOutput`.
+/// Implemented for the method-layer [`OffchainStateHashHex`] and
+/// [`ContractAddress`] newtypes. Ledger adapters may convert their bytes into
+/// ledger-native types without changing this public wire identity.
 ///
 /// The trait is intentionally narrow: it does **not** cover
 /// alternative encodings (bech32, base58, multibase). If the wire
@@ -82,14 +70,14 @@ pub trait HashOutputExt: Sized {
     fn to_hex(&self) -> String;
 }
 
-impl HashOutputExt for HashOutput {
+impl HashOutputExt for OffchainStateHashHex {
     fn from_hex(s: &str) -> Result<Self, ParseHexError> {
         if s.len() != 64 {
             return Err(ParseHexError::WrongLength(s.len()));
         }
         let mut buf = [0u8; 32];
         hex::decode_to_slice(s, &mut buf)?;
-        Ok(HashOutput(buf))
+        Ok(OffchainStateHashHex(buf))
     }
 
     fn to_hex(&self) -> String {
@@ -99,15 +87,11 @@ impl HashOutputExt for HashOutput {
 
 impl HashOutputExt for ContractAddress {
     fn from_hex(s: &str) -> Result<Self, ParseHexError> {
-        HashOutput::from_hex(s).map(Self)
+        OffchainStateHashHex::from_hex(s).map(|hash| Self(hash.0))
     }
 
     fn to_hex(&self) -> String {
-        // ContractAddress(pub HashOutput) — delegate to the inner
-        // HashOutput's hex rendering for byte-for-byte parity with
-        // anywhere else in the codebase that hex-encodes a 32-byte
-        // hash.
-        self.0.to_hex()
+        hex::encode(self.0)
     }
 }
 
@@ -115,18 +99,18 @@ impl HashOutputExt for ContractAddress {
 mod tests {
     //! Unit tests covering the smallest building blocks of the trait;
     //! richer behavioural coverage lives in `tests/hex_ext.rs`
-    //! (integration test against the upstream-typed surface).
+    //! (integration test against the public method-layer surface).
     use super::*;
 
     #[test]
     fn from_hex_empty_string_is_wrong_length() {
-        let err = HashOutput::from_hex("").unwrap_err();
+        let err = OffchainStateHashHex::from_hex("").unwrap_err();
         assert!(matches!(err, ParseHexError::WrongLength(0)));
     }
 
     #[test]
     fn to_hex_of_zeroed_hash_is_64_zeros() {
-        let h = HashOutput([0u8; 32]);
+        let h = OffchainStateHashHex([0u8; 32]);
         assert_eq!(h.to_hex(), "0".repeat(64));
     }
 }

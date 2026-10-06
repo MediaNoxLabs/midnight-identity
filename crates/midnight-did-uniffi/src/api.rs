@@ -48,7 +48,7 @@ fn parse_jubjub_point_hex(
 ///
 /// Records the controller key into the mock contract's private-state store
 /// and returns a JSON envelope describing the seeded DID. In production this
-/// would deploy the contract via a `compact-runtime` provider stack — for
+/// would deploy the contract via a `midnight-compact-runtime` provider stack — for
 /// the skeleton it simply registers the controller key and returns the DID
 /// string + seed echo.
 #[uniffi::export(async_runtime = "tokio")]

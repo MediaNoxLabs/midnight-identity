@@ -28,9 +28,7 @@ const SAMPLE: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 #[test]
 fn parses_contract_addresses_and_builds_did_strings() {
     let address = parse_contract_address(SAMPLE).unwrap();
-    // v0.2.0: ContractAddress is now the upstream
-    // `compact_runtime::ContractAddress(pub HashOutput)` — its hex
-    // rendering goes through HashOutputExt::to_hex.
+    // ContractAddress is a runtime-independent 32-byte method value.
     assert_eq!(address.to_hex(), SAMPLE);
     let did = create_midnight_did_string(&address.to_hex(), MidnightNetwork::DevNet);
     assert_eq!(did.0, format!("did:midnight:devnet:{SAMPLE}"));

@@ -23,7 +23,6 @@
 use thiserror::Error;
 
 use crate::did_document::{ServiceEndpoint, ServiceType, normalize_service_endpoint};
-use crate::uri::normalize_uri_string;
 
 /// Which ledger field a value is bound to. Used solely for error messages so
 /// callers can distinguish failures between, e.g., `verificationMethod.id`
@@ -287,8 +286,8 @@ pub fn assert_absolute_uri(value: &str, field: Option<&str>) -> Result<String, L
     url::Url::parse(alias)
         .map(|_| ())
         .map_err(|_| LedgerUtilsError::NotAbsoluteUri { field: label.into() })?;
-    // Also pass through the normaliser so callers store canonical hex.
-    let _ = normalize_uri_string(alias);
+    // TS parity (`assertAbsoluteUri`): the TRIMMED alias is returned
+    // verbatim — aliases are stored as given, not normalized.
     Ok(alias.to_owned())
 }
 

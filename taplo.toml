@@ -1,3 +1,9 @@
+# Scope: our TOML only. The devshell mounts vendored crates under
+# third_party/ (read-only nix-store symlinks) — we don't gate or format
+# vendored code.
+include = [ "**/*.toml" ]
+exclude = [ "third_party/**", "target/**", "target-gen/**" ]
+
 [formatting]
 align_entries       = true
 column_width        = 100

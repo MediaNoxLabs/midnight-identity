@@ -1,14 +1,14 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# midnight-did-rs — Architecture Overview
+# midnight-identity — Architecture Overview
 
 Status: living document. Last updated 2026-06-26.
 
-`midnight-did-rs` is the Rust port of the Midnight DID Method reference
+`midnight-identity` is the Rust port of the Midnight DID Method reference
 implementation (TypeScript: `@midnight-ntwrk/midnight-did`). This document
 captures the current shape of the workspace, where it is heading, and the
 design patterns that knit the layers together. ADRs at
@@ -121,7 +121,7 @@ crate where the wire types live — see §4.6 below.
 
 **`midnight-did-domain`** is pure-data Rust plus serde, hex, and the
 ported MOD1 frame encoder. It has **no** dependency on any
-`midnight-*` ledger crate, `compact-runtime`, or the wallet SDK. This
+`midnight-*` ledger crate, `midnight-compact-runtime`, or the wallet SDK. This
 buys it three properties: it compiles to wasm without ceremony, it
 compiles in milliseconds, and it is unaffected by the upstream halo2
 skew that historically blocked the runtime crate.
@@ -169,7 +169,7 @@ Current state (5 crates, all green):
 | --- | --- | --- |
 | Mobile wallet (Dioxus) | `midnight-did` (umbrella) → re-exports all four | Single dependency, stable namespace. |
 | DID resolver | `midnight-did-domain` + `midnight-did-method` | Skips api + runtime entirely. |
-| Web / wasm | `midnight-did-domain` + `midnight-did-method` (resolver path) or + `midnight-did-api` (write side) | The two layered crates are gated on `wasm32-unknown-unknown` in CI. |
+| Web / wasm | `midnight-did-domain` + `midnight-did-method` (resolver path) | The two runtime-independent crates are gated on `wasm32-unknown-unknown` in CI; the write-side API remains runtime-bound. |
 | Write-side CLI / library | `midnight-did-api` (transitively pulls domain + method + runtime) | What the reference CLI does today. |
 | UniFFI binding | `midnight-did-uniffi` → depends on `midnight-did-api` + `uniffi` runtime | UniFFI wrapper deliberately targets the api layer, not the umbrella, to keep the FFI surface focused on operation builders. |
 
@@ -259,9 +259,9 @@ The R1 type-safety sweep (ADR 0007) progressively eliminated
   `VerificationMethod`, `Service`, `PublicKeyJwk`. Validating
   `Deserialize` for `PublicKeyJwk` via `#[serde(try_from)]`. New
   `DidKeyId` / `FragmentId` / `ServiceId` newtypes in
-  `midnight_did_domain::ids`. Re-export of upstream
-  `ContractAddress` / `HashOutput` (drop the `pub String` shadow
-  newtypes). Domain-grouped error enums.
+  `midnight_did_domain::ids`. Initial reuse of upstream
+  `ContractAddress` / `HashOutput` in place of stringly typed
+  identifiers. Domain-grouped error enums.
 - **v0.3.0** — closed steps 4b + 4c (commits `0b875a8` + `65ed7f6`):
   privatized inner fields on `VerificationMethod` / `Service` /
   `PublicKeyJwk` / `DidString` / `DidUrl` / `RelativeUrl`, retired
@@ -269,11 +269,16 @@ The R1 type-safety sweep (ADR 0007) progressively eliminated
   migrated ~17 remaining struct-literal sites to `::new(NewX)?`.
   After v0.3.0 the only way to construct these types is the
   validating constructor or the validating `Deserialize` path.
+- **v0.5.0** — the method parser owns byte-exact, runtime-independent
+  `ContractAddress` / `OffchainStateHashHex` values. The runtime crate
+  performs the explicit conversion to and from Compact/Ledger address
+  types. DID parsing therefore remains usable without compiling the
+  proof-system dependency graph.
 
 ### 4.2 Pure-data crate is dep-free of `midnight-*`
 
 `midnight-did-domain` deliberately has zero `midnight-*`,
-`compact-runtime`, or wallet dependencies. The MOD1 offchain frame
+`midnight-compact-runtime`, or wallet dependencies. The MOD1 offchain frame
 encoder needs to call into the upstream Compact value serializer
 (used by `persistentHash` to compute the state hash); rather than
 adding the dep, the encoder accepts a
@@ -306,7 +311,7 @@ by a 32-byte blake2s state hash computed by hashing the
 Compact-value-serialized form. The
 [`CompactValueCodec`](../crates/midnight-did-method/src/offchain.rs)
 trait lives in `midnight-did-method`; the value serializer is
-injected so the domain crate stays free of any `compact-runtime` dep.
+injected so the domain crate stays free of any `midnight-compact-runtime` dep.
 Tests use a `Vec<u8>`-based golden-vector codec.
 
 ### 4.5 Private state behind a `PrivateStateStore` trait
@@ -338,7 +343,7 @@ the runtime crate. R2-2 moved that surface — `Contract<B>`, `Backend`,
 `midnight-did-runtime` where the wire types live. The api crate now
 imports them.
 
-This adds a transitive dep from api → runtime → `compact-runtime` +
+This adds a transitive dep from api → runtime → `midnight-compact-runtime` +
 `midnight-ledger`. The resolver path (which stops at
 `midnight-did-method`) is unaffected; the wasm gate (which builds
 domain + api) tracks whether runtime stays wasm-clean. As of v0.4.1
@@ -390,7 +395,7 @@ clippy -D warnings`, and `cargo test` on the workspace including the
 runtime crate.
 
 **Wasm build gate.** A third CI job builds `midnight-did-domain` +
-`midnight-did-api` against `wasm32-unknown-unknown` on every PR. This
+`midnight-did-method` against `wasm32-unknown-unknown` on every PR. This
 turns the architecture-doc claim "both crates are wasm-clean" from a
 promise into an enforced invariant: the moment a transitive dep
 regresses wasm support (e.g. someone pulls in a crate that uses
@@ -434,7 +439,7 @@ Status of the five open questions originally captured in the
   fixtures once `LiveBackend::submit_tx` lands.
 - Add the UniFFI wrapper crate `midnight-did-uniffi`.
 - ~~Add a wasm-target build proof~~ — done (CI `wasm-build` job
-  builds `midnight-did-domain` + `midnight-did-api` against
+  builds `midnight-did-domain` + `midnight-did-method` against
   `wasm32-unknown-unknown` on every PR). Future work: a thin
   browser-side wrapper crate (wasm-bindgen + serde-wasm-bindgen)
   exposing the resolver path to JS.

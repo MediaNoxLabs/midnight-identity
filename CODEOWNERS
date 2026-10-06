@@ -1,0 +1,30 @@
+# This file is part of MediaNoxLabs/midnight-identity.
+# Copyright (C) 2026 Midnight Foundation
+# SPDX-License-Identifier: Apache-2.0
+#
+# Layered ownership, mirroring midnightntwrk/midnight-did's approach:
+# a default owner for everything, with security-sensitive and
+# release-critical paths called out explicitly so changes there always
+# page the right reviewer even if the default owner set widens later.
+
+# Default: everything requires a maintainer review.
+* @yshyn-iohk
+
+# CI / release supply chain.
+/.github/workflows/ @yshyn-iohk
+/justfile @yshyn-iohk
+/flake.nix @yshyn-iohk
+/flake.lock @yshyn-iohk
+
+# Security-sensitive configuration.
+/.github/dependabot.yml @yshyn-iohk
+/SECURITY.md @yshyn-iohk
+/CODEOWNERS @yshyn-iohk
+
+# Agent tooling (review like executable code).
+/.pi/settings.json @yshyn-iohk
+/.devloops @yshyn-iohk
+
+# Generated contract bindings: changes must come from `just codegen`,
+# never hand edits — reviewer must verify regen provenance.
+/crates/midnight-did-runtime/src/contract/ @yshyn-iohk

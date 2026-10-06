@@ -1,5 +1,5 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
@@ -25,7 +25,7 @@ splits the 12-method async `DidContract` trait into three pieces:
 - **R2-3:** delete `DidContract` + `mock::RecordingContract` +
   `RecordedCall`; tag v0.4.0.
 
-R2-1 shipped in [`5649d6a`](https://github.com/yshyn-iohk/midnight-did-rs/commit/5649d6a)
+R2-1 shipped in [`5649d6a`](https://github.com/MediaNoxLabs/midnight-identity/commit/5649d6a)
 against v0.3.0. R2-2 + R2-3 land here against v0.4.0.
 
 The earlier deferral of R2-2 (preserved as the original draft of
@@ -142,10 +142,10 @@ The audit-flagged ledger-shape types (`JubjubPointHex`,
 `SchnorrJubjubSignature`, `SchnorrJubjubDigest`) are now closed on
 both sides of `BuiltTx::bytes`:
 
-- Encoding side ([`59ed1f5`](https://github.com/yshyn-iohk/midnight-did-rs/commit/59ed1f5)) —
+- Encoding side ([`59ed1f5`](https://github.com/MediaNoxLabs/midnight-identity/commit/59ed1f5)) —
   fields privatised, validating `::new` constructors. Callers cannot
   struct-literal a malformed value into a `DidContractCall` variant.
-- Decoding side ([`b3fdb20`](https://github.com/yshyn-iohk/midnight-did-rs/commit/b3fdb20)) —
+- Decoding side ([`b3fdb20`](https://github.com/MediaNoxLabs/midnight-identity/commit/b3fdb20)) —
   `#[serde(try_from = "Repr")]` shims + hand-rolled `Deserialize` on
   the `#[serde(transparent)]` digest. An incoming envelope decoded
   via `RecordingBackend::submit_tx` (or any future `LiveBackend`
@@ -162,15 +162,15 @@ constructor is sufficient.
 - R2 design spec:
   [`doc/specs/2026-06-24-r2-contract-abstraction-design.md`](../specs/2026-06-24-r2-contract-abstraction-design.md)
 - R2-1 (Backend trait scaffold):
-  [`5649d6a`](https://github.com/yshyn-iohk/midnight-did-rs/commit/5649d6a)
+  [`5649d6a`](https://github.com/MediaNoxLabs/midnight-identity/commit/5649d6a)
 - R2-2.1 (DidContractCall enum + Contract<B>):
-  [`2a54efb`](https://github.com/yshyn-iohk/midnight-did-rs/commit/2a54efb)
+  [`2a54efb`](https://github.com/MediaNoxLabs/midnight-identity/commit/2a54efb)
 - R2-2.2 (operation-builder migration):
-  [`a394756`](https://github.com/yshyn-iohk/midnight-did-rs/commit/a394756)
+  [`a394756`](https://github.com/MediaNoxLabs/midnight-identity/commit/a394756)
 - R2-2.3 (56-test migration):
-  [`26552f9`](https://github.com/yshyn-iohk/midnight-did-rs/commit/26552f9)
+  [`26552f9`](https://github.com/MediaNoxLabs/midnight-identity/commit/26552f9)
 - R2-3 (trait + mock deletion):
-  [`3746610`](https://github.com/yshyn-iohk/midnight-did-rs/commit/3746610)
+  [`3746610`](https://github.com/MediaNoxLabs/midnight-identity/commit/3746610)
 - ADR 0002 (fully superseded):
   [`./0002-trait-erasure-for-contract.md`](./0002-trait-erasure-for-contract.md)
 - ADR 0004 (partially superseded — private state still threads

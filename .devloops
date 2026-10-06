@@ -1,0 +1,75 @@
+# This file is part of MediaNoxLabs/midnight-identity.
+# Copyright (C) 2026 Midnight Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+version: 1
+
+strategy:
+  default: local-first
+
+refinement:
+  fanOut: 1
+  mode: parallel
+  maxCopilotRounds: 0
+  stopOnLowSignal: true
+  lowSignalRoundThreshold: 1
+  lowSignalMaxComments: 1
+  roles:
+    - correctness
+
+gates:
+  draft:
+    angles:
+      - correctness
+    mandatoryAngles: []
+    blockCleanOnFindingSeverities:
+      - must-fix
+    required: true
+    requireCi: false
+  preApproval:
+    angles:
+      - security
+    mandatoryAngles: []
+    blockCleanOnFindingSeverities:
+      - must-fix
+    required: true
+    requireCi: true
+  requireFanoutEvidence: false
+  requireFanoutProvenance: false
+  maxFanoutReviewers: 1
+  postFindingsComments: true
+  rejectForeignAngles: true
+
+personas:
+  security:
+    persona: review
+    prompt: >-
+      Review secret and identifier exposure, unsafe key/custody boundaries,
+      protocol claims, generated artifact provenance, dependency risk, and
+      GitHub workflow safety. Report concrete findings with file and line
+      references.
+    defaultModel: null
+
+autonomy:
+  stopAt:
+    - pre-approval
+    - merge
+  humanMergeOnly: true
+
+workflow:
+  asyncStartMode: allowed
+  requireDraftFirst: true
+  requireRetrospective: false
+  devModeDefault: false
+
+localImplementation:
+  lightMode:
+    enabled: true
+    maxFiles: 8
+    maxLines: 800
+    maxCopilotRounds: 0
+
+queue:
+  maxParallel: 1
+  maxAutoFiledIssues: 0
+  reDispatchMaxRetries: 1

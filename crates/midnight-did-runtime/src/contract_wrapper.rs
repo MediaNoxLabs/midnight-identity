@@ -1,4 +1,4 @@
-// This file is part of midnightntwrk/midnight-did-rs.
+// This file is part of MediaNoxLabs/midnight-identity.
 // Copyright (C) 2026 Midnight Foundation
 // SPDX-License-Identifier: Apache-2.0
 // Licensed under the Apache License, Version 2.0 (the "License");

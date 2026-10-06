@@ -1,0 +1,24 @@
+[package]
+name                   = "midnight-vc-domain"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+homepage               = "https://github.com/MediaNoxLabs/midnight-identity"
+documentation          = "https://docs.rs/midnight-vc-domain"
+description            = "Pure-data Rust credential model for Midnight Verifiable Credentials — schema/claim descriptors, composition manifests, status vocabulary (no midnight-* deps)."
+keywords               = [ "midnight", "verifiable-credentials", "ssi", "identity", "zk" ]
+categories             = [ "cryptography", "data-structures" ]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [ "--cfg", "docsrs" ]
+
+[dependencies]
+serde      = { workspace = true }
+serde_json = { workspace = true }
+thiserror  = "2"
+
+[dev-dependencies]

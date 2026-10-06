@@ -1,0 +1,44 @@
+{
+  "source": {
+    "package": "@midnight-ntwrk/midnight-vc-passport@0.1.0-rc5",
+    "core": "@midnight-ntwrk/credential-compact@0.2.0",
+    "runtime": "@midnight-ntwrk/compact-runtime@0.16.0",
+    "fixture": "createDigitalPassportFixture()",
+    "script": "crates/midnight-vc-families/tests/fixtures/capture-ts-parity.mjs"
+  },
+  "claimCommitments": {
+    "firstNameCommitment": "1e223ae182208a05f8ece3c3c70582d183fc08eb6c4e1e10abaad251a7c6c2a0",
+    "lastNameCommitment": "09f2976ab79d7882b4796ec172aa8b724e7c432d3efca70cdd176a52b16e4ad3",
+    "dateOfBirthCommitment": "2dfba8882ef4b998264625ca38b4eccbfa5887ae572d8fae8ec80c939f551d07",
+    "documentNumberCommitment": "6cb043794216f1c6e2484d6444cdbe72ea2e0d2d2d80387f044fedfad9379399",
+    "issuingStateCommitment": "794506dccd0f50879f59b839a20e11fe662ba259b49f17f852fb170a71b6c258"
+  },
+  "claimRoot": "a0be50c4abdd41e7eaeff74f5c8d2856b0ecedd01786913f19fc92345a955fc3",
+  "credentialBodyRoot": "b42f1115042cefecbd5380a0a630c0ef5f18bb13e7615cb1de9d36256f100432",
+  "presentationBodyRoot": "047ec0d9873e3f4b110703e9a7d6b341f0bbed111e25929188a9ca0e34f9b035",
+  "credentialProof": {
+    "publicKey": {
+      "x": "af74b72ae015d98db0be26a0c6a4ec28db94166a879558df5b042f65a57fa500",
+      "y": "6fc19ec2bbccc39865771e1d04765202a06161bfe9edb55d715a82d85534f263"
+    },
+    "signatureR": {
+      "x": "b42bec59c1074f6ffab8008e1d405d5cc70f8f76ba08fcf8313cb5468f273425",
+      "y": "b28355a0d633d09dc498f75dca3851ef9b7a3bbcedfd0ba9d0ec0c04a3d35861"
+    },
+    "signatureS": "efaef1a71a62c1058a331ebbaaa00083d3d4bd3195e81b3c52ec84eadb58dc0d"
+  },
+  "issuanceChallenge": "ac211b26c78ad2a361c034be79f11f67434d6f01dd4c26d2add5018b96b44700",
+  "presentationProof": {
+    "publicKey": {
+      "x": "045a74beb76a2fa0968d49f616d426c5419b7f7af1b638064d9361e89728a908",
+      "y": "1a6888fe015f8315e18992fe950327a17043ae7d670564cb4c0e1ff94c39bc6f"
+    },
+    "signatureR": {
+      "x": "02219b7b7e962cd3c97fd87eb62ed03c89d76f65b8d21513741ff065be8c2a21",
+      "y": "066491ca190d239dc483143289d4fa3a62d44eb6497d9a62444904007fd4382a"
+    },
+    "signatureS": "5d053ff17b5fa9005227756df9bfe72ea7986d4859e61829a0ed912b1441600e"
+  },
+  "presentationChallenge": "a9ef9532ec9d4668c3bb53dd385b9841aa5169705983472f30287c3e7807b800",
+  "tamperedClaimRootRejection": "failed assert: Credential claim root mismatch"
+}

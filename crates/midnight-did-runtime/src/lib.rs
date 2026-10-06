@@ -12,6 +12,7 @@ pub mod backend;
 pub mod contract;
 pub mod contract_call;
 pub mod contract_wrapper;
+pub mod identifier_bridge;
 pub mod state_decode;
 
 pub use backend::{

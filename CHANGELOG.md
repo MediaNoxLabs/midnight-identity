@@ -1,18 +1,346 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
 # Changelog
 
-All notable changes to the `midnight-did-rs` workspace are recorded
+All notable changes to the `midnight-identity` workspace are recorded
 here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-Reserved for post-0.5.0 work.
+### Changed
+
+- **Digital Passport family moves to `midnight-vc-passport@0.1.0-rc5`** —
+  `midnight-vc-families`' `digital-passport` bindings are generated from the
+  `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc5` npm tarball
+  (`midnightntwrk/midnight-vc-passport`, SHA-256 pinned), fetched from
+  registry.npmjs.org like the `credential-compact` core after the interim
+  GitHub-Release distribution window closed, against
+  `@midnight-ntwrk/credential-compact@0.2.0` (SHA-256 pinned). The generated
+  surface follows upstream: the protocol messages are now
+  `DigitalPassportIssuance_*` / `DigitalPassportVerification_*`, signer
+  authorization and verifier-request proofs are added, and the secret,
+  blinded-secret, Jubjub and off-chain-Midnight holder bindings, schema
+  capabilities/descriptors and verifier-scoped pseudonyms are removed.
+- **`midnight-vc-runtime` tracks VC Core 0.2.0** — `contract::credentials`
+  is generated from the `credential-compact@0.2.0` npm package instead of the
+  frozen `midnight-verifiable-credentials` monorepo pin.
+- **Compact compiler bumped to `codegen-rust@4f743ecc`** (0.31.122,
+  MediaNoxLabs/compact#92), which renders call arguments at the callee's
+  declared formal type and is required for Rust codegen of
+  `credential-compact@0.2.0`. DID codegen output is byte-identical under the
+  new compiler.
+
+### Removed
+
+- **BREAKING: `midnight-vc-runtime`'s `iso_registry`, `same_holder` and
+  `revocation_registry` modules** — VC Core 0.2.0 dropped these contracts from
+  the upstream repository. The `third_party/midnight-verifiable-credentials`
+  and `third_party/midnight-verifiable-credential-digital-passport` submodules
+  are removed with them; `just codegen-vc` downloads the pinned release
+  tarballs instead.
+- **BREAKING: `midnight_vc_proof::VerificationMethodRef::did_contract_address`**
+  is renamed to `controller_address`, matching VC Core 0.2.0's
+  `VerificationMethodRef.controllerAddress`; the `verification_method_ref`
+  parameter is renamed to match. Encoded proofs are unchanged.
+
+### Fixed
+
+- **Light CI shell (issue #54)** — ordinary formatting, clippy, test, WASM,
+  and coverage jobs now use `nix develop .#rust`, which preserves the pinned
+  Rust toolchain and third-party mounts without constructing the unrelated
+  Compact compiler, proving, and Node dependency closure. Those jobs also avoid
+  private cache authentication; codegen drift jobs continue to use
+  the full default shell with public Nix binary caches.
+
+### Added
+
+- **TS↔Rust parity vectors for the digital-passport bindings** —
+  `midnight-vc-families/tests/ts_parity.rs` checks claim commitments, claim and
+  body roots, signer points, issuance/presentation challenges, and accept /
+  reject verdicts against golden vectors captured from the rc2 TS package
+  (`tests/fixtures/capture-ts-parity.mjs`).
+
+- **Passport account-custody crates (issue #79)** — new
+  `midnight-passport-account-source` crate containing the Ledger 9.1 reference
+  contract from Passport revision `40072709`, its byte-identical upstream
+  snapshot, documented downstream device-key and k256 envelope hardening patches,
+  Apache-2.0 provenance, immutable digests, MIP-0012/MIP-0013 compatibility
+  metadata, known limitations, and reviewed public state/circuit roster. The
+  source package has no runtime dependencies and does not introduce generated
+  Ledger 9 artifacts into the workspace. Sibling crate
+  `midnight-passport-account` ports reusable platform-neutral signer/challenge,
+  scoped-grant, InboxEntry v1, coin-store, and inbox-discovery primitives with
+  frozen upstream conformance vectors for both normative Jubjub and interim
+  non-normative k256 arms.
+
+- **Digital Passport credential family (issue #49)** — new opt-in
+  `midnight-vc-families` codegen crate with the `digital-passport` feature,
+  generated from the standalone family repository at `v0.1.0-rc1`
+  (`bf2b608f`) and `@midnight-ntwrk/credential-compact@0.1.0-rc3`
+  (SHA-256 pinned). The bindings use the Compact compiler/runtime revision
+  `611a3dda`, include invariant smoke tests, and are covered by targeted
+  generation, Rust, unit, and coverage gates.
+
+- **Passport Vault source ownership, slice 1 (issue #47)** — new
+  `midnight-passport-vault-source` crate with the byte-identical reviewed Ledger
+  8 Compact source, Apache-2.0 provenance, compatibility manifest, and circuit
+  baselines. The package has no runtime dependencies; generated Rust, ZKIR,
+  parameters, and proving keys remain a separate heavy artifact boundary per
+  ADR 0010.
+
+- **VC core crates, slice 1 (issue #13)** — the Verifiable Credentials
+  track starts. Split per ADR 0009's "by spec boundary, not per
+  credential family" directive: one credential-model crate and one
+  generated-bindings crate.
+  - New crate **`midnight-vc-domain`** (ADR 0009 rules 1 + 2): the
+    pure-data credential model — `CredentialSchemaDescriptor`,
+    `CredentialClaimDescriptor`, `ClaimDisclosure`
+    (public / selective / committed / predicate-only),
+    `CredentialCapabilityDescriptor`, `ProofArtifactRequirement`,
+    `CredentialPackageRequirement`, `CredentialCompositionManifest`,
+    `CredentialFamilyDefinition`, the `CredentialCodec` /
+    `PresentationCodec` traits + `CodecDescriptor`, the
+    `CredentialModelError` vocabulary and the full descriptor
+    validators. Also the status vocabulary from `core/status`
+    (`StatusMode` / `EnabledStatusMode`, `StatusBinding`,
+    `StatusPolicy`, `FreshnessPolicy`, `StatusEvidence`, `StatusQuery`,
+    `StatusState`, `StatusCapabilityDescriptor`). Zero `midnight-*`
+    dependencies — wasm-clean like `midnight-did-domain`, and
+    publishable on its own cadence. serde derives reproduce the
+    TypeScript wire spellings exactly (camelCase properties,
+    kebab-case enum literals, absent-not-null optionals); 72 tests,
+    **100% line coverage**.
+  - New crate **`midnight-vc-runtime`** (ADR 0009 rule 1 — drags
+    `compact-runtime` → halo2/arkworks, so it cannot join the wasm
+    gate): the `compactc --rust --skip-ts` codegen target for the three
+    VC contracts the codegen survey confirmed compile TODO-free —
+    `core/primitives/credentials/src/credentials.compact` (the VC/VP
+    envelope), `core/primitives/iso-registry/src/iso-registry.compact`
+    and `core/capabilities/same-holder/src/same-holder.compact`. One
+    generated module per contract under `src/contract/`, re-exported as
+    modules (not globbed — `same-holder.compact` `include`s
+    `credentials.compact`, so its output redeclares those types).
+    `publish = false` per `doc/publishing.md`.
+  - New submodule **`third_party/midnight-verifiable-credentials`**,
+    pinned to rev **`a9f1d451afc10c9c44a2937e880a22870e7b65ed`** — the
+    rev the codegen survey validated. The VC repo is mid-restructure,
+    so floating on `main` risks silent breakage: between this pin and
+    `main` the credentials contract gained `verification-v1.compact`
+    (+471 lines), which the survey never exercised. Same pinning
+    discipline as the `did.compact` `42a8e4a` pin.
+  - **`just codegen-vc` / `just codegen-vc-check`** mirror the DID
+    `codegen` / `codegen-check` pair; `codegen-vc-check` is wired into
+    CI as its own job (the VC submodule is public, so the default
+    `GITHUB_TOKEN` fetches it). The `//! GENERATED` header is prepended
+    by the recipe, never hand-edited in, so it survives every
+    regeneration byte-identically. These contracts export only
+    `pure circuit`s, so compactc emits no zkir/prover/verifier
+    artifacts and there is nothing to vendor under `assets/`.
+  - Coverage scope extended to both crates; the three generated binding
+    modules join `contract/generated.rs` in `coverage_exclude`
+    (generated code is gated by `codegen-vc-check`, not by tests).
+
+  **Deferred, deliberately:**
+  - (Resolved later in this same release: `revocation-registry.compact`
+    joined once G1 landed — see *Changed* below.)
+  - `core/status/src/outcomes.ts` and `ports.ts` (verification outcome
+    codes, reader/writer/verifier ports) are behavioural rather than
+    plain data and belong with the status-verification slice.
+  - The ported TS packages (`packages/core/model`, `packages/core/status`)
+    landed upstream **after** the pinned codegen rev, so the port
+    follows `main` rev `b8646e2`; the retrieval command is recorded in
+    `midnight-vc-domain`'s crate docs. The submodule working tree stays
+    on the surveyed rev for codegen reproducibility.
+
+- **LiveBackend read path (issue #4)** — resolution can now go live:
+  - `midnight-did-runtime::state_decode`: deserialize indexer
+    `contractAction(address){state}` bytes (`tagged_deserialize` of
+    `contract-state[v6]`) and project the nested `[4][15]`-chunked
+    ledger layout into `DidLedgerSnapshot` — scalars via the generated
+    `ledger()` accessors, Map/Set fields via a direct alignment-encoded
+    atom walk (round-trip tested against chain-shaped fixtures).
+  - New crate `midnight-did-indexer`: minimal GraphQL client issuing
+    the same `CONTRACT_STATE_QUERY` as the TS
+    `indexer-public-data-provider` 4.x, plus `IndexerBackend` — a
+    read-only `Backend` (`submit_tx` → `ReadOnly`).
+  - Known codegen follow-ups discovered en route (tracked on the
+    compact PR): the constructor's initial-state scaffold is flat
+    rather than `[4][15]`-chunked (A29), and the generated `id()`
+    accessor decodes via field-repr where cells are alignment-encoded.
+  - **Live acceptance passed (2026-08-07)**: a 0.5.0 DID deployed via
+    the TS reference stack resolves from pure Rust
+    (`cargo run -p midnight-did-indexer --example live_resolve`) with
+    **byte-identical metadata** and a document identical to the
+    upstream `MidnightDIDResolver` output modulo TS's `null`-for-empty
+    quirk. Harness: `infra/standalone.yml` +
+    `doc/integration-standalone.md`.
+
+- **Rust DID resolver service (issue #5)** — new crate
+  `midnight-did-resolver` (axum): `GET /resolve/{did}`,
+  `POST /resolve`, `/health`, `/ready`; W3C resolution envelope with
+  the TS service's status mapping (`notFound` 404,
+  `invalidDid`/`networkMismatch` 400, `internalError` 500) but
+  **typed** error classification (no string matching); SSRF endpoint
+  policy for per-request `indexerUrl` overrides; env config
+  (`RESOLVER_HOST/PORT`, `MIDNIGHT_INDEXER_HTTP_URL`,
+  `MIDNIGHT_NETWORK`, `RESOLVER_TIMEOUT_MS`). Route tests run against
+  a mock indexer serving **real captured chain state**. Live
+  head-to-head vs the TS `did-resolver-service` on the same DID:
+  `didDocumentMetadata` + `didResolutionMetadata` identical, document
+  identical modulo the TS `null`-for-empty quirk (#15); all error legs
+  byte-matched.
+
+- **VC shared seams, phase 1 (issue #6)** — the API surface the
+  Midnight VC layer consumes from the DID layer:
+  - `midnight-did-method::holder_binding`: domain-separated method-id
+    hashing (`SHA-256(domain ‖ NUL ‖ fragment)`,
+    `midnight:offchain:holder-method-id:v1`) + method-reference
+    normalization, ported from the VC reference adapter with a TS
+    golden-vector test; `hash_domains` submodule owns the off-chain
+    tag vocabulary.
+  - `midnight-did-domain::crypto_codecs` documented as the canonical
+    JWK ↔ curve-point codec surface (the TS VC stack duplicates these
+    codecs in two adapters; the Rust port consumes this module).
+  - Test hardening: `offchain.rs` 47.7% → 99.6% lines,
+    `crypto_codecs.rs` 66.2% → 99.4%; workspace coverage 77.2% →
+    86.7%; **coverage floor raised 75 → 80**.
+- **`midnight-did-jubjub-schnorr` crate (issue #7)** — the
+  Schnorr-over-Jubjub suite (Rust port of the TS 0.5.0 package;
+  ADR-0009-approved new crate): seed→scalar/public-key derivation,
+  4-limb digest packing, `transientHash`-mod-2²⁴⁸ challenge (matching
+  in-circuit `schnorrVerify`; documented as **incompatible** with
+  `midnight_transient_crypto::schnorr`'s mod-r reduction in ledger-8+),
+  deterministic v1 nonce derivation, 96-byte encode/decode with
+  out-of-field + subgroup validation. Cross-language golden vectors
+  generated from the TS reference; a TS-produced signature verifies in
+  Rust byte-for-byte.
+- **Coverage push + widened gate (issue #11)** — 141 new tests across
+  domain (`did_document.rs` 62→98%, `uri.rs` 62→97%, `ledger_utils.rs`
+  41→98%), runtime (`backend.rs` 70→98%, `state_decode.rs` 80→96%),
+  indexer (56→99%), and resolver (`config.rs` 26→100%, `service.rs`
+  74→88%). The coverage gate now spans **every first-party crate**
+  (was 4), excluding only the codegen artifact and bin entrypoints:
+  **88.70% lines, floor raised 80 → 85**. New `coverage-ratchet` CI
+  step warns when the floor lags measured coverage by >5 points, so
+  the floor only moves up between contributions.
+- **Repo settings applied via API (issue #14)** — branch protection
+  (solo-maintainer variant: `develop` = signatures + no force-push;
+  `rust-codegen` = the five CI checks required + signatures, admins
+  enforced), secret scanning + push protection, private vulnerability
+  reporting, dependabot alerts + security fixes, read-only default
+  workflow token, signoff-on-web-commits, squash/auto-merge/delete-
+  on-merge policy, `crates-io` environment; compact repo: signoff,
+  alerts, branch protection on `main`+`codegen-rust`.
+- **ADR 0009 — crate granularity policy**: the six-reason split test
+  (target/dep-weight isolation, publishing cadence, feature
+  exclusivity, binding boundary, compile-time blast radius, pluggable
+  trait backends), module-by-default otherwise; megazord rule for
+  UniFFI (one cdylib), future WASM as a single sibling leaf; current
+  9 crates audited (all pass), #8 to absorb `midnight-did-indexer`.
+
+### Changed
+
+- **Runtime-independent DID method layer (issue #12)** —
+  `midnight-did-method` now owns pure 32-byte contract-address and off-chain
+  hash types instead of re-exporting Ledger/Compact types. The default method
+  dependency graph no longer activates Ledger, Compact runtime, Halo2 or
+  `blst`, and the method crate joins the WASM and publishable-core gates.
+
+- compact pin bumped to the promoted stable `codegen-rust` head
+  (toolchain **0.31.111** = A29 chunked scaffold + A30 alignment-aware
+  decode + G1 trapping-arith projection). Verified: **zero** codegen
+  drift for `did.compact` — `generated.rs` and all 12 tracked `.zkir`
+  byte-identical.
+- **`revocation_registry` joins `midnight-vc-runtime`** (issue #13):
+  G1 unblocked `revocation-registry.compact`, which now emits a
+  4,065-line binding module with zero `unimplemented!()`. All four VC
+  core contracts are bound.
+
+### Fixed
+
+- **`ledger().id()` accessor adopted; raw-bytes workaround retired.**
+  The "A31" all-zero `Bytes<32>` decode failure turned out not to exist
+  at the pinned compiler: it was a **stale pre-A30 `compact-runtime`
+  rlib** — the path dep keeps version 0.16.100 across compact pin bumps
+  and nix-store epoch mtimes defeat cargo's fingerprinting, so the
+  content swap went unnoticed in BOTH build trees (`target/` and
+  `target/llvm-cov-target/`). Diagnosis: MediaNoxLabs/compact#15.
+  Operational rule: run `cargo clean -p compact-runtime` (in both
+  target dirs) after every compact pin sync.
+
+- **`codegen-check` was half-vacuous**: `assets/keys/*.zkir` were never
+  tracked (and not gitignored), so the gate's artifact diff compared
+  nothing and always passed. The 12 `.zkir` circuit artifacts are now
+  tracked — verified byte-reproducible across regeneration under the
+  flake-pinned compactc — so circuit-lowering drift is caught instead of
+  silently ignored. The recipe documents that `*.prover`/`*.verifier`
+  stay ungated because the devshell ships no `zkir` tool and therefore
+  never emits them.
+
+- **Resolution wire parity complete (#15)**: `alsoKnownAs`/`service`
+  serialize as explicit `null` when absent, matching the TS document
+  type; the 13 API fixtures updated in lockstep. The resolved document
+  is now **byte-identical** to the TS resolver's output (verified
+  against the captured chain fixture).
+- **JWK validation gap (#17)**: a `(kty, crv)` pair with no
+  coordinate-table entry now fails validation (previously silently
+  skipped the length check), matching the TS validator — closes the
+  `kty: RSA, crv: Ed25519` hole; `decode_x`'s string-length fallback
+  removed with it.
+- **`assert_absolute_uri` (#18)**: removed the discarded
+  `normalize_uri_string` call and the misleading comment — TS parity is
+  returning the trimmed alias verbatim (verified against the reference).
+- **Resolver polish (#19)**: unreachable offchain-network branch
+  removed; `RESOLVER_ALLOW_PRIVATE_INDEXER` now strict-parses
+  (case-insensitive true/false/1/0/yes/no, anything else fails startup
+  instead of silently mapping to false).
+- DID document `@context` updated to the 0.5.0 spelling
+  (`https://w3id.org/security/jwk/v1`, was the stale
+  `vc-jws-2020` URL) in `resolution.rs`, `offchain.rs`, and the 13
+  API JSON fixtures — found by the live parity diff.
+
+- Repository moved to `MediaNoxLabs/midnight-identity` (from
+  `yshyn-iohk/midnight-did-rs`); all self-references, Cargo `repository`/
+  `homepage` metadata, and the compact flake input
+  (`github:MediaNoxLabs/compact/codegen-rust`) repointed.
+- Public-repo hardening, mirroring `midnightntwrk/midnight-did`:
+  `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `CODEOWNERS`, issue
+  templates (bug / feature / documentation), PR template with a
+  contract-surface checklist, grouped weekly `dependabot.yml`
+  (cargo + github-actions, 7-day cooldown, majors excluded), and
+  `.envrc` commit/tag-signing defaults.
+- Coverage gating: `cargo-llvm-cov` in the devshell (`llvm-tools`
+  toolchain component), `just coverage` / `coverage-gate` /
+  `coverage-lcov` recipes with a 75% line floor (baseline 77.18%), a CI
+  `coverage` job uploading LCOV artifacts, and `coverage-gate` wired
+  into `just ci`.
+- pi.dev operator shell (optional) layered on the nix devshell:
+  `pi-coding-agent` in the devshell, tracked `.pi/settings.json`
+  pinning `dev-loops@0.9.0`, repo policy in `.devloops`, docs in
+  `doc/pi-development.md`.
+- Release pipeline (`.github/workflows/release.yml`): tag-triggered
+  verify → crates.io publish (dependency-ordered `PUBLISH_CRATES`,
+  currently `midnight-did-domain` only) → GitHub Release; publishing
+  policy in `doc/publishing.md`.
+- Documentation: README rewritten around the repo mission (Rust
+  libraries for the Midnight SSI domain) with crate/publishability
+  table and branch model; `midnight-did-runtime` crate README; research
+  docs for VC shared components and the Rust DID resolver
+  (`doc/research/`).
+
+### Changed
+
+- CI: `DeterminateSystems/*` actions pinned to release SHAs (previously
+  `@main`); `persist-credentials: false` on all checkouts;
+  `timeout-minutes` on every job; push triggers repointed from `main`
+  to `rust-codegen` + `develop`; `codegen-check` now runs on every
+  PR/push (the `midnightntwrk/midnight-did` submodule went public, so
+  the default token fetches it).
 
 ## [0.5.0] — 2026-08-05
 
@@ -162,11 +490,11 @@ sides.
 - Architecture audit Rec #1 (the finding):
   `docs/superpowers/notes/2026-06-26-architecture-audit.md`
 - Encoding-side commit:
-  [`59ed1f5`](https://github.com/yshyn-iohk/midnight-did-rs/commit/59ed1f5)
+  [`59ed1f5`](https://github.com/MediaNoxLabs/midnight-identity/commit/59ed1f5)
 - Decoding-side commits:
-  [`b3fdb20`](https://github.com/yshyn-iohk/midnight-did-rs/commit/b3fdb20),
-  [`3080d49`](https://github.com/yshyn-iohk/midnight-did-rs/commit/3080d49),
-  [`8d9df0d`](https://github.com/yshyn-iohk/midnight-did-rs/commit/8d9df0d)
+  [`b3fdb20`](https://github.com/MediaNoxLabs/midnight-identity/commit/b3fdb20),
+  [`3080d49`](https://github.com/MediaNoxLabs/midnight-identity/commit/3080d49),
+  [`8d9df0d`](https://github.com/MediaNoxLabs/midnight-identity/commit/8d9df0d)
 
 ## [0.4.0] — 2026-06-25
 

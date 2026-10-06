@@ -1,139 +1,188 @@
 name: CI
 
-# CI for the midnight-did-rs workspace. Gates the four functional crates
-# and the umbrella crate:
-#
-#   - midnight-did-domain : pure data model, zero midnight-* deps
-#   - midnight-did-method : Midnight method profile (did:midnight:*)
-#   - midnight-did-api    : operation builders on Contract<B: Backend>
-#                           (DidContract trait retired in v0.4.0 — ADR 0008)
-#   - midnight-did        : umbrella re-export crate
-#
-# The codegen-target crate `midnight-did-runtime` is intentionally NOT in
-# the pre-check / test / wasm-build jobs — it transitively depends on
-# halo2 / arkworks crates that do not compile to wasm. It IS exercised
-# by the codegen-check job below (regenerates generated.rs under the
-# flake-pinned compactc and asserts no drift).
-#
-# Every job runs under `nix develop`. The devshell's shellHook
-# materialises path-mounted third_party crates (midnight-ledger,
-# midnight-zk, compact/runtime-rs, compact/runtime-rs-macros) that the
-# workspace Cargo.toml references — without them, bare `cargo` fails at
-# `cargo metadata`.
-#
-# Four jobs:
-#   - pre-check:    cargo fmt --check + clippy -D warnings on Linux.
-#   - test:         cargo test --locked on Linux AND macOS.
-#   - wasm-build:   cargo build --target wasm32-unknown-unknown on the
-#                   four wasm-clean crates.
-#   - codegen-check: regen generated.rs against flake-pinned compactc,
-#                    assert no drift.
+# One immutable path plan fans out independent validation lanes. The stable
+# Required CI aggregator owns the final verdict so intentionally unselected
+# lanes do not become missing required checks.
 
 on:
   pull_request:
-    paths:
-      - "crates/midnight-did-domain/**"
-      - "crates/midnight-did-method/**"
-      - "crates/midnight-did-api/**"
-      - "crates/midnight-did/**"
-      - "crates/midnight-did-runtime/src/contract/**"
-      - "third_party/midnight-did/**"
-      - "flake.nix"
-      - "flake.lock"
-      - "Justfile"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".github/workflows/ci.yml"
-      - "nix/**"
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
-      - main
-    paths:
-      - "crates/midnight-did-domain/**"
-      - "crates/midnight-did-method/**"
-      - "crates/midnight-did-api/**"
-      - "crates/midnight-did/**"
-      - "crates/midnight-did-runtime/src/contract/**"
-      - "third_party/midnight-did/**"
-      - "flake.nix"
-      - "flake.lock"
-      - "Justfile"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".github/workflows/ci.yml"
-      - "nix/**"
+      - develop
+      - rust-codegen
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
 
-# Default to no permissions; each job opts in to the minimum it needs.
 permissions: {}
 
-# Cancel superseded runs on the same PR / branch.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
+  CARGO_TERM_COLOR: always
+  NIX_CONFIG: |
+    extra-substituters = https://cache.iog.io
+    extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  # Fast pre-checks: formatting + lints. Linux only.
-  pre-check:
-    name: Format + Clippy
+  plan:
+    name: Change plan
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      policy: ${{ steps.plan.outputs.policy }}
+      rust: ${{ steps.plan.outputs.rust }}
+      unit: ${{ steps.plan.outputs.unit }}
+      wasm: ${{ steps.plan.outputs.wasm }}
+      coverage: ${{ steps.plan.outputs.coverage }}
+      did_codegen: ${{ steps.plan.outputs.did_codegen }}
+      vc_codegen: ${{ steps.plan.outputs.vc_codegen }}
+      audit: ${{ steps.plan.outputs.audit }}
+      packages_csv: ${{ steps.plan.outputs.packages_csv }}
+      targets: ${{ steps.plan.outputs.targets }}
+      areas: ${{ steps.plan.outputs.areas }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Compute immutable target plan
+        id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          FORCE_FULL: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref == 'rust-codegen' || startsWith(github.event.pull_request.base.ref, 'milestone-') }}
+          INCLUDE_AUDIT: ${{ github.event_name == 'schedule' }}
+        run: |
+          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --delivery-profile production-ready)
+          if [[ "$FORCE_FULL" == "true" ]]; then args+=(--full); fi
+          if [[ "$INCLUDE_AUDIT" == "true" ]]; then args+=(--audit); fi
+          node scripts/ci/target-plan.mjs "${args[@]}" --format github >> "$GITHUB_OUTPUT"
+          node scripts/ci/target-plan.mjs "${args[@]}" --format json > target-plan.json
+          cat target-plan.json
+
+      - name: Upload immutable plan
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: target-plan
+          path: target-plan.json
+          retention-days: 14
+
+  policy:
+    name: Policy and factory contracts
+    needs: plan
+    if: ${{ needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
-      - name: Checkout code
+      - name: Checkout exact candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Run factory contract tests
+        run: node scripts/factory/check.mjs
+
+      - name: Lint GitHub Actions semantics
+        run: find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) -print0 | xargs -0 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
+      - name: Enforce branch, title, DCO, and signatures
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --repo MediaNoxLabs/midnight-identity --github-signatures)
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            args+=(--branch "$HEAD_BRANCH" --pr-title "$PR_TITLE" --pr-base "$BASE_BRANCH" --pr-body "$PR_BODY")
+          else
+            # This workflow runs push policy only for develop/rust-codegen, where
+            # a GitHub-created single-parent commit can be a squash merge result.
+            args+=(--allow-generated-squash)
+          fi
+          node scripts/factory/contribution-policy.mjs "${args[@]}"
+
+      - name: Scan added lines for credential patterns
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/factory/secret-scan.mjs --base "$BASE_SHA" --head "$HEAD_SHA"
+
+  rust:
+    name: Rust format, lint, and compile
+    needs: plan
+    if: ${{ needs.plan.outputs.rust == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Cache Cargo registry and git trees
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - name: Restore bounded Cargo source cache
+        id: cargo-cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo-sources-v1-${{ hashFiles('Cargo.lock') }}
 
-      - name: Check formatting (domain + method + api + umbrella)
-        run: |
-          nix develop --command bash -c '
-            cargo fmt -p midnight-did-domain --check &&
-            cargo fmt -p midnight-did-method --check &&
-            cargo fmt -p midnight-did-api    --check &&
-            cargo fmt -p midnight-did        --check
-          '
+      - name: Check selected packages
+        env:
+          PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
+        run: nix develop .#rust --command bash scripts/ci/rust-target.sh check
 
-      - name: Run Clippy on midnight-did-domain
-        run: nix develop --command cargo clippy -p midnight-did-domain --all-targets -- -D warnings
+      - name: Save trusted Cargo source cache
+        if: ${{ github.event_name == 'push' && steps.cargo-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
-      - name: Run Clippy on midnight-did-method
-        run: nix develop --command cargo clippy -p midnight-did-method --all-targets -- -D warnings
-
-      - name: Run Clippy on midnight-did-api
-        run: nix develop --command cargo clippy -p midnight-did-api --all-targets -- -D warnings
-
-      - name: Run Clippy on midnight-did (umbrella)
-        run: nix develop --command cargo clippy -p midnight-did --all-targets -- -D warnings
-
-  # Test matrix on Linux + macOS.
-  test:
-    name: Test ${{ matrix.os }}
-    needs: pre-check
-    permissions:
-      contents: read
+  unit:
+    name: Unit ${{ matrix.os }}
+    needs: plan
+    if: ${{ needs.plan.outputs.unit == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -141,121 +190,242 @@ jobs:
           - ubuntu-latest
           - macos-latest
     runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Cache Cargo registry and git trees
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Cache target directory
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: target
-          key: ${{ runner.os }}-target-did-${{ hashFiles('Cargo.lock', 'crates/midnight-did-domain/**', 'crates/midnight-did-method/**', 'crates/midnight-did-api/**') }}
-          restore-keys: |
-            ${{ runner.os }}-target-did-
-
-      - name: Run tests (domain + method + api)
-        run: nix develop --command cargo test -p midnight-did-domain -p midnight-did-method -p midnight-did-api --locked
-
-  # Build the wasm-clean crates against wasm32-unknown-unknown.
-  wasm-build:
-    name: WASM target build
-    needs: pre-check
+    timeout-minutes: 45
     permissions:
       contents: read
-    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout exact candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Cache Cargo registry and wasm target
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - name: Restore bounded Cargo source cache
+        id: cargo-cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-wasm-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-wasm-
+          key: ${{ runner.os }}-cargo-sources-v1-${{ hashFiles('Cargo.lock') }}
 
-      # Only midnight-did-domain is wasm-clean today.
-      #   - method     -> midnight-base-crypto + compact-runtime (blst)
-      #   - api        -> midnight-did-runtime  (blst via halo2)
-      #   - umbrella   -> transitively depends on api/runtime
-      # All three drag the `blst` C bindings into the wasm32 build, and
-      # blst's `no_asm.h` fails to compile without an `llimb_t` typedef
-      # on wasm targets. Restoring method/api/umbrella to the wasm gate
-      # is a re-architecting task (feature-gate the crypto deps behind
-      # a non-wasm cfg or expose the domain-shape mapping via a smaller
-      # runtime-agnostic surface).
-      - name: Build wasm32-unknown-unknown (domain)
+      - name: Test selected packages
+        env:
+          PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
+        run: nix develop .#rust --command bash scripts/ci/rust-target.sh test
+
+      - name: Save trusted macOS Cargo source cache
+        if: ${{ github.event_name == 'push' && matrix.os == 'macos-latest' && steps.cargo-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+  wasm:
+    name: WASM compatibility
+    needs: plan
+    if: ${{ needs.plan.outputs.wasm == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Restore bounded Cargo source cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-sources-v1-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build WASM-clean crates
         run: |
-          nix develop --command cargo build --target wasm32-unknown-unknown \
+          nix develop .#rust --command cargo build --locked \
+            --target wasm32-unknown-unknown \
             -p midnight-did-domain \
-            --locked
+            -p midnight-did-method \
+            -p midnight-passport-account-source \
+            -p midnight-passport-vault-source \
+            -p midnight-vc-domain
 
-  # Regenerate generated.rs from did.compact via the flake-pinned compactc
-  # and assert no drift against the committed file.
-  #
-  # Manual-trigger only (workflow_dispatch). This job needs the private
-  # `midnightntwrk/midnight-did` submodule which the default GITHUB_TOKEN
-  # cannot access from this fork. To make it run automatically on PRs:
-  #
-  #   1. Create a fine-grained PAT with `contents: read` on
-  #      `midnightntwrk/midnight-did`.
-  #   2. Add it as repo secret `MIDNIGHT_DID_PAT`.
-  #   3. Wire `submodules: recursive` + `token: ${{ secrets.MIDNIGHT_DID_PAT }}`
-  #      into the checkout step below.
-  #   4. Change the `if:` guard to `if: ${{ secrets.MIDNIGHT_DID_PAT != '' }}`.
-  #
-  # Until then, run `just codegen-check` locally under `nix develop` to
-  # exercise this gate.
-  codegen-check:
-    name: Codegen regen check (did.compact -> generated.rs)
-    if: ${{ github.event_name == 'workflow_dispatch' }}
-    needs: pre-check
+  coverage:
+    name: Coverage
+    needs: plan
+    if: ${{ needs.plan.outputs.coverage == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
-    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout exact candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Restore bounded Cargo source cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-sources-v1-${{ hashFiles('Cargo.lock') }}
+
+      - name: Enforce deterministic aggregate coverage
+        run: nix develop .#rust --command just coverage-gate
+
+      - name: Check coverage ratchet
+        run: nix develop .#rust --command just coverage-ratchet
+
+  did_codegen:
+    name: DID codegen drift
+    needs: plan
+    if: ${{ needs.plan.outputs.did_codegen == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
-          # Once MIDNIGHT_DID_PAT is configured, uncomment to enable
-          # private-submodule fetch:
-          # token: ${{ secrets.MIDNIGHT_DID_PAT }}
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Run codegen and assert no drift
+      - name: Regenerate DID bindings and assert no drift
         run: nix develop --command just codegen-check
+
+  vc_codegen:
+    name: VC codegen drift
+    needs: plan
+    if: ${{ needs.plan.outputs.vc_codegen == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Regenerate VC bindings and assert no drift
+        run: nix develop --command just codegen-vc-check
+
+      - name: Test Passport Vault Ledger 8 artifact contract
+        run: nix develop .#factory --command node --test tests/compact/passport-vault-ledger8-artifacts.test.mjs
+
+      - name: Regenerate Passport Vault Ledger 8 manifest and assert no drift
+        run: |
+          nix develop .#factory --command node scripts/compact/passport-vault-ledger8-artifacts.mjs --out artifacts/passport-vault-ledger8/manifest.json
+          git ls-files --error-unmatch artifacts/passport-vault-ledger8/manifest.json
+          test -z "$(git status --porcelain -- artifacts/passport-vault-ledger8/manifest.json)"
+
+  audit:
+    name: Periodic factory audit
+    needs: plan
+    if: ${{ needs.plan.outputs.audit == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Audit package, CI, cache, disk, worktree, retry, and throughput signals
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/factory/audit.mjs --online --format markdown | tee factory-audit.md
+          cat factory-audit.md >> "$GITHUB_STEP_SUMMARY"
+
+  required:
+    name: Required CI
+    if: ${{ always() }}
+    needs:
+      - plan
+      - policy
+      - rust
+      - unit
+      - wasm
+      - coverage
+      - did_codegen
+      - vc_codegen
+      - audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      PLAN_RESULT: ${{ needs.plan.result }}
+      POLICY_SELECTED: ${{ needs.plan.outputs.policy }}
+      POLICY_RESULT: ${{ needs.policy.result }}
+      RUST_SELECTED: ${{ needs.plan.outputs.rust }}
+      RUST_RESULT: ${{ needs.rust.result }}
+      UNIT_SELECTED: ${{ needs.plan.outputs.unit }}
+      UNIT_RESULT: ${{ needs.unit.result }}
+      WASM_SELECTED: ${{ needs.plan.outputs.wasm }}
+      WASM_RESULT: ${{ needs.wasm.result }}
+      COVERAGE_SELECTED: ${{ needs.plan.outputs.coverage }}
+      COVERAGE_RESULT: ${{ needs.coverage.result }}
+      DID_CODEGEN_SELECTED: ${{ needs.plan.outputs.did_codegen }}
+      DID_CODEGEN_RESULT: ${{ needs.did_codegen.result }}
+      VC_CODEGEN_SELECTED: ${{ needs.plan.outputs.vc_codegen }}
+      VC_CODEGEN_RESULT: ${{ needs.vc_codegen.result }}
+      AUDIT_SELECTED: ${{ needs.plan.outputs.audit }}
+      AUDIT_RESULT: ${{ needs.audit.result }}
+    steps:
+      - name: Require every selected immutable target
+        run: |
+          if [[ "$PLAN_RESULT" != "success" ]]; then
+            echo "change plan did not succeed: $PLAN_RESULT" >&2
+            exit 1
+          fi
+          failures=0
+          for lane in POLICY RUST UNIT WASM COVERAGE DID_CODEGEN VC_CODEGEN AUDIT; do
+            selected_name="${lane}_SELECTED"
+            result_name="${lane}_RESULT"
+            selected="${!selected_name}"
+            result="${!result_name}"
+            if [[ "$selected" == "true" && "$result" != "success" ]]; then
+              echo "${lane,,} was selected but finished as $result" >&2
+              failures=$((failures + 1))
+            fi
+          done
+          if (( failures > 0 )); then exit 1; fi
+          echo "Every selected target succeeded."

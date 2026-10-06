@@ -1,12 +1,12 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Contributing to midnight-did-rs
+# Contributing to midnight-libs
 
-Thank you for considering a contribution! `midnight-did-rs` is the native
+Thank you for considering a contribution! `midnight-identity` is the native
 Rust port of the Midnight DID Method reference implementation (TypeScript:
 [`@midnight-ntwrk/midnight-did`](https://github.com/midnightntwrk/midnight-did)),
 aimed at running on every target Rust reaches — native server, desktop,
@@ -19,6 +19,11 @@ Before diving in, please skim:
 - [`doc/adr/`](./doc/adr/) — Architecture Decision Records covering the
   load-bearing choices (async-only API, `Contract<B: Backend>` shape,
   crate layout, private-state trait, codegen gap handling).
+
+The repository is being evolved under the `midnight-libs` mission while its
+GitHub slug remains `MediaNoxLabs/midnight-identity`. The concise operating
+contract is in [`AGENT.md`](./AGENT.md), with detailed delivery and CI rules in
+[`doc/factory/`](./doc/factory/README.md).
 
 The rest of this guide is the practical dev loop and the conventions
 we expect every PR to follow.
@@ -34,10 +39,17 @@ dev loop:
 1. **Clone + enter the devshell.** With [direnv](https://direnv.net/):
 
    ```bash
-   git clone https://github.com/midnightntwrk/midnight-did-rs.git
-   cd midnight-did-rs
-   direnv allow            # or: nix develop
+   git clone https://github.com/MediaNoxLabs/midnight-identity.git
+   cd midnight-identity
+   ./bootstrap.sh          # or: direnv allow
    ```
+
+   For formatting, linting, tests, coverage, and WASM work that does not
+   invoke the Compact compiler, use `./bootstrap.sh --rust`. It keeps the same
+   pinned Rust tools and third-party source mounts without constructing the
+   heavy `compactc`/proving/Node closure. CI uses this light shell for those
+   gates and reserves the default shell for code generation. CI uses only
+   public Nix binary caches and does not require a FlakeHub account.
 
 2. **Regenerate the contract crate** from `did.compact`:
 
@@ -66,12 +78,26 @@ dev loop:
    just lint               # cargo clippy --all-targets -- -D warnings
    ```
 
-   `just ci` runs the full gate (`fmt-check`, `lint`, `build`, `test`)
-   locally — run it before pushing.
+   First compute the affected plan documented in
+   [`doc/factory/ci.md`](./doc/factory/ci.md). Run `just ci` when the plan is
+   full; documentation, CI, and factory-only changes use the policy lane and
+   do not enter the Rust/Nix closure.
 
-5. **Open a PR against `main`.** Keep the diff focused; reference the
+5. **Open a draft PR against the issue's recorded delivery base.** Normal
+   library and factory work targets `develop`; release promotion targets
+   `rust-codegen`. Keep exactly one `factory-delivery-target` and
+   `factory-stacked-parent` marker from the PR template. Use `none` for a
+   direct PR; for a temporary stack, record the exact issue branch as the
+   parent while retaining the durable final target. CI rejects a base that
+   does not match those markers. Keep the diff focused; reference the
    ADR(s) you touched (or argue for a new one if you're changing a
    load-bearing decision).
+
+Before the first production-ready push, run `./bootstrap.sh --configure-git`.
+After each final candidate commit, run `./bootstrap.sh --local-gate
+--delivery-target develop` (adding `--base <stack-parent>` only for an explicit
+stack). The pre-push hook rejects missing or stale exact-head L0 evidence;
+hosted affected lanes still run after the push.
 
 The `just codegen-check` recipe is a CI regression signal: re-running
 codegen must produce no diff. If you've modified `did.compact` or
@@ -82,12 +108,22 @@ regenerated `generated.rs` + keys in the same PR.
 
 ## Branching and commit conventions
 
-- **Branch off `main`.** Topic branches use conventional-commit-style
-  names where possible: `feat/<short-desc>`, `fix/<short-desc>`,
-  `docs/<short-desc>`, `chore/<short-desc>`, `refactor/<short-desc>`.
+- **Start from the explicit delivery base in an isolated worktree.** Topic
+  branches are issue-backed and use exactly `<type>/issue-<number>`, where
+  type is `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, or `chore`.
+- **Use scoped Conventional Commits.** Allowed scopes are `factory`, `ci`,
+  `docs`, `did`, `vc`, `compact`, `runtime`, `domain`, `method`, `api`,
+  `resolver`, `indexer`, `cli`, `ffi`, `deps`, and `release`. Pull-request
+  titles follow the same grammar.
 - **Do not force-push** to a PR branch under review — reviewers lose
   their place. Push fixup commits and let the maintainer squash on
-  merge.
+  merge. The PR title becomes the squash subject and therefore must keep the
+  scoped Conventional Commit grammar. Hosted policy recognizes only a
+  GitHub-committed, GitHub-verified squash with the canonical ` (#N)` suffix
+  as generated on a post-merge durable-branch push. Pull-request runs never
+  apply the squash exception, so GitHub web-editor commits remain ordinary
+  authored commits and require their own exact DCO trailer and verified
+  signature.
 - **Every commit must be GPG-signed and DCO-signed-off.** This matches
   the policy of the upstream
   [`midnightntwrk/midnight-did`](https://github.com/midnightntwrk/midnight-did/blob/main/CONTRIBUTING.md)
@@ -134,7 +170,7 @@ regenerated `generated.rs` + keys in the same PR.
   for Markdown. The canonical Rust header is:
 
   ```rust
-  // This file is part of midnightntwrk/midnight-did-rs.
+  // This file is part of MediaNoxLabs/midnight-identity.
   // Copyright (C) 2026 Midnight Foundation
   // SPDX-License-Identifier: Apache-2.0
   // Licensed under the Apache License, Version 2.0 (the "License");
@@ -212,7 +248,7 @@ five-minute conversation beats a 500-line refactor request in review.
 ## Questions and help
 
 - **Found a bug or have a feature idea?** Open a
-  [GitHub issue](https://github.com/midnightntwrk/midnight-did-rs/issues).
+  [GitHub issue](https://github.com/MediaNoxLabs/midnight-identity/issues).
 - **ADR-level design question?** Tag the maintainers on the issue or
   draft PR — these decisions are worth getting right early.
 - **Security issue?** Don't open a public issue — see

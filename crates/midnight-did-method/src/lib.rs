@@ -35,7 +35,7 @@
 //!
 //! Resolver-only and wasm consumers want the method profile without the
 //! wallet path that lives in the api crate. See
-//! [ADR 0003](https://github.com/yshyn-iohk/midnight-did-rs/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md)
+//! [ADR 0003](https://github.com/MediaNoxLabs/midnight-identity/blob/main/doc/adr/0003-crate-split-2-to-4-with-umbrella.md)
 //! for the rationale.
 
 #![forbid(unsafe_code)]
@@ -45,15 +45,17 @@
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod hex_ext;
+pub mod holder_binding;
 pub mod midnight_did;
 pub mod network_mapping;
 pub mod offchain;
 
 // Re-exports — common method-profile surface.
 pub use midnight_did::{
-    ContractAddress, MidnightDidError, MidnightDidString, MidnightNetwork, MidnightSubjectId, OffchainStateHashHex,
-    create_midnight_did_string, parse_contract_address, parse_midnight_did, parse_midnight_did_string,
-    parse_offchain_state_hash,
+    ContractAddress, MAX_MIDNIGHT_DID_CHARACTERS, MidnightDidError, MidnightDidString, MidnightNetwork,
+    MidnightSubjectId, OffchainStateHashHex, ParsedMidnightDid, ParsedMidnightKeyId, create_midnight_did_string,
+    parse_contract_address, parse_midnight_did, parse_midnight_did_parts, parse_midnight_did_string,
+    parse_midnight_key_id, parse_offchain_state_hash,
 };
 pub use network_mapping::{DomainToRuntime, RuntimeNetworkId, RuntimeToDomain, domain_to_runtime, runtime_to_domain};
 pub use offchain::{

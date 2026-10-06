@@ -1,5 +1,5 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Motivation
 
-The midnight-did-rs codebase was initially ported from `@midnight-ntwrk/midnight-did` (TypeScript), and the port preserved several TS-flavored patterns that don't pay rent in Rust:
+The midnight-identity codebase was initially ported from `@midnight-ntwrk/midnight-did` (TypeScript), and the port preserved several TS-flavored patterns that don't pay rent in Rust:
 
 1. **Hex-validated `String` newtypes** (`ContractAddress(pub String)`, `OffchainStateHashHex(pub String)`) where upstream `midnight_coin_structure::contract::ContractAddress` and `midnight_base_crypto::hash::HashOutput` already exist with the full Midnight ledger trait stack (`FieldRepr` / `FromFieldRepr` / `BinaryHashRepr` / `Serializable` / serde).
 2. **Public-field structs with separate `validate()` methods** — invalid state is representable, and callers can forget the validator.

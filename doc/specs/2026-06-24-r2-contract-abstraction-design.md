@@ -1,5 +1,5 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 midnight-did-runtime crate's regen unblocking (compact codegen-rust
 walker gap A12+ — see [ADR 0006](../adr/0006-runtime-crate-halo2-block.md)
 and the codegen-rust branch's `Walker gap` task series).
-**Targets**: midnight-did-rs v0.4.0 (post-R1-4b/4c v0.3.0).
+**Targets**: midnight-identity v0.4.0 (post-R1-4b/4c v0.3.0).
 **Partial supersession (proposed)**: [ADR 0002](../adr/0002-trait-erasure-for-contract.md),
 [ADR 0004](../adr/0004-private-state-as-trait.md).
 

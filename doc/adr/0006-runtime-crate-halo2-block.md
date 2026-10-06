@@ -1,7 +1,8 @@
 # ADR 0006 — Runtime crate halo2 ParamsKZG API skew (closed)
 
 **Status:** Closed in v0.3.0. Halo2 patch active and justified (pinned
-by `rev` against `yshyn-iohk/midnight-zk@feat/v0.7-h-poly-streaming`).
+by `rev` against `MediaNoxLabs/midnight-zk@cf60e3cc`, originally cut from
+`feat/v0.7-h-poly-streaming`).
 All four codegen buckets resolved: Bucket 1 (ContractAddress FQN) +
 Bucket 4 (user-enum `Default` derive) landed via compact pin
 `960fc26`; Bucket 3 (`OpaqueString::BinaryHashRepr`) landed earlier
@@ -38,7 +39,7 @@ no function or associated item named `read_custom_lazy`  for `ParamsKZG<E>`
 
 These three methods live exclusively on a **patched fork** of
 `midnight-proofs` maintained at
-[`yshyn-iohk/midnight-zk`](https://github.com/yshyn-iohk/midnight-zk)
+[`MediaNoxLabs/midnight-zk`](https://github.com/MediaNoxLabs/midnight-zk)
 on branch `feat/v0.7-h-poly-streaming`. They add:
 
 - `read_mmap_arc(Arc<Mmap>)` — construct a `ParamsKZG` whose `g` /
@@ -163,7 +164,7 @@ midnight-did-runtime 2>&1 \| grep '^error' \| sort \| uniq -c`):
 
 All four buckets are **upstream issues** — either compact-rust-passes
 (emitter) or compact-runtime (trait impls / proxy plumbing). None can
-be fixed inside `midnight-did-rs` without editing `generated.rs`
+be fixed inside `midnight-identity` without editing `generated.rs`
 (forbidden) or the `compact-runtime` source under
 `third_party/compact/` (which is a read-only Nix-store symlink).
 
@@ -230,7 +231,7 @@ Remaining 30 split:
 ## How to refresh the pin in the future
 
 ```sh
-cd ~/iohk/midnight-did-rs
+cd ~/iohk/midnight-identity
 
 # 1. flake.nix — bump the midnight-zk input ref / rev
 $EDITOR flake.nix
@@ -371,6 +372,60 @@ parameterize pattern, same `_w_<name>_N` rust-name convention.
 - midnight-did-runtime still has the same 30 errors locally — regen
   is still blocked, now by A6 instead of A1-A4.
 - compactc PR #1 CI all green after each commit.
+
+## Update — 2026-09-12 org transfer and rev pinning
+
+`midnight-zk` and `midnight-ledger` were transferred from the personal
+`yshyn-iohk` workspace to the **`MediaNoxLabs`** org. Every dated section
+above predates the move and still names the old owner — those are left as
+written, because they record what was true at the time. The **live pins**
+were repointed at the canonical URLs:
+
+| Pin | Was | Now |
+|---|---|---|
+| `Cargo.toml` `[patch.crates-io]` | `yshyn-iohk/midnight-zk.git` @ `cf60e3cc` | `MediaNoxLabs/midnight-zk.git` @ `cf60e3cc` |
+| `flake.nix` `midnight-zk` | `github:yshyn-iohk/midnight-zk/feat/v0.7-h-poly-streaming` | `MediaNoxLabs/midnight-zk`, **rev** `cf60e3cc` |
+| `flake.nix` `midnight-ledger` | `github:yshyn-iohk/midnight-ledger/dioxus-vc-demo` | `MediaNoxLabs/midnight-ledger`, **rev** `obsolete prototype revision` |
+
+Two things changed beyond the owner, both deliberate:
+
+1. **Both flake inputs are now pinned by `rev` instead of by branch tip.**
+   They were floating: `feat/v0.7-h-poly-streaming` has since advanced to
+   `aeeff63c`, so a plain owner swap would have silently pulled 16 commits
+   and broken agreement with `Cargo.toml`'s `cf60e3cc`. Nix rejects `ref`
+   and `rev` together on a `github` input, so the branch name lives in a
+   comment beside each pin.
+2. **`flake.lock`'s `narHash` is unchanged for both inputs**
+   (`sha256-rvEmntRM/…` and `sha256-By8iBnSC5tVRpF18d…`), which is the proof
+   that this repin is content-identical — only the owner moved.
+
+The old URLs still resolve through GitHub's redirect, but the redirect is
+the only thing that kept them working; see the provenance hazard in the
+`midnight` vault.
+
+## Update — 2026-09-15 onto the maintained lines
+
+The org move kept the prototype branches; this update leaves them. The
+branch scheme names one maintained line per upstream ref
+(`<upstream-ref>-patched`), and the test of maintaining it is that a
+consumer can pin it instead of a prototype and everything works.
+
+| Pin | Was | Now |
+|---|---|---|
+| `flake.nix` `midnight-ledger` | `dioxus-vc-demo` @ `obsolete prototype revision` | **`ledger-8-patched`** @ `16b451e7` |
+| `flake.nix` `midnight-zk` | `feat/v0.7-h-poly-streaming` @ `cf60e3cc` | **`proofs-0.7-patched`** @ `083c8282` |
+| `Cargo.toml` `[patch.crates-io]` `midnight-proofs` | `cf60e3cc` | `083c8282` (the rev `ledger-8-patched` pins) |
+
+Proven before it was committed: `rust-target.sh check` and `test` (48
+suites, 0 failures) and the wasm build of the domain crates, all green on
+the new pins. `Cargo.lock` moved 187+/52− — the maintained lines carry newer
+transitive dependencies (rustls, memmap2, …) than the prototype did.
+
+One consumer-side change rode along: `scripts/ci/rust-target.sh` now passes
+`--no-deps` to clippy. Without it the gate lints the path-mounted
+`third_party/midnight-ledger` crates — upstream code — and the maintained
+ledger-8 trips `clippy::type_complexity` in `storage-core`, which the
+ledger's own CI allows. Our gate is for our crates.
 
 ## References
 

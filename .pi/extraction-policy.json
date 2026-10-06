@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "mutationTarget": {
+    "repository": "MediaNoxLabs/midnight-identity",
+    "requiredRemote": "https://github.com/MediaNoxLabs/midnight-identity.git"
+  },
+  "referenceRepositories": [
+    {
+      "repository": "MediaNoxLabs/oxid",
+      "allowedRemote": "https://github.com/MediaNoxLabs/oxid.git",
+      "defaultReference": "origin/develop",
+      "access": "read-only",
+      "requiredEvidence": [
+        "remote",
+        "exactSourceSha",
+        "cleanStateBefore",
+        "cleanStateAfter",
+        "sourcePaths",
+        "licenseProvenance",
+        "beforeStatus",
+        "afterStatus"
+      ]
+    },
+    {
+      "repository": "input-output-hk/lace-id-portal",
+      "allowedRemote": "https://github.com/input-output-hk/lace-id-portal.git",
+      "remoteSymbolicHead": "refs/heads/develop",
+      "defaultReference": "origin/develop",
+      "access": "read-only",
+      "requiredEvidence": [
+        "remote",
+        "exactSourceSha",
+        "cleanStateBefore",
+        "cleanStateAfter",
+        "sourcePaths",
+        "licenseProvenance",
+        "beforeStatus",
+        "afterStatus"
+      ]
+    }
+  ],
+  "handoffEvidence": {
+    "supervisorBeforeWorker": ["repository", "remote", "headSha", "status"],
+    "workerReturn": ["sourceRepository", "sourceSha", "sourcePaths", "licenseProvenance", "mutationTargetHeadSha"],
+    "supervisorAfterWorker": ["repository", "remote", "headSha", "status"]
+  },
+  "stopConditions": [
+    "unknown-reference-repository",
+    "reference-remote-mismatch",
+    "reference-head-not-exact",
+    "reference-status-mutated",
+    "missing-source-paths",
+    "missing-license-provenance",
+    "mutation-target-mismatch"
+  ]
+}

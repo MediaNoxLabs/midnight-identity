@@ -1,12 +1,12 @@
 <!--
-This file is part of midnightntwrk/midnight-did-rs.
+This file is part of MediaNoxLabs/midnight-identity.
 Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
 # ADR 0007 — R1 type-safety sweep (v0.2.0)
 
-**Status**: Accepted 2026-06-23. Implemented in v0.2.0 (steps 1, 2, 3, 4a, 5, 6, 7). Steps 4b + 4c **closed in v0.3.0** (commits [`0b875a8`](https://github.com/yshyn-iohk/midnight-did-rs/commit/0b875a8) `refactor(api+method): R1-4b — migrate production sites to ::new(NewX)` + [`65ed7f6`](https://github.com/yshyn-iohk/midnight-did-rs/commit/65ed7f6) `domain: R1-4c — privatize struct fields + retire create_* helpers`). v0.3.0 closure complete.
+**Status**: Accepted 2026-06-23. Implemented in v0.2.0 (steps 1, 2, 3, 4a, 5, 6, 7). Steps 4b + 4c **closed in v0.3.0** (commits [`0b875a8`](https://github.com/MediaNoxLabs/midnight-identity/commit/0b875a8) `refactor(api+method): R1-4b — migrate production sites to ::new(NewX)` + [`65ed7f6`](https://github.com/MediaNoxLabs/midnight-identity/commit/65ed7f6) `domain: R1-4c — privatize struct fields + retire create_* helpers`). v0.3.0 closure complete.
 **Supersedes (partial)**: [ADR 0002 — trait erasure for contract](0002-trait-erasure-for-contract.md), [ADR 0004 — private state as trait](0004-private-state-as-trait.md). R2 will fully address the trait-shape reform; this ADR closes the type-safety side.
 **Related**: [Design spec — R1 type-safety sweep](../specs/2026-06-23-r1-type-safety-sweep-design.md).
 
@@ -56,8 +56,8 @@ the diff focused and the post-cleanup API legible.
 
 | Step | Change | Status |
 |---|---|---|
-| **R1-4b** | Make `VerificationMethod` / `Service` / `PublicKeyJwk` (+ `DidString` / `DidUrl` / `RelativeUrl`) fields private + add accessor methods. | Shipped in v0.3.0 ([`0b875a8`](https://github.com/yshyn-iohk/midnight-did-rs/commit/0b875a8)). |
-| **R1-4c** | Migrate the remaining ~17 direct struct-literal construction sites across api / method / cli / tests to `::new(NewX)?` and retire the `create_verification_method` / `create_service` free functions. | Shipped in v0.3.0 ([`65ed7f6`](https://github.com/yshyn-iohk/midnight-did-rs/commit/65ed7f6)). 4 negative test fixtures that previously asserted on `verification_method_to_ledger`'s rejection path now assert on `PublicKeyJwk::new`'s error path directly. |
+| **R1-4b** | Make `VerificationMethod` / `Service` / `PublicKeyJwk` (+ `DidString` / `DidUrl` / `RelativeUrl`) fields private + add accessor methods. | Shipped in v0.3.0 ([`0b875a8`](https://github.com/MediaNoxLabs/midnight-identity/commit/0b875a8)). |
+| **R1-4c** | Migrate the remaining ~17 direct struct-literal construction sites across api / method / cli / tests to `::new(NewX)?` and retire the `create_verification_method` / `create_service` free functions. | Shipped in v0.3.0 ([`65ed7f6`](https://github.com/MediaNoxLabs/midnight-identity/commit/65ed7f6)). 4 negative test fixtures that previously asserted on `verification_method_to_ledger`'s rejection path now assert on `PublicKeyJwk::new`'s error path directly. |
 
 The 4a path (additive `::new(NewX)` constructors with the legacy
 factories continuing to work) **lets v0.2.0 ship the new API surface

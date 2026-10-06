@@ -10,8 +10,18 @@
     nixpkgs.url      = "github:NixOS/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-parts.url  = "github:hercules-ci/flake-parts";
+    # The MAINTAINED ledger-8 line, `ledger-8-patched` (upstream `ledger-8` plus
+    # the curated prover patches), pinned by rev. Until 2026-09-15 this pointed
+    # at the `dioxus-vc-demo` prototype branch (obsolete prototype revision); the maintained line
+    # is what the branch scheme says a consumer should pin, and the swap was
+    # proven first: check, test (48 suites) and the wasm build all green.
+    # rev b85f5d8e is the head of `ledger-8-patched` as of 2026-09-16 (CompanionCache,
+    # upstream PR #758 merged in).
     midnight-ledger = {
-      url = "github:MediaNoxLabs/midnight-ledger/b85f5d8e503fd1d7a1b128bbc1d7156baf823a65";
+      type  = "github";
+      owner = "MediaNoxLabs";
+      repo  = "midnight-ledger";
+      rev   = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65";
       flake = false;
     };
     # midnight-zk fork providing the patched `midnight-proofs` crate that
@@ -19,12 +29,28 @@
     # Without this, `cargo build -p midnight-did-runtime` fails on the
     # ParamsKZG::{read_mmap_arc, write_mmap_companion, read_custom_lazy}
     # methods that only exist on the patched fork. See ADR 0006.
+    # The MAINTAINED 0.7 zk line, `proofs-0.7-patched` (the consumer line for
+    # ledger-8), pinned by rev — the same rev `ledger-8-patched` itself pins.
+    # This pin is load bearing: Cargo.toml's [patch.crates-io] must name the
+    # same rev or the flake-materialised source and the cargo-built crate
+    # diverge. Until 2026-09-15 this was the pre-scheme `feat/v0.7-h-poly-
+    # streaming` branch at cf60e3cc.
+    # rev 532629b0 is the head of `proofs-0.7-patched` as of 2026-09-16 (aggregator
+    # changelog entry only since 083c8282).
     midnight-zk = {
-      url = "github:yshyn-iohk/midnight-zk/feat/v0.7-h-poly-streaming";
+      type  = "github";
+      owner = "MediaNoxLabs";
+      repo  = "midnight-zk";
+      rev   = "532629b044a88473a7175f4a96c2511c91156136";
       flake = false;
     };
     compact = {
-      url = "github:MediaNoxLabs/compact/e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35";
+      type  = "github";
+      owner = "MediaNoxLabs";
+      repo  = "compact";
+      # MediaNoxLabs/compact#372 exact signed head with constructor proof-data support.
+      rev   = "e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35";
+      inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
     };
   };
 
