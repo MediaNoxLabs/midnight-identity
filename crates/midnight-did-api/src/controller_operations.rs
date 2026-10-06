@@ -23,7 +23,7 @@
 //! independent of in-circuit derivation, callers pass the *derived* public
 //! key as an explicit argument.
 
-use midnight_did_runtime::{Backend, Contract};
+use midnight_did_runtime::{Backend, Contract, JubjubPointHex};
 
 use crate::contract::FinalizedTxData;
 use crate::error::{ApiError, ContractError};
@@ -47,7 +47,7 @@ pub async fn rotate_controller_key<B, S>(
     contract: &Contract<B>,
     store: &S,
     new_secret_key: [u8; 32],
-    new_controller_public_key: [u8; 32],
+    new_controller_public_key: JubjubPointHex,
 ) -> Result<FinalizedTxData, ApiError>
 where
     B: Backend,
@@ -99,7 +99,7 @@ pub async fn recover_controller_key<B, S>(
     contract: &Contract<B>,
     store: &S,
     new_secret_key: [u8; 32],
-    new_controller_public_key: [u8; 32],
+    new_controller_public_key: JubjubPointHex,
 ) -> Result<FinalizedTxData, ApiError>
 where
     B: Backend,
@@ -135,6 +135,12 @@ mod tests {
     use midnight_did_runtime::{DidContractCall, RecordingBackend};
 
     use super::*;
+
+    fn point_hex(byte: u8) -> midnight_did_runtime::JubjubPointHex {
+        let h = hex::encode([byte; 32]);
+        midnight_did_runtime::JubjubPointHex::new(midnight_did_runtime::NewJubjubPointHex { x: h.clone(), y: h })
+            .unwrap()
+    }
     use crate::private_state::{InMemoryPrivateStateStore, restore_private_state};
 
     const ADDR: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
@@ -153,8 +159,10 @@ mod tests {
         let store = InMemoryPrivateStateStore::new();
 
         let new_sk = [4u8; 32];
-        let new_pk = [9u8; 32];
-        rotate_controller_key(&contract, &store, new_sk, new_pk).await.unwrap();
+        let new_pk = point_hex(9);
+        rotate_controller_key(&contract, &store, new_sk, new_pk.clone())
+            .await
+            .unwrap();
 
         let calls = contract.backend.recorded_calls();
         assert!(matches!(
@@ -174,8 +182,10 @@ mod tests {
         let store = InMemoryPrivateStateStore::new();
 
         let new_sk = [6u8; 32];
-        let new_pk = [7u8; 32];
-        recover_controller_key(&contract, &store, new_sk, new_pk).await.unwrap();
+        let new_pk = point_hex(7);
+        recover_controller_key(&contract, &store, new_sk, new_pk.clone())
+            .await
+            .unwrap();
 
         let calls = contract.backend.recorded_calls();
         assert!(matches!(

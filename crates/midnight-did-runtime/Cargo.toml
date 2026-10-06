@@ -12,12 +12,16 @@ description  = "Codegen target for the Midnight DID Method — generated.rs, wit
 name = "midnight_did_runtime"
 path = "src/lib.rs"
 
+[features]
+default = []
+http = ["dep:reqwest"]
+
 [dependencies]
 # The compact-runtime symbol the generated contract code calls into. The
 # `path = "third_party/compact/runtime-rs"` (declared in the workspace) is
 # materialised by `nix develop`'s shellHook from the codegen-rust compact
 # flake input, alongside the sibling `runtime-rs-macros` crate.
-compact-runtime = { workspace = true }
+midnight-compact-runtime = { workspace = true }
 
 # midnight-ledger workspace deps the generated lib.rs (transitively, via
 # compact-runtime) needs at link time. Listed explicitly so `cargo build`
@@ -32,6 +36,10 @@ compact-runtime = { workspace = true }
 # tripwire when a third_party/midnight-ledger symlink is missing.
 midnight-base-crypto      = { workspace = true }
 midnight-onchain-runtime  = { workspace = true }
+midnight-serialize        = { workspace = true }
+midnight-ledger           = { workspace = true }
+midnight-storage          = { workspace = true }
+midnight-transient-crypto = { workspace = true }
 
 # Sibling first-party crates — R2-2 (v0.4.0) lifts ledger-shape types
 # (`DidLedgerSnapshot`, `LedgerVerificationMethod`, `MapMutation`, …) into
@@ -57,6 +65,8 @@ blake2      = "0.10"
 # `JubjubPointHex`, `SchnorrJubjubSignature`, and `SchnorrJubjubDigest`
 # return a typed `ValidationError`.
 thiserror   = "2"
+rand        = "0.8"
+reqwest     = { version = "0.13", default-features = false, features = ["json", "rustls"], optional = true }
 
 [dev-dependencies]
 # R2-1: tokio runtime for the `Backend` impls' unit tests (current-thread,

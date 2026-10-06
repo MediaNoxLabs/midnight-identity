@@ -46,6 +46,11 @@ use midnight_did_runtime::{
     Backend, BackendError, BuiltTx, Contract, DidContractCall, DidLedgerSnapshot, FinalizedTxData, RecordingBackend,
 };
 
+fn point_hex(byte: u8) -> midnight_did_runtime::JubjubPointHex {
+    let h = hex::encode([byte; 32]);
+    midnight_did_runtime::JubjubPointHex::new(midnight_did_runtime::NewJubjubPointHex { x: h.clone(), y: h }).unwrap()
+}
+
 const ADDR: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 fn recording_contract() -> Contract<RecordingBackend> {
@@ -65,9 +70,9 @@ async fn rotates_and_promotes_private_state() {
     let contract = recording_contract();
     let store = InMemoryPrivateStateStore::new();
     let new_sk = [4u8; 32];
-    let new_pk = [9u8; 32];
+    let new_pk = point_hex(9);
 
-    rotate_controller_key(&contract, &store, new_sk, new_pk)
+    rotate_controller_key(&contract, &store, new_sk, new_pk.clone())
         .await
         .expect("rotate ok");
 
@@ -92,7 +97,7 @@ async fn surfaces_storage_failure_before_invoking_circuit() {
     let contract = recording_contract();
     let store = FailingStore::new(FailMode::FailOnEverySet);
 
-    let err = rotate_controller_key(&contract, &store, [1u8; 32], [2u8; 32])
+    let err = rotate_controller_key(&contract, &store, [1u8; 32], point_hex(2))
         .await
         .unwrap_err();
     assert!(matches!(err, ApiError::InvalidArgument(_)), "{err}");
@@ -118,7 +123,7 @@ async fn clears_pending_state_when_circuit_fails() {
     );
     let store = InMemoryPrivateStateStore::new();
 
-    let err = rotate_controller_key(&contract, &store, [2u8; 32], [3u8; 32])
+    let err = rotate_controller_key(&contract, &store, [2u8; 32], point_hex(3))
         .await
         .unwrap_err();
     // Circuit failure surfaces as ApiError::Contract.
@@ -136,7 +141,7 @@ async fn keeps_pending_when_active_promotion_fails() {
     let contract = recording_contract();
     let store = FailingStore::new(FailMode::FailOnNthSet { fail_on: 2 });
 
-    let err = rotate_controller_key(&contract, &store, [3u8; 32], [4u8; 32])
+    let err = rotate_controller_key(&contract, &store, [3u8; 32], point_hex(4))
         .await
         .unwrap_err();
     assert!(

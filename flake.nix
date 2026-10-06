@@ -11,7 +11,7 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-parts.url  = "github:hercules-ci/flake-parts";
     midnight-ledger = {
-      url = "github:yshyn-iohk/midnight-ledger/dioxus-vc-demo";
+      url = "github:MediaNoxLabs/midnight-ledger/b85f5d8e503fd1d7a1b128bbc1d7156baf823a65";
       flake = false;
     };
     # midnight-zk fork providing the patched `midnight-proofs` crate that
@@ -24,7 +24,7 @@
       flake = false;
     };
     compact = {
-      url = "github:MediaNoxLabs/compact/codegen-rust";
+      url = "github:MediaNoxLabs/compact/e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35";
     };
   };
 

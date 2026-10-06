@@ -64,6 +64,11 @@ use midnight_did_domain::did_document::{
 use midnight_did_method::midnight_did::{MidnightNetwork, parse_contract_address};
 use midnight_did_runtime::{Contract, DidContractCall, RecordingBackend};
 
+fn point_hex(byte: u8) -> midnight_did_runtime::JubjubPointHex {
+    let h = hex::encode([byte; 32]);
+    midnight_did_runtime::JubjubPointHex::new(midnight_did_runtime::NewJubjubPointHex { x: h.clone(), y: h }).unwrap()
+}
+
 /// Build a `Contract<RecordingBackend>` seeded with `ledger` — replaces the
 /// legacy `RecordingContract::with_ledger(ADDR, network, ledger)` ergonomic.
 fn contract_with(network: MidnightNetwork, ledger: DidLedgerSnapshot) -> Contract<RecordingBackend> {
@@ -200,7 +205,7 @@ async fn after_rotate_controller_key_matches_ts_fixture() {
     // installs the post-rotate ledger by hand so the fixture parity assertion
     // is reproducible.
     create_did(&contract, &store, [1u8; 32]).await.unwrap();
-    rotate_controller_key(&contract, &store, [2u8; 32], [0xffu8; 32])
+    rotate_controller_key(&contract, &store, [2u8; 32], point_hex(0xff))
         .await
         .unwrap();
     contract.backend.set_snapshot(rotated_ledger());
@@ -284,7 +289,7 @@ async fn rotate_controller_key_then_add_and_remove_aka() {
     let store = InMemoryPrivateStateStore::new();
 
     create_did(&contract, &store, [1u8; 32]).await.unwrap();
-    rotate_controller_key(&contract, &store, [2u8; 32], [0xffu8; 32])
+    rotate_controller_key(&contract, &store, [2u8; 32], point_hex(0xff))
         .await
         .unwrap();
 

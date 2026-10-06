@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members  = ["crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-method", "crates/midnight-did-runtime", "crates/midnight-did-uniffi"]
+exclude = ["third_party/midnight-ledger"]
 
 [workspace.package]
 version      = "0.5.0"
@@ -22,13 +23,15 @@ midnight-storage          = { path = "third_party/midnight-ledger/storage" }
 midnight-transient-crypto = { path = "third_party/midnight-ledger/transient-crypto" }
 midnight-zkir             = { path = "third_party/midnight-ledger/zkir" }
 midnight-zswap            = { path = "third_party/midnight-ledger/zswap" }
+midnight-ledger           = { path = "third_party/midnight-ledger/ledger" }
 # compact's runtime helper crate (path-mounted by devshell into third_party/compact/runtime-rs).
 # The sibling `third_party/compact/runtime-rs-macros` is materialised by the same
 # devshell hook because compact-runtime's manifest references it via the relative
 # path `../runtime-rs-macros`. Mirroring compact's in-repo layout (runtime-rs +
 # runtime-rs-macros as siblings) keeps cargo's relative-path resolution working
 # without alias symlinks.
-compact-runtime           = { path = "third_party/compact/runtime-rs" }
+compact-runtime           = { package = "midnight-compact-runtime", path = "third_party/compact/runtime-rs" }
+midnight-compact-runtime  = { package = "midnight-compact-runtime", path = "third_party/compact/runtime-rs" }
 # common
 serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -73,7 +76,7 @@ midnight-did         = { path = "crates/midnight-did",         version = "=0.5.0
 # Pinning by rev keeps reproducibility independent of branch movement.
 # See `doc/adr/0006-runtime-crate-halo2-block.md` for the full story.
 [patch.crates-io]
-midnight-proofs = { git = "https://github.com/yshyn-iohk/midnight-zk.git", rev = "cf60e3ccb87f2de40b1307f7e78abdcb4c696c91" }
+midnight-proofs = { git = "https://github.com/MediaNoxLabs/midnight-zk", rev = "083c82824dc5979fd7d509229e6f6b362d5b1ebf" }
 
 [profile.dev]
 debug = "limited"

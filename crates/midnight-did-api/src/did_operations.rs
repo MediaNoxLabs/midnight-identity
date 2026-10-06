@@ -113,7 +113,7 @@ pub async fn rotate_controller_key_with_derivation<B, S, F>(
 where
     B: Backend,
     S: PrivateStateStore + ?Sized,
-    F: FnOnce([u8; 32]) -> [u8; 32],
+    F: FnOnce([u8; 32]) -> midnight_did_runtime::JubjubPointHex,
 {
     let new_pk = derive_public_key(new_secret_key);
     rotate_controller_key(contract, store, new_secret_key, new_pk).await
@@ -130,7 +130,7 @@ pub async fn recover_controller_key_with_derivation<B, S, F>(
 where
     B: Backend,
     S: PrivateStateStore + ?Sized,
-    F: FnOnce([u8; 32]) -> [u8; 32],
+    F: FnOnce([u8; 32]) -> midnight_did_runtime::JubjubPointHex,
 {
     let new_pk = derive_public_key(new_secret_key);
     recover_controller_key(contract, store, new_secret_key, new_pk).await
@@ -160,6 +160,12 @@ mod tests {
     use midnight_did_runtime::{DidContractCall, RecordingBackend};
 
     use super::*;
+
+    fn point_hex(byte: u8) -> midnight_did_runtime::JubjubPointHex {
+        let h = hex::encode([byte; 32]);
+        midnight_did_runtime::JubjubPointHex::new(midnight_did_runtime::NewJubjubPointHex { x: h.clone(), y: h })
+            .unwrap()
+    }
     use crate::private_state::{InMemoryPrivateStateStore, PrivateStateSlot, restore_private_state};
 
     const ADDR: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
@@ -208,18 +214,13 @@ mod tests {
     async fn rotate_with_derivation_passes_public_key() {
         let contract = test_contract();
         let store = InMemoryPrivateStateStore::new();
-        rotate_controller_key_with_derivation(&contract, &store, [1u8; 32], |sk| {
-            let mut out = sk;
-            out[0] = 42;
-            out
-        })
-        .await
-        .unwrap();
+        rotate_controller_key_with_derivation(&contract, &store, [1u8; 32], |_sk| point_hex(42))
+            .await
+            .unwrap();
         let calls = contract.backend.recorded_calls();
         match &calls[0] {
             DidContractCall::RotateControllerKey { new_public_key } => {
-                assert_eq!(new_public_key[0], 42);
-                assert_eq!(new_public_key[1], 1);
+                assert_eq!(new_public_key, &point_hex(42));
             }
             _ => panic!("expected rotate call"),
         }
