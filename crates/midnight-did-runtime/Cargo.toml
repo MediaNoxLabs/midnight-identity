@@ -76,6 +76,7 @@ reqwest   = { version = "0.13", default-features = false, features = [ "json", "
 
 [dev-dependencies]
 midnight-did-jubjub-schnorr = { workspace = true }
+sha2                         = "0.10"
 # R2-1: tokio runtime for the `Backend` impls' unit tests (current-thread,
 # no IO).
 tokio = { version = "1", features = [ "macros", "rt" ] }

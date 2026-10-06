@@ -1548,6 +1548,14 @@ impl LiveBackend {
             block_height: receipt.block_height,
         })
     }
+
+    /// Reconcile a previously finalized Ledger8 receipt without submitting a
+    /// duplicate transaction. Restart code should persist the receipt returned
+    /// by the node boundary, recreate providers, and call this read-only method
+    /// until the indexer observes the finalized state.
+    pub async fn reconcile_finality(&self, receipt: &LedgerFinalityReceipt) -> Result<(), BackendError> {
+        self.providers()?.indexer.reconcile_finality(receipt).await
+    }
 }
 
 #[async_trait]
@@ -1951,6 +1959,26 @@ pub struct HttpIndexerProvider {
 }
 
 #[cfg(feature = "http")]
+/// Normalize an indexer root or GraphQL endpoint to the single Ledger8 GraphQL path.
+pub fn normalize_indexer_graphql_url(url: &str) -> Result<String, BackendError> {
+    let mut parsed = reqwest::Url::parse(url).map_err(|e| BackendError::Network(format!("indexer URL parse: {e}")))?;
+    let path = parsed.path().trim_end_matches('/');
+    let normalized_path = if path.is_empty() || path == "/" {
+        "/api/v3/graphql".to_owned()
+    } else if path.ends_with("/api/v3/graphql") {
+        path.to_owned()
+    } else if let Some(prefix) = path.strip_suffix("/graphql") {
+        format!("{prefix}/api/v3/graphql")
+    } else {
+        format!("{path}/api/v3/graphql")
+    };
+    parsed.set_path(&normalized_path);
+    parsed.set_query(None);
+    parsed.set_fragment(None);
+    Ok(parsed.to_string())
+}
+
+#[cfg(feature = "http")]
 impl HttpIndexerProvider {
     /// Create an HTTP indexer provider.
     pub fn new(graphql_url: impl Into<String>, address_hex: impl Into<String>) -> Result<Self, BackendError> {
@@ -1960,9 +1988,14 @@ impl HttpIndexerProvider {
             .map_err(|e| BackendError::Network(format!("indexer client: {e}")))?;
         Ok(Self {
             client,
-            graphql_url: graphql_url.into(),
+            graphql_url: normalize_indexer_graphql_url(&graphql_url.into())?,
             address_hex: address_hex.into(),
         })
+    }
+
+    /// Canonical GraphQL endpoint used by this provider.
+    pub fn graphql_url(&self) -> &str {
+        &self.graphql_url
     }
 }
 
@@ -2327,6 +2360,34 @@ mod tests {
         let err: Box<dyn std::error::Error> = Box::new(BackendError::ReadOnly);
         assert_eq!(err.to_string(), "backend is read-only");
         assert!(err.source().is_none());
+    }
+
+    #[cfg(feature = "http")]
+    #[test]
+    fn indexer_graphql_url_normalizes_to_ledger8_path_once() {
+        for (input, expected) in [
+            ("http://indexer.example", "http://indexer.example/api/v3/graphql"),
+            ("http://indexer.example/", "http://indexer.example/api/v3/graphql"),
+            (
+                "http://indexer.example/api/v3/graphql",
+                "http://indexer.example/api/v3/graphql",
+            ),
+            (
+                "http://indexer.example/api/v3/graphql/",
+                "http://indexer.example/api/v3/graphql",
+            ),
+            (
+                "http://indexer.example/graphql",
+                "http://indexer.example/api/v3/graphql",
+            ),
+            (
+                "http://api-host.example/root/graphql?token=redacted#frag",
+                "http://api-host.example/root/api/v3/graphql",
+            ),
+        ] {
+            assert_eq!(normalize_indexer_graphql_url(input).unwrap(), expected);
+            assert_eq!(HttpIndexerProvider::new(input, "0x01").unwrap().graphql_url(), expected);
+        }
     }
 
     #[cfg(feature = "http")]
@@ -2980,7 +3041,7 @@ mod tests {
     }
 
     #[test]
-    fn live_backend_reconciliation_failure_and_restart() {
+    fn live_backend_reconciliation_failure_and_restart_does_not_resubmit() {
         let rt = rt();
         let fake = Arc::new(FakeLive::default());
         *fake.fail_reconcile.lock().unwrap() = Some(BackendError::Reconciliation("indexer lag".into()));
@@ -2991,13 +3052,29 @@ mod tests {
             }))
             .unwrap_err();
         assert_eq!(err, BackendError::Reconciliation("indexer lag".into()));
+        assert_eq!(fake.events().iter().filter(|event| **event == "submit").count(), 1);
 
         let restarted = LiveBackend::with_providers(fake.providers());
-        let receipt = rt
-            .block_on(restarted.submit_tx(BuiltTx {
-                bytes: DidContractCall::Deactivate.encode(),
-            }))
-            .unwrap();
-        assert_eq!(receipt.tx_hash, "tx-1");
+        rt.block_on(restarted.reconcile_finality(&LedgerFinalityReceipt {
+            tx_hash: "tx-1".into(),
+            block_height: 12,
+            finality_token: Some("final".into()),
+        }))
+        .unwrap();
+        assert_eq!(fake.events().iter().filter(|event| **event == "submit").count(), 1);
+        assert_eq!(
+            fake.events(),
+            vec![
+                "read_state",
+                "execute",
+                "build_unbalanced",
+                "balance",
+                "prove",
+                "finalize",
+                "submit",
+                "reconcile",
+                "reconcile",
+            ]
+        );
     }
 }

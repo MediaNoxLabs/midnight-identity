@@ -146,7 +146,10 @@ mod live_lifecycle {
     use compact_runtime::WitnessContext;
     use midnight_compact_runtime as compact_runtime;
     use midnight_did_domain::did_document::{CurveType, KeyType, VerificationMethodType};
-    use midnight_did_jubjub_schnorr::{derive_public_key_from_seed, field_from_scalar, sign_digest_from_seed};
+    use midnight_did_jubjub_schnorr::{
+        JubjubSchnorrSignature, derive_public_key_from_seed, encode_signature, field_from_scalar, scalar_from_field,
+        seed_to_secret_scalar,
+    };
     use midnight_did_runtime::backend::*;
     use midnight_did_runtime::contract::{Ledger, Witnesses};
     use midnight_did_runtime::contract_call::{
@@ -155,7 +158,10 @@ mod live_lifecycle {
     };
     use midnight_serialize::{tagged_deserialize, tagged_serialize};
     use midnight_storage::DefaultDB;
+    use midnight_transient_crypto::curve::{EmbeddedFr, EmbeddedGroupAffine};
+    use midnight_transient_crypto::hash::transient_hash;
     use midnight_transient_crypto::proofs::{KeyLocation, ProvingKeyMaterial, VerifierKey};
+    use sha2::{Digest, Sha256};
     use zeroize::Zeroize;
 
     const EXERCISED: &[(&str, &str)] = &[
@@ -184,14 +190,17 @@ mod live_lifecycle {
     impl Witnesses<DidPrivateState> for LifecycleWitnesses {
         fn get_schnorr_reduction<'a>(
             &self,
-            ctx: &WitnessContext<Ledger<'a>, DidPrivateState>,
-            challenge_hash: compact_runtime::Fr,
+            _ctx: &WitnessContext<Ledger<'a>, DidPrivateState>,
+            _challenge_hash: compact_runtime::Fr,
         ) -> (DidPrivateState, (u8, u128)) {
-            let le = challenge_hash.as_le_bytes();
-            let quotient = *le.get(31).unwrap_or(&0);
-            let mut low = [0u8; 16];
-            low.copy_from_slice(&le[..16]);
-            (ctx.private_state.clone(), (quotient, u128::from_le_bytes(low)))
+            // Compact currently lowers `schnorrVerify` directly to
+            // `midnight_compact_runtime::schnorr_verify_jubjub`; the generated
+            // Rust contains this trait method but has no call site for it.  The
+            // ABI cannot represent the real `Uint<248>` remainder (`u128` would
+            // silently truncate the high 120 bits), so fail loudly if a future
+            // Compact pin makes the witness reachable instead of pretending to
+            // compute the reduction.
+            unreachable!("get_schnorr_reduction is unreachable for the pinned Ledger8 DID Compact output")
         }
 
         fn local_controller_public_key<'a>(
@@ -240,28 +249,52 @@ mod live_lifecycle {
     }
 
     struct SeedSigner {
-        controller_seed: [u8; 32],
-        recovery_seed: [u8; 32],
+        controller_seed: Mutex<[u8; 32]>,
+        recovery_seed: Mutex<[u8; 32]>,
     }
 
     impl Drop for SeedSigner {
         fn drop(&mut self) {
-            self.controller_seed.zeroize();
-            self.recovery_seed.zeroize();
+            if let Ok(seed) = self.controller_seed.get_mut() {
+                seed.zeroize();
+            }
+            if let Ok(seed) = self.recovery_seed.get_mut() {
+                seed.zeroize();
+            }
         }
     }
 
     impl SeedSigner {
+        fn new(controller_seed: [u8; 32], recovery_seed: [u8; 32]) -> Self {
+            Self {
+                controller_seed: Mutex::new(controller_seed),
+                recovery_seed: Mutex::new(recovery_seed),
+            }
+        }
+
+        fn promote_controller_seed(&self, mut next: [u8; 32]) -> Result<(), BackendError> {
+            let mut current = self
+                .controller_seed
+                .lock()
+                .map_err(|_| BackendError::Other("controller signer lock poisoned".into()))?;
+            current.zeroize();
+            *current = next;
+            next.zeroize();
+            Ok(())
+        }
+
         fn sign(
             seed: &[u8; 32],
             digest: [compact_runtime::Fr; 4],
         ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
-            let digest = digest.map(fr_to_u64);
-            let signature = sign_digest_from_seed(seed, &digest)
-                .map_err(|e| BackendError::Other(format!("sign DID authorization digest: {e}")))?;
+            let secret = seed_to_secret_scalar(seed);
+            let nonce = authorization_nonce_from_seed(seed, &digest);
+            let public_key = derive_public_key_from_seed(seed);
+            let announcement = EmbeddedGroupAffine::generator() * nonce;
+            let challenge = field_digest_challenge(&announcement, &public_key, &digest)?;
             Ok(compact_runtime::SchnorrSignature {
-                announcement: signature.announcement,
-                response: field_from_scalar(&signature.response),
+                announcement,
+                response: field_from_scalar(&(nonce + challenge * secret)),
             })
         }
     }
@@ -271,22 +304,154 @@ mod live_lifecycle {
             &self,
             digest: [compact_runtime::Fr; 4],
         ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
-            Self::sign(&self.controller_seed, digest)
+            let seed = self
+                .controller_seed
+                .lock()
+                .map_err(|_| BackendError::Other("controller signer lock poisoned".into()))?;
+            Self::sign(&seed, digest)
         }
 
         fn sign_recovery(
             &self,
             digest: [compact_runtime::Fr; 4],
         ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
-            Self::sign(&self.recovery_seed, digest)
+            let seed = self
+                .recovery_seed
+                .lock()
+                .map_err(|_| BackendError::Other("recovery signer lock poisoned".into()))?;
+            Self::sign(&seed, digest)
         }
     }
 
-    fn fr_to_u64(value: compact_runtime::Fr) -> u64 {
-        let le = value.as_le_bytes();
-        let mut bytes = [0u8; 8];
-        bytes.copy_from_slice(&le[..8]);
-        u64::from_le_bytes(bytes)
+    fn authorization_nonce_from_seed(seed: &[u8; 32], digest: &[compact_runtime::Fr; 4]) -> EmbeddedFr {
+        let mut nonce_seed =
+            Vec::with_capacity(midnight_did_jubjub_schnorr::NONCE_DOMAIN_V1.len() + seed.len() + digest.len() * 32);
+        nonce_seed.extend_from_slice(midnight_did_jubjub_schnorr::NONCE_DOMAIN_V1.as_bytes());
+        nonce_seed.extend_from_slice(seed);
+        for field in digest {
+            nonce_seed.extend_from_slice(&fr_be_bytes(field));
+        }
+        hash_to_scalar(&Sha256::digest(nonce_seed))
+    }
+
+    fn field_digest_challenge(
+        announcement: &EmbeddedGroupAffine,
+        public_key: &EmbeddedGroupAffine,
+        digest: &[compact_runtime::Fr; 4],
+    ) -> Result<EmbeddedFr, BackendError> {
+        let ann_x = announcement
+            .x()
+            .ok_or_else(|| BackendError::Other("Schnorr announcement is the identity".into()))?;
+        let ann_y = announcement
+            .y()
+            .ok_or_else(|| BackendError::Other("Schnorr announcement is the identity".into()))?;
+        let pk_x = public_key
+            .x()
+            .ok_or_else(|| BackendError::Other("Schnorr public key is the identity".into()))?;
+        let pk_y = public_key
+            .y()
+            .ok_or_else(|| BackendError::Other("Schnorr public key is the identity".into()))?;
+        let challenge = transient_hash(&[ann_x, ann_y, pk_x, pk_y, digest[0], digest[1], digest[2], digest[3]]);
+        let mut le = challenge.as_le_bytes();
+        le.resize(32, 0);
+        le[31] = 0;
+        EmbeddedFr::from_le_bytes(&le)
+            .ok_or_else(|| BackendError::Other("2^248 Schnorr challenge reduction escaped scalar field".into()))
+    }
+
+    fn hash_to_scalar(digest32: &[u8]) -> EmbeddedFr {
+        let mut le = [0u8; 32];
+        for (slot, byte) in le.iter_mut().zip(digest32.iter().take(32).rev()) {
+            *slot = *byte;
+        }
+        EmbeddedFr::from_le_bytes_wide(&le).expect("32-byte nonce hash reduces to a Jubjub scalar")
+    }
+
+    fn fr_be_bytes(field: &compact_runtime::Fr) -> [u8; 32] {
+        let mut out = [0u8; 32];
+        let le = field.as_le_bytes();
+        let n = le.len().min(32);
+        out[32 - n..].copy_from_slice(&le[..n]);
+        out.reverse();
+        out
+    }
+
+    fn verify_field_digest(
+        public_key: &EmbeddedGroupAffine,
+        digest: &[compact_runtime::Fr; 4],
+        signature: &JubjubSchnorrSignature,
+    ) -> bool {
+        let Ok(challenge) = field_digest_challenge(&signature.announcement, public_key, digest) else {
+            return false;
+        };
+        EmbeddedGroupAffine::generator() * signature.response == signature.announcement + *public_key * challenge
+    }
+
+    #[test]
+    fn generated_did_compact_does_not_call_schnorr_reduction_witness() {
+        let generated = include_str!("../src/contract/generated.rs");
+        assert_eq!(
+            generated.matches("get_schnorr_reduction").count(),
+            1,
+            "the pinned Compact output must not call the unrepresentable Uint<248> reduction witness"
+        );
+        assert!(generated.contains("midnight_compact_runtime::schnorr_verify_jubjub"));
+    }
+
+    #[test]
+    fn seed_signer_matches_ts_vector_and_signs_full_field_digest() {
+        const SEED: [u8; 32] = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+            30, 31, 32,
+        ];
+        const TS_DIGEST: [u64; 4] = [
+            0x2bdb0067176fd1bf,
+            0xb0172636b6c91955,
+            0xe28eed1304bc16d9,
+            0xcbb1501030aa4576,
+        ];
+        const TS_SIG96_HEX: &str = "02b4bfc039ddca33a2bc807a2df358682a81a6dd0db45eaf9567f00d000211460abff840b93c8fbc864111ba6009a31d227a9e04d44adcc6a44c0b103bb459da0603b2f0bc6eb850600cc297da66b157c88c53a731cfda0887153d531eabcd9c";
+
+        let digest_fr = TS_DIGEST.map(compact_runtime::Fr::from);
+        let compact_sig = SeedSigner::sign(&SEED, digest_fr).expect("TS vector signs");
+        let suite_sig = JubjubSchnorrSignature {
+            announcement: compact_sig.announcement,
+            response: scalar_from_field(&compact_sig.response),
+        };
+        assert_eq!(
+            hex::encode(encode_signature(&suite_sig).expect("signature encodes")),
+            TS_SIG96_HEX
+        );
+        assert!(verify_field_digest(
+            &derive_public_key_from_seed(&SEED),
+            &digest_fr,
+            &suite_sig
+        ));
+
+        let mut high = [0u8; 32];
+        high[8] = 1;
+        high[30] = 7;
+        let high_digest = [
+            compact_runtime::Fr::from_le_bytes(&high).expect("high field"),
+            digest_fr[1],
+            digest_fr[2],
+            digest_fr[3],
+        ];
+        let high_sig = SeedSigner::sign(&SEED, high_digest).expect("full field digest signs without truncation");
+        let high_suite_sig = JubjubSchnorrSignature {
+            announcement: high_sig.announcement,
+            response: scalar_from_field(&high_sig.response),
+        };
+        assert!(verify_field_digest(
+            &derive_public_key_from_seed(&SEED),
+            &high_digest,
+            &high_suite_sig
+        ));
+        assert_ne!(
+            hex::encode(encode_signature(&high_suite_sig).expect("high signature encodes")),
+            TS_SIG96_HEX,
+            "high-field authorization digest must not collapse to the TS low-limb vector"
+        );
     }
 
     fn point_hex_from_seed(seed: &[u8; 32]) -> midnight_did_runtime::contract_call::JubjubPointHex {
@@ -452,10 +617,7 @@ mod live_lifecycle {
                 controller_seed,
                 recovery_seed,
             })));
-            let signer = Arc::new(SeedSigner {
-                controller_seed,
-                recovery_seed,
-            });
+            let signer = Arc::new(SeedSigner::new(controller_seed, recovery_seed));
             let executor = Arc::new(GeneratedDidExecutor::new(
                 LifecycleWitnesses,
                 private_state.clone(),
@@ -485,8 +647,8 @@ mod live_lifecycle {
                 Arc::new(HttpIndexerProvider::new(indexer, address_hex.clone()).expect("indexer provider"));
             let call_executor = Arc::new(GeneratedDidExecutor::new(
                 LifecycleWitnesses,
-                private_state,
-                signer,
+                private_state.clone(),
+                signer.clone(),
                 deploy.address(),
             ));
             let backend = LiveBackend::with_providers(LiveProviders::new(
@@ -542,16 +704,33 @@ mod live_lifecycle {
             let point = point_hex_from_seed(&rotation_seed);
             backend
                 .submit_tx(BuiltTx {
-                    bytes: DidContractCall::RotateControllerKey { new_public_key: point }.encode(),
+                    bytes: DidContractCall::RotateControllerKey {
+                        new_public_key: point.clone(),
+                    }
+                    .encode(),
                 })
                 .await
                 .expect("rotate controller");
             let after_rotate = backend.read_snapshot().await.expect("resolve rotate");
             assert!(!after_rotate.deactivated);
+            assert_eq!(
+                after_rotate.controller_public_key_hex,
+                point.x(),
+                "controller key must equal the requested rotated key x-coordinate after finality"
+            );
             assert_ne!(
                 after_rotate.controller_public_key_hex, initial.controller_public_key_hex,
                 "controller key must change after rotation finality"
             );
+            signer
+                .promote_controller_seed(rotation_seed)
+                .expect("promote rotated signer custody");
+            let mut rotated_private_state = private_state.load().expect("private state after rotate");
+            rotated_private_state.controller_seed.zeroize();
+            rotated_private_state.controller_seed = rotation_seed;
+            private_state
+                .store(rotated_private_state)
+                .expect("promote rotated private state custody");
 
             backend
                 .submit_tx(BuiltTx {

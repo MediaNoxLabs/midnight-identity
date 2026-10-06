@@ -264,4 +264,43 @@ zeroizes seed-bearing structs on drop, and uses verifier-backed
 verification-method insertion, authentication relation insertion, controller
 rotation, deactivation, and restart-time indexer reconciliation. It remains
 ignored locally because the operator funding seed, managed ZK artifact root, and
-private DUST checkpoint are not available in this environment.
+operator-prepared private DUST checkpoint are not available in this environment;
+the file checkpoint loader does not perform automatic indexer replay or chain
+sync by itself.
+
+## Compact-prerequisite audit follow-up (local only)
+
+Follow-up checks at local signed head `62555b0` found and corrected several
+pre-push gaps while leaving the Compact pin unchanged:
+
+- `get_schnorr_reduction` in the standalone witness no longer performs the
+  impossible `Uint<248>`-via-`u128` truncation. It is an explicit unreachable
+  stub, with a regression test proving the pinned generated Rust has no call
+  site and uses `midnight_compact_runtime::schnorr_verify_jubjub` instead.
+- The standalone signer now signs full `Fr` authorization digest fields using
+  canonical 32-byte field serialization instead of silently truncating to low
+  `u64` limbs. A nontrivial TS golden vector test still checks byte-identical
+  low-limb compatibility, and a high-field digest test proves high bytes affect
+  the signature and verify without collapse.
+- `HttpIndexerProvider` normalizes roots, trailing slashes, `/graphql`, and
+  already-canonical endpoints to exactly one `/api/v3/graphql` path, and the
+  protocol probe/lifecycle use the same runtime normalizer.
+- Rotation now promotes the finalized rotation seed into signer/private custody
+  before deactivation, and the lifecycle asserts the resolved controller
+  x-coordinate equals the requested rotated key.
+- Restart reconciliation now has a read-only `LiveBackend::reconcile_finality`
+  path and a unit test proving a restarted backend reconciles a persisted receipt
+  without calling `submit_and_wait` a second time.
+
+Focused local evidence from this pass:
+
+- `cargo fmt --package midnight-did-runtime` → passed. (`cargo fmt --all` still
+  tries to format read-only Nix-store dependency sources and fails outside this
+  checkout.)
+- `cargo test -p midnight-did-runtime --features http,node-subxt backend::tests -- --nocapture` → 28 passed.
+- `cargo test -p midnight-did-runtime --features http,node-subxt --test ledger8_standalone -- --nocapture` → 3 passed, 1 ignored (funded lifecycle).
+- `cargo test -p midnight-did-jubjub-schnorr --tests` → 17 passed.
+- `cargo test -p midnight-did-indexer --tests` → 17 passed.
+- `cargo clippy -p midnight-did-runtime --features http,node-subxt --tests -- -D warnings` → passed.
+- `cargo tree -p midnight-did-runtime --features http,node-subxt -i midnight-ledger` → one `midnight-ledger v8.2.0-rc.1` source graph from `third_party/midnight-ledger/ledger`.
+- `flake.nix`/`flake.lock` still pin midnight-ledger to `b85f5d8e503fd1d7a1b128bbc1d7156baf823a65`.
