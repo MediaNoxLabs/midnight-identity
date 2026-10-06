@@ -197,40 +197,66 @@ pub struct LedgerDeploymentConfig {
 ///
 /// This wrapper intentionally omits `Debug`/serde so witness output material is
 /// only handed across explicit custody/prover boundaries.
-#[derive(Clone, Default, PartialEq, Eq)]
-pub struct DidPrivateTranscriptOutputs(Vec<compact_runtime::AlignedValue>);
+#[derive(Default)]
+struct DidPrivateTranscriptOutputs(Vec<compact_runtime::AlignedValue>);
 
 impl DidPrivateTranscriptOutputs {
-    /// Borrow the ordered Compact witness outputs.
-    pub fn as_slice(&self) -> &[compact_runtime::AlignedValue] {
-        &self.0
+    /// Consume into owned ordered Compact witness outputs at the Ledger construction boundary.
+    fn into_vec(mut self) -> Vec<compact_runtime::AlignedValue> {
+        std::mem::take(&mut self.0)
     }
+}
 
-    /// Consume into owned ordered Compact witness outputs.
-    pub fn into_vec(self) -> Vec<compact_runtime::AlignedValue> {
-        self.0
+impl Drop for DidPrivateTranscriptOutputs {
+    fn drop(&mut self) {
+        // `AlignedValue` does not expose a zeroize implementation.  Drop the
+        // witness cells as soon as their custody-scoped wrapper leaves scope so
+        // they cannot be cloned, formatted, serialized, or borrowed through a
+        // public DTO surface.
+        self.0.clear();
     }
 }
 
 /// Compact constructor proof data and transcripts extracted from generated `initial_state`.
-#[derive(Clone)]
 pub struct DidConstructorProofMaterial {
     /// Stable generated constructor identifier (currently `constructor`).
-    pub constructor_id: String,
+    constructor_id: String,
     /// Contract address assigned to the constructor proof context.
-    pub contract_address: compact_runtime::ContractAddress,
+    contract_address: compact_runtime::ContractAddress,
     /// Initial query context (pre-state/effects) for Ledger transcript replay.
-    pub initial_query_context: compact_runtime::QueryContext<DefaultDB>,
+    #[allow(dead_code)]
+    initial_query_context: compact_runtime::QueryContext<DefaultDB>,
     /// Final query context after constructor execution.
-    pub final_query_context: compact_runtime::QueryContext<DefaultDB>,
+    #[allow(dead_code)]
+    final_query_context: compact_runtime::QueryContext<DefaultDB>,
     /// Compact-aligned public constructor input.
-    pub input: compact_runtime::AlignedValue,
+    #[allow(dead_code)]
+    input: compact_runtime::AlignedValue,
     /// Ledger8 public transcript operations, in Compact order.
-    pub public_transcript: Vec<compact_runtime::Op<compact_runtime::ResultModeVerify, DefaultDB>>,
+    public_transcript: Vec<compact_runtime::Op<compact_runtime::ResultModeVerify, DefaultDB>>,
     /// Secret witness transcript outputs.
-    pub private_transcript_outputs: DidPrivateTranscriptOutputs,
+    #[allow(dead_code)]
+    private_transcript_outputs: DidPrivateTranscriptOutputs,
     /// Compact-aligned public constructor output.
-    pub output: compact_runtime::AlignedValue,
+    #[allow(dead_code)]
+    output: compact_runtime::AlignedValue,
+}
+
+impl DidConstructorProofMaterial {
+    /// Stable generated constructor identifier.
+    pub fn constructor_id(&self) -> &str {
+        &self.constructor_id
+    }
+
+    /// Constructor proof contract address.
+    pub fn contract_address(&self) -> &compact_runtime::ContractAddress {
+        &self.contract_address
+    }
+
+    /// Number of public transcript operations.
+    pub fn public_transcript_len(&self) -> usize {
+        self.public_transcript.len()
+    }
 }
 
 impl fmt::Debug for DidConstructorProofMaterial {
@@ -240,7 +266,6 @@ impl fmt::Debug for DidConstructorProofMaterial {
             .field("contract_address", &self.contract_address)
             .field("input", &"<AlignedValue>")
             .field("public_transcript_len", &self.public_transcript.len())
-            .field("private_transcript_outputs", &"<redacted>")
             .field("output", &"<AlignedValue>")
             .finish()
     }
@@ -251,17 +276,21 @@ impl fmt::Debug for DidConstructorProofMaterial {
 /// This public DTO deliberately carries no private-state type or value.
 /// `GeneratedDidExecutor` persists the post-constructor private state inside
 /// its injected custody store before returning this material.
-#[derive(Clone)]
 pub struct DidDeploymentRequest {
     /// Compact-generated initial on-chain contract state.
     pub initial_contract_state: ChargedState<DefaultDB>,
     /// Constructor-local zswap state from Compact runtime.
     pub initial_zswap_local_state: compact_runtime::ZswapLocalState<DefaultDB>,
     /// Generated constructor proof data and transcripts.
-    pub constructor: DidConstructorProofMaterial,
+    constructor: DidConstructorProofMaterial,
 }
 
 impl DidDeploymentRequest {
+    /// Borrow generated constructor proof metadata without exposing witness outputs.
+    pub fn constructor(&self) -> &DidConstructorProofMaterial {
+        &self.constructor
+    }
+
     /// Construct Ledger8's typed deploy action from generated initial state and
     /// wallet/custody supplied operation/maintenance configuration.
     pub fn to_contract_deploy(
@@ -281,24 +310,36 @@ impl DidDeploymentRequest {
 }
 
 /// Compact proof data and transcripts extracted from a generated DID circuit.
-#[derive(Clone)]
 pub struct DidPrePartitionContractCall {
     /// Generated circuit/entry-point identifier.
     pub circuit_id: String,
     /// Contract address the circuit executed against.
-    pub contract_address: compact_runtime::ContractAddress,
+    contract_address: compact_runtime::ContractAddress,
     /// Initial query context (pre-state/effects) for Ledger transcript replay.
-    pub initial_query_context: compact_runtime::QueryContext<DefaultDB>,
+    initial_query_context: compact_runtime::QueryContext<DefaultDB>,
     /// Final query context after circuit execution.
-    pub final_query_context: compact_runtime::QueryContext<DefaultDB>,
+    #[allow(dead_code)]
+    final_query_context: compact_runtime::QueryContext<DefaultDB>,
     /// Compact-aligned public input.
-    pub input: compact_runtime::AlignedValue,
+    input: compact_runtime::AlignedValue,
     /// Ledger8 public transcript operations, in Compact order.
-    pub public_transcript: Vec<compact_runtime::Op<compact_runtime::ResultModeVerify, DefaultDB>>,
+    public_transcript: Vec<compact_runtime::Op<compact_runtime::ResultModeVerify, DefaultDB>>,
     /// Secret witness transcript outputs.
-    pub private_transcript_outputs: DidPrivateTranscriptOutputs,
+    private_transcript_outputs: DidPrivateTranscriptOutputs,
     /// Compact-aligned public output.
-    pub output: compact_runtime::AlignedValue,
+    output: compact_runtime::AlignedValue,
+}
+
+impl DidPrePartitionContractCall {
+    /// Generated circuit/entry-point identifier.
+    pub fn circuit_id(&self) -> &str {
+        &self.circuit_id
+    }
+
+    /// Number of public transcript operations.
+    pub fn public_transcript_len(&self) -> usize {
+        self.public_transcript.len()
+    }
 }
 
 impl fmt::Debug for DidPrePartitionContractCall {
@@ -308,7 +349,6 @@ impl fmt::Debug for DidPrePartitionContractCall {
             .field("contract_address", &self.contract_address)
             .field("input", &"<AlignedValue>")
             .field("public_transcript_len", &self.public_transcript.len())
-            .field("private_transcript_outputs", &"<redacted>")
             .field("output", &"<AlignedValue>")
             .finish()
     }
@@ -1174,12 +1214,19 @@ pub struct HttpNodeProvider {
     client: reqwest::Client,
     rpc_url: String,
     submit_method: String,
+    max_finality_polls: usize,
 }
 
 #[cfg(feature = "http")]
 impl HttpNodeProvider {
-    /// Create a node adapter. The method is intentionally configurable because
-    /// standalone/node deployments name the submit/finality RPC differently.
+    /// Create a node adapter.
+    ///
+    /// For Midnight node 0.22.x/Substrate-compatible stacks, pass
+    /// `author_submitExtrinsic`: the adapter submits the signed extrinsic and
+    /// then scans finalized blocks until the exact submitted extrinsic bytes are
+    /// observed. A custom method may instead return a provider-guaranteed
+    /// finality receipt object `{ txHash, blockHeight, finalityToken? }`; in
+    /// that mode the provider owns the finality contract.
     pub fn new(rpc_url: impl Into<String>, submit_method: impl Into<String>) -> Result<Self, BackendError> {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
@@ -1189,14 +1236,11 @@ impl HttpNodeProvider {
             client,
             rpc_url: rpc_url.into(),
             submit_method: submit_method.into(),
+            max_finality_polls: 120,
         })
     }
-}
 
-#[cfg(feature = "http")]
-#[async_trait]
-impl LedgerNodeProvider for HttpNodeProvider {
-    async fn submit_and_wait(&self, tx: SignedDidTransaction) -> Result<LedgerFinalityReceipt, BackendError> {
+    async fn rpc_call(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value, BackendError> {
         #[derive(serde::Deserialize)]
         struct RpcResponse {
             result: Option<serde_json::Value>,
@@ -1205,8 +1249,8 @@ impl LedgerNodeProvider for HttpNodeProvider {
         let body = serde_json::json!({
             "jsonrpc": "2.0",
             "id": 1,
-            "method": self.submit_method,
-            "params": [format!("0x{}", hex::encode(tx.bytes))],
+            "method": method,
+            "params": params,
         });
         let response = self
             .client
@@ -1224,11 +1268,83 @@ impl LedgerNodeProvider for HttpNodeProvider {
             .await
             .map_err(|e| BackendError::Decode(format!("node response: {e}")))?;
         if let Some(err) = payload.error {
-            return Err(BackendError::Network(format!("node RPC error: {err}")));
+            return Err(BackendError::Network(format!("node RPC error from {method}: {err}")));
         }
-        let result = payload
+        payload
             .result
-            .ok_or_else(|| BackendError::Decode("node response missing result".into()))?;
+            .ok_or_else(|| BackendError::Decode(format!("node response from {method} missing result")))
+    }
+
+    fn parse_block_height(header: &serde_json::Value) -> Option<u64> {
+        let n = header.get("number")?.as_str()?;
+        u64::from_str_radix(n.trim_start_matches("0x"), 16).ok()
+    }
+
+    async fn finalized_receipt_for_extrinsic(
+        &self,
+        tx_hash: String,
+        submitted_hex: &str,
+    ) -> Result<LedgerFinalityReceipt, BackendError> {
+        for _ in 0..self.max_finality_polls {
+            let finalized_hash = self
+                .rpc_call("chain_getFinalizedHead", serde_json::json!([]))
+                .await?
+                .as_str()
+                .ok_or_else(|| BackendError::Decode("chain_getFinalizedHead did not return a block hash".into()))?
+                .to_owned();
+
+            let mut cursor = finalized_hash.clone();
+            for _ in 0..64 {
+                let block = self.rpc_call("chain_getBlock", serde_json::json!([cursor])).await?;
+                let Some(block_obj) = block.get("block") else { break };
+                let header = block_obj
+                    .get("header")
+                    .ok_or_else(|| BackendError::Decode("chain_getBlock result missing header".into()))?;
+                let height = Self::parse_block_height(header)
+                    .ok_or_else(|| BackendError::Decode("chain_getBlock header missing hex number".into()))?;
+                let found = block_obj
+                    .get("extrinsics")
+                    .and_then(|v| v.as_array())
+                    .map(|xs| xs.iter().any(|x| x.as_str() == Some(submitted_hex)))
+                    .unwrap_or(false);
+                if found {
+                    return Ok(LedgerFinalityReceipt {
+                        tx_hash,
+                        block_height: height,
+                        finality_token: Some(finalized_hash),
+                    });
+                }
+                let Some(parent) = header.get("parentHash").and_then(|v| v.as_str()) else {
+                    break;
+                };
+                if height == 0 || parent == cursor {
+                    break;
+                }
+                cursor = parent.to_owned();
+            }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+        Err(BackendError::Network(
+            "submitted transaction was not observed in finalized blocks before timeout".into(),
+        ))
+    }
+}
+
+#[cfg(feature = "http")]
+#[async_trait]
+impl LedgerNodeProvider for HttpNodeProvider {
+    async fn submit_and_wait(&self, tx: SignedDidTransaction) -> Result<LedgerFinalityReceipt, BackendError> {
+        let submitted_hex = format!("0x{}", hex::encode(tx.bytes));
+        let result = self
+            .rpc_call(&self.submit_method, serde_json::json!([submitted_hex.clone()]))
+            .await?;
+
+        if let Some(tx_hash) = result.as_str() {
+            return self
+                .finalized_receipt_for_extrinsic(tx_hash.to_owned(), &submitted_hex)
+                .await;
+        }
+
         let tx_hash = result
             .get("txHash")
             .or_else(|| result.get("hash"))
@@ -1241,7 +1357,10 @@ impl LedgerNodeProvider for HttpNodeProvider {
             .and_then(|v| v.as_u64())
             .unwrap_or_default();
         if tx_hash.is_empty() || block_height == 0 {
-            return Err(BackendError::Decode("node result missing txHash/blockHeight".into()));
+            return Err(BackendError::Decode(
+                "node result missing txHash/blockHeight; use author_submitExtrinsic or a provider-finality receipt"
+                    .into(),
+            ));
         }
         Ok(LedgerFinalityReceipt {
             tx_hash,
@@ -1642,6 +1761,58 @@ mod tests {
         assert!(err.source().is_none());
     }
 
+    #[cfg(feature = "http")]
+    #[test]
+    fn http_node_provider_waits_for_finalized_block_containing_submitted_extrinsic() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let handle = thread::spawn(move || {
+            for _ in 0..3 {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut buf = [0u8; 8192];
+                let n = stream.read(&mut buf).unwrap();
+                let request = String::from_utf8_lossy(&buf[..n]);
+                let body = request.split("\r\n\r\n").nth(1).unwrap_or_default();
+                let value: serde_json::Value = serde_json::from_str(body).unwrap();
+                let method = value["method"].as_str().unwrap();
+                let result = match method {
+                    "author_submitExtrinsic" => serde_json::json!("0xtxhash"),
+                    "chain_getFinalizedHead" => serde_json::json!("0xfinal"),
+                    "chain_getBlock" => serde_json::json!({
+                        "block": {
+                            "header": {"number": "0x2a", "parentHash": "0xparent"},
+                            "extrinsics": ["0x7369676e6564"]
+                        }
+                    }),
+                    other => panic!("unexpected method {other}"),
+                };
+                let response = serde_json::json!({"jsonrpc":"2.0","id":1,"result":result}).to_string();
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    response.len(),
+                    response
+                )
+                .unwrap();
+            }
+        });
+
+        let provider = HttpNodeProvider::new(url, "author_submitExtrinsic").unwrap();
+        let receipt = rt()
+            .block_on(provider.submit_and_wait(SignedDidTransaction {
+                bytes: b"signed".to_vec(),
+            }))
+            .unwrap();
+        assert_eq!(receipt.tx_hash, "0xtxhash");
+        assert_eq!(receipt.block_height, 42);
+        assert_eq!(receipt.finality_token.as_deref(), Some("0xfinal"));
+        handle.join().unwrap();
+    }
+
     #[test]
     fn live_backend_constructs_without_wiring() {
         let via_new = LiveBackend::new();
@@ -1767,6 +1938,45 @@ mod tests {
         assert!(!deployment_block.contains("PS"));
         assert!(!deployment_block.contains("Debug"));
         assert!(!deployment_block.contains("Serialize"));
+    }
+
+    #[test]
+    fn proof_material_keeps_witness_outputs_custody_scoped() {
+        let source = include_str!("backend.rs");
+        for type_name in [
+            "DidConstructorProofMaterial",
+            "DidPrePartitionContractCall",
+            "DidPrivateTranscriptOutputs",
+        ] {
+            let prefix = source
+                .split(&format!("struct {type_name}"))
+                .next()
+                .expect("type is present");
+            let derive_line = prefix.lines().rev().find(|line| line.contains("derive"));
+            assert!(
+                !derive_line.unwrap_or_default().contains("Clone"),
+                "{type_name} must not derive Clone"
+            );
+        }
+        let constructor_block = source
+            .split("pub struct DidConstructorProofMaterial")
+            .nth(1)
+            .and_then(|tail| tail.split("impl DidConstructorProofMaterial").next())
+            .expect("constructor proof block present");
+        let call_block = source
+            .split("pub struct DidPrePartitionContractCall")
+            .nth(1)
+            .and_then(|tail| tail.split("impl DidPrePartitionContractCall").next())
+            .expect("call proof block present");
+        for block in [constructor_block, call_block] {
+            assert!(!block.contains("pub private_transcript_outputs"));
+            assert!(!block.contains("pub(crate) private_transcript_outputs"));
+            assert!(!block.contains("Serialize"));
+            assert!(!block.contains("Deserialize"));
+        }
+        let dbg = format!("{:?}", constructor_material());
+        assert!(!dbg.contains("private_transcript_outputs"), "got {dbg}");
+        assert!(!dbg.contains("custody"), "got {dbg}");
     }
 
     #[test]

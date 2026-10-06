@@ -17,12 +17,11 @@ pub mod state_decode;
 
 pub use backend::{
     Backend, BackendError, BalancedDidTransaction, BuiltTx, DidAuthorizationSigner, DidConstructorProofMaterial,
-    DidContractExecutor, DidDeploymentRequest, DidPrePartitionContractCall, DidPrivateStateStore,
-    DidPrivateTranscriptOutputs, FinalizedTxData, GeneratedDidExecutor, LedgerContractCallConfig,
-    LedgerFinalityReceipt, LedgerIndexerProvider, LedgerNodeProvider, LedgerProofInputTransaction, LedgerProofKeyMap,
-    LedgerProofOutputTransaction, LedgerProofProvider, LedgerProveTxRequest, LedgerWalletProvider, LiveBackend,
-    LiveProviders, ProvedDidTransaction, RecordingBackend, ResolverBackend, SignedDidTransaction,
-    UnbalancedDidTransaction,
+    DidContractExecutor, DidDeploymentRequest, DidPrePartitionContractCall, DidPrivateStateStore, FinalizedTxData,
+    GeneratedDidExecutor, LedgerContractCallConfig, LedgerFinalityReceipt, LedgerIndexerProvider, LedgerNodeProvider,
+    LedgerProofInputTransaction, LedgerProofKeyMap, LedgerProofOutputTransaction, LedgerProofProvider,
+    LedgerProveTxRequest, LedgerWalletProvider, LiveBackend, LiveProviders, ProvedDidTransaction, RecordingBackend,
+    ResolverBackend, SignedDidTransaction, UnbalancedDidTransaction,
 };
 pub use contract_call::{
     DidContractCall, DidLedgerSnapshot, JubjubPointHex, LedgerPublicKeyJwk, LedgerSchnorrJubjubVerificationMethod,

@@ -145,3 +145,42 @@ The focused artifact test command passed locally with 6 passed and 3 checkout-mo
 ```bash
 nix develop .#factory --command node --test tests/compact/passport-vault-ledger8-artifacts.test.mjs
 ```
+
+## Acceptance follow-up at head after `b447e5d`
+
+Independent review correctly identified that the previous `ledger8_standalone` test was only an environment assertion. It has been replaced with an explicit service protocol probe that does not claim lifecycle success.
+
+Local service probe against the supplied stack:
+
+```bash
+MIDNIGHT_DID_LEDGER8_STANDALONE=1 \
+MIDNIGHT_DID_LEDGER8_NODE_URL=http://127.0.0.1:9944 \
+MIDNIGHT_DID_LEDGER8_INDEXER_URL=http://127.0.0.1:8088 \
+MIDNIGHT_DID_LEDGER8_PROOF_URL=http://127.0.0.1:6300 \
+nix develop --command cargo test -p midnight-did-runtime --test ledger8_standalone -- --nocapture
+```
+
+Result: failed intentionally before any deploy/create claim. Evidence:
+
+- node `system_health`: healthy / not syncing;
+- node `midnight_ledgerVersion`: `=8.0.2`;
+- node RPC methods include `author_submitExtrinsic`, `chain_getFinalizedHead`, `chain_getBlock`, and `midnight_contractState`;
+- indexer GraphQL schema includes `contractAction` at `/api/v3/graphql`;
+- proof server `/health` returns HTTP 200;
+- no wallet/funding/balancing/signing API is exposed by the node/indexer/proof-server stack (`wallet_like` RPC method set was empty), and no `MIDNIGHT_DID_LEDGER8_WALLET_PROVIDER_URL` was supplied.
+
+Therefore a pure-Rust end-to-end deploy/create lifecycle is still blocked by the absence of an external wallet/funding/balancing/signing provider, not by node/indexer/proof health. No standalone lifecycle pass is claimed. Focused follow-up: #102.
+
+Custody follow-up:
+
+- `DidPrivateTranscriptOutputs` is no longer public/exported or cloneable.
+- `DidConstructorProofMaterial`, `DidPrePartitionContractCall`, and `DidDeploymentRequest` no longer derive `Clone`.
+- Secret witness transcript outputs are private fields and are consumed only at the Ledger construction boundary.
+- Debug output omits witness transcript fields; no serde derives are present on the proof DTOs.
+- `HttpNodeProvider` now validates `author_submitExtrinsic` submissions by scanning finalized blocks for the exact submitted extrinsic bytes. Provider-specific custom submit methods must return a finality receipt object and own that finality contract.
+
+Focused checks:
+
+- `nix develop --command cargo test -p midnight-did-runtime backend::tests -- --nocapture` → 25 passed.
+- `nix develop --command cargo test -p midnight-did-runtime --features http backend::tests::http_node_provider_waits -- --nocapture` → passed.
+- `nix develop --command cargo check -p midnight-did-runtime --features http` → passed.
