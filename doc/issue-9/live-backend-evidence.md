@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 3. execute generated Rust `did.compact` through `GeneratedDidExecutor`;
 4. extract Compact proof data into `DidPrePartitionContractCall`;
 5. hand generated proof material to the wallet provider;
-6. balance, prove via `/prove-tx`, sign, submit, wait for finality, and reconcile.
+6. balance, prove via `/prove-tx`, finalize Ledger transaction state, submit through a node envelope/finality provider, wait for finality, and reconcile.
 
 Deployment now has an explicit constructor path: `GeneratedDidExecutor::deployment_request()` returns `DidDeploymentRequest` carrying generated constructor proof material (`constructor_id`, initial/final query contexts, aligned input/output, ordered public transcript, and redacted private outputs), and `LiveBackend::submit_deployment()` sends it through the same provider pipeline.
 
@@ -191,29 +191,32 @@ Added `LocalLedger8WalletProvider` in `crates/midnight-did-runtime/src/backend.r
 It uses the same `b85f5d8e...` Ledger8 graph and does not depend on Oxid or any
 Ledger9/10/D941 revision. The provider:
 
-- accepts standalone/dev genesis DUST funding via `LocalDustGenesisOutput`;
-- derives and retains the DUST secret key and mutable `DustLocalState<DefaultDB>` internally;
+- consumes a one-shot `LocalLedger8DustSeed` and zeroizes it after deriving the Ledger DUST key;
+- loads authoritative DUST state through `LocalLedger8DustStateProvider`, so production code resumes from a private checkpoint/indexer replay rather than a public caller-fabricated genesis list;
+- retains only the derived Ledger DUST secret key and synchronized mutable `DustLocalState<DefaultDB>` internally;
 - constructs typed Ledger8 deploy transactions containing `ContractDeploy<DefaultDB>`;
 - constructs typed Ledger8 call transactions from generated `PrePartitionContractCall<DefaultDB>`;
 - balances DUST fees locally with bounded iterations;
 - emits the exact tagged Ledger8 `/prove-tx` request shape;
 - validates custody boundaries by omitting DUST seed/witness material from `Debug` and public DTOs;
-- hands tagged proven Ledger8 transaction bytes to the node-submission boundary without exposing proof transcripts.
+- returns a typed `FinalizedDidTransaction` state that distinguishes tagged Ledger8 transaction bytes from an encoded outer Substrate extrinsic;
+- prevents `HttpNodeProvider(author_submitExtrinsic)` from submitting raw tagged Ledger8 transaction bytes as if they were an outer extrinsic.
 
 Focused local evidence after this addendum:
 
 - `node scripts/ci/target-plan.mjs --base origin/develop --head HEAD` → `production-ready/full: policy, rust, unit, wasm, coverage, did-codegen, vc-codegen`.
-- `rustfmt --edition 2024 crates/midnight-did-runtime/src/backend.rs` → passed. (`cargo fmt --all` still attempts to rewrite read-only Nix-store Ledger/Compact sources and fails with permission errors outside this repository.)
+- `rustfmt --edition 2024 crates/midnight-did-runtime/src/backend.rs crates/midnight-did-runtime/src/lib.rs` → passed. (`cargo fmt --all` still attempts to rewrite read-only Nix-store Ledger/Compact sources and fails with permission errors outside this repository.)
 - `cargo check -p midnight-did-runtime --features http` → passed.
 - `cargo test -p midnight-did-runtime backend::tests -- --nocapture` → 26 passed.
 
 `crates/midnight-did-runtime/tests/ledger8_standalone.rs` remains honest: full
 standalone submit/finality evidence still requires a node adapter that wraps the
 proven Ledger8 transaction in the chain's accepted outer Substrate extrinsic or a
-provider-owned finality receipt. The local wallet provider subsumes the
-wallet/funding/balancing/prove-request construction portion of #102, but this
-work does not claim a finalized deploy/create lifecycle until the standalone
-submission envelope is available and exercised against node/indexer/proof.
+provider-owned finality receipt. The local wallet provider narrows #102 by
+providing wallet construction/balancing/prove-request primitives with checkpoint
+injection, but #102 is not closed and no finalized deploy/create lifecycle is
+claimed until standalone synchronization/submission/finality is exercised against
+node/indexer/proof.
 
 TS parity note: the Rust provider covers the same DID wallet boundary exercised by
 `third_party/midnight-did/packages/api/src/wallet-provider.ts` at the pinned DID
