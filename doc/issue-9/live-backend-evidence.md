@@ -130,3 +130,18 @@ Local review (distinct from tests) checked the staged diff for the mandatory rev
 - `GeneratedDidExecutor::deployment_request` stores the constructor's `current_private_state` through the injected private-state store before returning deployment material.
 - The wallet deployment port receives the full `DidDeploymentRequest`; wallet/custody supplies the typed Ledger8 `LedgerDeploymentConfig` operation map, maintenance authority, and nonce.
 - `DidDeploymentRequest::to_contract_deploy` constructs Ledger8 `midnight_ledger::structure::ContractDeploy<DefaultDB>` rather than encoding the constructor as a normal call.
+
+
+## Hosted CI follow-up: passport artifact manifest drift
+
+Hosted VC codegen drift initially failed after the merge because `artifacts/passport-vault-ledger8/manifest.json` still contained the pre-merge repository Compact input and lock digests. The artifact manifest was regenerated with:
+
+```bash
+nix develop .#factory --command node scripts/compact/passport-vault-ledger8-artifacts.mjs --out artifacts/passport-vault-ledger8/manifest.json
+```
+
+The focused artifact test command passed locally with 6 passed and 3 checkout-mode tests skipped because `OXID_REFERENCE_ROOT` was not configured:
+
+```bash
+nix develop .#factory --command node --test tests/compact/passport-vault-ledger8-artifacts.test.mjs
+```

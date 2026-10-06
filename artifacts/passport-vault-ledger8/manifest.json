@@ -4,7 +4,7 @@
     "compactInputRevision": "05b237a5e51f9c22853b424e7d4236dfa9384c24",
     "materializerRevision": "50a21b47d280f06cafad94961d4a40f0a83fb3b4",
     "materializerSourcePathSha256": "6a9a915aa29a22a0574dbd638deced8a529d0bdd278eb81e475feaa0812cb46a",
-    "nixLockSha256": "8c4ba46fa1c6449e0800523457f186e190ad85382d81c159f673ea7df50d7ce8",
+    "nixLockSha256": "9b03b6cca14ea18e8de0b7d909776639cb5c516495a2d8845bd977a2af28dbc4",
     "sourceIdentity": "2ebc5b34dd440bc9a9736408f29f5003e7a78f26a564b392be2af36de69102f4:76b91bc29be9f41753eeef232bd696fb8181af0670e52d658e6e7da04adde127"
   },
   "circuits": [
@@ -209,9 +209,9 @@
     "oxidUpstreamVaultLockDigest": "c8d47db1b63785765b8875a3eaa33221b61c779ce7d7cc6e83d8d386a50c0e9f",
     "oxidVaultRevision": "e4a92a6be2cc6dc34f68261f10c19c9312043807",
     "proofRepository": "https://github.com/MediaNoxLabs/midnight-zk",
-    "repositoryCompactInputRevision": "4f743ecca8542ebfdf5a7598baff7cc7aaa5c6dc",
+    "repositoryCompactInputRevision": "e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35",
     "repositoryLedgerRevision": "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65",
-    "repositoryLockSha256": "8c4ba46fa1c6449e0800523457f186e190ad85382d81c159f673ea7df50d7ce8",
+    "repositoryLockSha256": "9b03b6cca14ea18e8de0b7d909776639cb5c516495a2d8845bd977a2af28dbc4",
     "repositoryProofRevision": "532629b044a88473a7175f4a96c2511c91156136"
   }
 }
