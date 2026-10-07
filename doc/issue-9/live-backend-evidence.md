@@ -20,7 +20,7 @@ Deployment now has an explicit constructor path: `GeneratedDidExecutor::deployme
 | Area | Evidence |
 | --- | --- |
 | Ledger source | Root `flake.lock` `midnight-ledger` is `MediaNoxLabs/midnight-ledger@b85f5d8e503fd1d7a1b128bbc1d7156baf823a65`. |
-| Compact source | Root `flake.lock` `compact` is `MediaNoxLabs/compact@e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35` (`compactc 0.31.124`, runtime `0.16.102`). |
+| Compact source | Root `flake.lock` `compact` is `MediaNoxLabs/compact@55ba765f5484a47d9184824a619f93893448c740` (`compactc 0.31.124`, runtime `0.16.102`). |
 | Generated contract | `just codegen` regenerated `crates/midnight-did-runtime/src/contract/generated.rs` from official DID source `third_party/midnight-did@42a8e4aca1c6043f7f2b73463fa3aa3cd3d48b06`, path `packages/contract/src/did.compact`. |
 | Constructor proof data | Generated `initial_state` now returns `ConstructorProofData`; runtime maps it into `DidConstructorProofMaterial`. |
 | Ledger8 prepartition conversion | `DidPrePartitionContractCall` and `DidConstructorProofMaterial` convert directly to `midnight_ledger::construct::PrePartitionContractCall<DefaultDB>` using the canonical `b85f5d8e...` Ledger graph. |
@@ -29,7 +29,7 @@ Deployment now has an explicit constructor path: `GeneratedDidExecutor::deployme
 
 ## Local validations
 
-- `nix flake lock --update-input compact` → pinned `e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35`.
+- `nix flake lock --update-input compact` → pinned `55ba765f5484a47d9184824a619f93893448c740`.
 - `nix develop --command just codegen` → regenerated generated contract with constructor proof-data support.
 - `nix develop --command cargo check -p midnight-did-runtime -p midnight-did-api -p midnight-did-uniffi` — pass.
 - `nix develop --command cargo check -p midnight-did-runtime --features http` — pass.
@@ -81,7 +81,7 @@ midnight-zswap   8.2.0-rc.1  third_party/midnight-ledger/zswap/Cargo.toml
 Resolved the dirty merge against `origin/develop` at `16bdc97` while preserving:
 
 - Ledger input `MediaNoxLabs/midnight-ledger@b85f5d8e503fd1d7a1b128bbc1d7156baf823a65`.
-- Compact input `MediaNoxLabs/compact@e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35`.
+- Compact input `MediaNoxLabs/compact@55ba765f5484a47d9184824a619f93893448c740`.
 - Draft PR status.
 
 Additional mandatory review fixes:
@@ -304,3 +304,42 @@ Focused local evidence from this pass:
 - `cargo clippy -p midnight-did-runtime --features http,node-subxt --tests -- -D warnings` → passed.
 - `cargo tree -p midnight-did-runtime --features http,node-subxt -i midnight-ledger` → one `midnight-ledger v8.2.0-rc.1` source graph from `third_party/midnight-ledger/ledger`.
 - `flake.nix`/`flake.lock` still pin midnight-ledger to `b85f5d8e503fd1d7a1b128bbc1d7156baf823a65`.
+
+## Compact PR #372 final pin follow-up
+
+This follow-up repins the repository Compact input to the maintained exact PR #372
+head `55ba765f5484a47d9184824a619f93893448c740` with lock narHash
+`sha256-ve1phmE3ZfDmQ/cgP7ekSuF4xiNPLE/9gjl+gS4qZ+0=`. The compiler still
+reports `compactc 0.31.124` / runtime `0.16.102`, but regenerated DID Rust now
+folds nested generated circuit proof data into the exported root call.
+
+Focused local evidence before push:
+
+- `/nix/var/nix/profiles/default/bin/nix flake lock --update-input compact` →
+  updated only the Compact input to `55ba765f5484a47d9184824a619f93893448c740`.
+- `/nix/var/nix/profiles/default/bin/nix develop --command just codegen` →
+  regenerated `crates/midnight-did-runtime/src/contract/generated.rs` from the
+  real `did.compact` source.
+- `cargo clean -p midnight-compact-runtime` was required locally after the
+  symlinked Compact runtime source changed, so Cargo rebuilt runtime metadata
+  containing `with_folded_nested_call_proof_data`.
+- `/nix/var/nix/profiles/default/bin/nix develop --command cargo test -p midnight-did-runtime generated_did_mutation_extracts_one_folded_root_call_for_ledger8 -- --nocapture` → passed.
+- `/nix/var/nix/profiles/default/bin/nix develop --command cargo test -p midnight-did-runtime --features http,node-subxt -- --nocapture` → 63 passed; standalone harness 3 passed / 1 ignored.
+- `/nix/var/nix/profiles/default/bin/nix develop --command cargo clippy --no-deps -p midnight-did-runtime --all-targets --features http,node-subxt -- -D warnings` → passed.
+- `/nix/var/nix/profiles/default/bin/nix develop --command cargo test -p midnight-did-api -p midnight-did-uniffi -p midnight-did-indexer -p midnight-did-jubjub-schnorr --tests -- --nocapture` → passed.
+- `/nix/var/nix/profiles/default/bin/nix develop --command cargo test -p midnight-did-runtime --features http,node-subxt --test ledger8_standalone --no-run` → passed.
+- `/nix/var/nix/profiles/default/bin/nix develop --command cargo test -p midnight-did-runtime --test ledger8_standalone -- --nocapture` → 1 passed / 1 ignored; no funded standalone lifecycle claimed.
+- `/nix/var/nix/profiles/default/bin/nix develop --command just fmt-check` and `just lint` → passed.
+- `/nix/var/nix/profiles/default/bin/nix develop --command just codegen-vc-check` → passed.
+- `/nix/var/nix/profiles/default/bin/nix develop .#rust --command cargo build --locked --target wasm32-unknown-unknown -p midnight-did-domain -p midnight-did-method -p midnight-passport-account-source -p midnight-passport-vault-source -p midnight-vc-domain` → passed.
+- `/nix/var/nix/profiles/default/bin/nix develop --command cargo check -p midnight-did-runtime --target aarch64-apple-ios` → unavailable before crate compilation because the devshell toolchain lacks target std (`can't find crate for core`); no mobile pass claimed.
+- `cargo metadata --format-version 1` shows exactly one `midnight-ledger 8.2.0-rc.1`, one `midnight-zswap 8.2.0-rc.1`, and one `midnight-compact-runtime 0.16.102`, all from the pinned path-mounted sources.
+
+Self-review notes: proof extraction now rejects any generated DID mutation trace
+that does not contain exactly one folded root call; the new focused runtime test
+executes the real generated constructor plus deactivation mutation, validates the
+TS-compatible Schnorr authorization path, builds a `DidPrePartitionContractCall`,
+and converts it into Ledger8's `PrePartitionContractCall<DefaultDB>`. Secret
+material remains inside witness/private-state/signer test custody; DTO `Debug`
+and serde surfaces still omit witness/private transcript outputs. Restart
+reconciliation remains read-only and finality receipts remain typed/durable.

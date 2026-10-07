@@ -48,8 +48,10 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
-      # MediaNoxLabs/compact#372 exact signed head with constructor proof-data support.
-      rev   = "e53a8e88d32c561b69b2ed5f2e7e4c19b4c93d35";
+      # MediaNoxLabs/compact#372 exact signed head with TS-compatible Schnorr
+      # challenge semantics and a single exported root call for nested generated
+      # circuit proof data.
+      rev   = "55ba765f5484a47d9184824a619f93893448c740";
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
     };
   };

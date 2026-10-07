@@ -1391,12 +1391,25 @@ fn proof_call_from_trace(
     trace: compact_runtime::CallProofDataTrace<DefaultDB>,
     circuit: &str,
 ) -> Result<DidPrePartitionContractCall, BackendError> {
-    let call = trace
-        .into_vec()
-        .into_iter()
-        .rev()
-        .find(|c| c.circuit_id == circuit)
-        .ok_or_else(|| BackendError::Decode(format!("generated proof trace did not contain {circuit}")))?;
+    let mut calls = trace.into_vec();
+    if calls.len() != 1 {
+        let ids = calls
+            .iter()
+            .map(|call| call.circuit_id.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(BackendError::Decode(format!(
+            "generated proof trace for {circuit} must contain exactly one folded root call, got {} ({ids})",
+            calls.len()
+        )));
+    }
+    let call = calls.pop().expect("length checked");
+    if call.circuit_id != circuit {
+        return Err(BackendError::Decode(format!(
+            "generated proof trace root was {}, expected {circuit}",
+            call.circuit_id
+        )));
+    }
     let (input, public_transcript, private_outputs, output) = call.proof_data.into_parts();
     Ok(DidPrePartitionContractCall {
         circuit_id: call.circuit_id,
@@ -2290,6 +2303,165 @@ mod tests {
             .unwrap()
     }
 
+    #[derive(Clone)]
+    struct TestDidPrivateState {
+        controller_seed: [u8; 32],
+        recovery_seed: [u8; 32],
+    }
+
+    #[derive(Clone)]
+    struct TestWitnesses;
+
+    impl crate::contract::Witnesses<TestDidPrivateState> for TestWitnesses {
+        fn get_schnorr_reduction<'a>(
+            &self,
+            _ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+            _challenge_hash: compact_runtime::Fr,
+        ) -> (TestDidPrivateState, (u8, u128)) {
+            unreachable!("pinned Compact output calls runtime schnorr_verify_jubjub directly")
+        }
+
+        fn local_controller_public_key<'a>(
+            &self,
+            ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+        ) -> (TestDidPrivateState, compact_runtime::JubjubPoint) {
+            (
+                ctx.private_state.clone(),
+                midnight_did_jubjub_schnorr::derive_public_key_from_seed(&ctx.private_state.controller_seed),
+            )
+        }
+
+        fn local_recovery_authority_public_key<'a>(
+            &self,
+            ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+        ) -> (TestDidPrivateState, compact_runtime::JubjubPoint) {
+            (
+                ctx.private_state.clone(),
+                midnight_did_jubjub_schnorr::derive_public_key_from_seed(&ctx.private_state.recovery_seed),
+            )
+        }
+
+        fn current_timestamp<'a>(
+            &self,
+            ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+        ) -> (TestDidPrivateState, u64) {
+            (ctx.private_state.clone(), 1)
+        }
+    }
+
+    struct TestPrivateStateStore(Mutex<TestDidPrivateState>);
+
+    impl DidPrivateStateStore<TestDidPrivateState> for TestPrivateStateStore {
+        fn load(&self) -> Result<TestDidPrivateState, BackendError> {
+            Ok(self
+                .0
+                .lock()
+                .map_err(|_| BackendError::Other("test private-state lock poisoned".into()))?
+                .clone())
+        }
+
+        fn store(&self, state: TestDidPrivateState) -> Result<(), BackendError> {
+            *self
+                .0
+                .lock()
+                .map_err(|_| BackendError::Other("test private-state lock poisoned".into()))? = state;
+            Ok(())
+        }
+    }
+
+    struct TestSeedSigner {
+        controller_seed: [u8; 32],
+        recovery_seed: [u8; 32],
+    }
+
+    impl TestSeedSigner {
+        fn sign(
+            seed: &[u8; 32],
+            digest: [compact_runtime::Fr; 4],
+        ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
+            use midnight_transient_crypto::curve::{EmbeddedFr, EmbeddedGroupAffine};
+            use midnight_transient_crypto::hash::transient_hash;
+            use sha2::{Digest, Sha256};
+
+            fn fr_be_bytes(field: &compact_runtime::Fr) -> [u8; 32] {
+                let mut out = [0u8; 32];
+                let le = field.as_le_bytes();
+                let n = le.len().min(32);
+                out[32 - n..].copy_from_slice(&le[..n]);
+                out.reverse();
+                out
+            }
+
+            fn nonce_from_seed(seed: &[u8; 32], digest: &[compact_runtime::Fr; 4]) -> EmbeddedFr {
+                let mut nonce_seed = Vec::with_capacity(
+                    midnight_did_jubjub_schnorr::NONCE_DOMAIN_V1.len() + seed.len() + digest.len() * 32,
+                );
+                nonce_seed.extend_from_slice(midnight_did_jubjub_schnorr::NONCE_DOMAIN_V1.as_bytes());
+                nonce_seed.extend_from_slice(seed);
+                for field in digest {
+                    nonce_seed.extend_from_slice(&fr_be_bytes(field));
+                }
+                let digest32 = Sha256::digest(nonce_seed);
+                let mut le = [0u8; 32];
+                for (slot, byte) in le.iter_mut().zip(digest32.iter().rev()) {
+                    *slot = *byte;
+                }
+                EmbeddedFr::from_le_bytes_wide(&le).expect("32-byte nonce hash reduces to scalar")
+            }
+
+            fn field_challenge(
+                announcement: &EmbeddedGroupAffine,
+                public_key: &EmbeddedGroupAffine,
+                digest: &[compact_runtime::Fr; 4],
+            ) -> Result<EmbeddedFr, BackendError> {
+                let ann_x = announcement
+                    .x()
+                    .ok_or_else(|| BackendError::Other("Schnorr announcement is the identity".into()))?;
+                let ann_y = announcement
+                    .y()
+                    .ok_or_else(|| BackendError::Other("Schnorr announcement is the identity".into()))?;
+                let pk_x = public_key
+                    .x()
+                    .ok_or_else(|| BackendError::Other("Schnorr public key is the identity".into()))?;
+                let pk_y = public_key
+                    .y()
+                    .ok_or_else(|| BackendError::Other("Schnorr public key is the identity".into()))?;
+                let challenge = transient_hash(&[ann_x, ann_y, pk_x, pk_y, digest[0], digest[1], digest[2], digest[3]]);
+                let mut le = challenge.as_le_bytes();
+                le.resize(32, 0);
+                le[31] = 0;
+                EmbeddedFr::from_le_bytes(&le)
+                    .ok_or_else(|| BackendError::Other("2^248 Schnorr challenge reduction escaped scalar field".into()))
+            }
+
+            let secret = midnight_did_jubjub_schnorr::seed_to_secret_scalar(seed);
+            let nonce = nonce_from_seed(seed, &digest);
+            let public_key = midnight_did_jubjub_schnorr::derive_public_key_from_seed(seed);
+            let announcement = EmbeddedGroupAffine::generator() * nonce;
+            let challenge = field_challenge(&announcement, &public_key, &digest)?;
+            Ok(compact_runtime::SchnorrSignature {
+                announcement,
+                response: midnight_did_jubjub_schnorr::field_from_scalar(&(nonce + challenge * secret)),
+            })
+        }
+    }
+
+    impl DidAuthorizationSigner for TestSeedSigner {
+        fn sign_controller(
+            &self,
+            digest: [compact_runtime::Fr; 4],
+        ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
+            Self::sign(&self.controller_seed, digest)
+        }
+
+        fn sign_recovery(
+            &self,
+            digest: [compact_runtime::Fr; 4],
+        ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
+            Self::sign(&self.recovery_seed, digest)
+        }
+    }
+
     #[test]
     fn recording_backend_decodes_and_records_submit() {
         let rt = rt();
@@ -2755,6 +2927,44 @@ mod tests {
         assert_eq!(ledger.pre_transcript.program.len(), 0);
         assert_eq!(ledger.private_transcript_outputs.len(), 0);
         assert_eq!(ledger.communication_commitment_rand, compact_runtime::Fr::from(7u64));
+    }
+
+    #[test]
+    fn generated_did_mutation_extracts_one_folded_root_call_for_ledger8() {
+        let controller_seed = [0x11; 32];
+        let recovery_seed = [0x22; 32];
+        let private_state = Arc::new(TestPrivateStateStore(Mutex::new(TestDidPrivateState {
+            controller_seed,
+            recovery_seed,
+        })));
+        let signer = Arc::new(TestSeedSigner {
+            controller_seed,
+            recovery_seed,
+        });
+        let executor = GeneratedDidExecutor::new(
+            TestWitnesses,
+            private_state,
+            signer,
+            compact_runtime::ContractAddress::default(),
+        );
+        let deployment = executor.deployment_request().expect("generated constructor executes");
+
+        let call = executor
+            .execute(deployment.initial_contract_state, DidContractCall::Deactivate)
+            .expect("generated deactivation extracts a single folded root call");
+        assert_eq!(call.circuit_id(), "deactivate");
+        assert!(call.public_transcript_len() > 0);
+
+        let ledger = call.into_ledger_prepartition_contract_call(ledger_config());
+        assert_eq!(&ledger.entry_point[..], b"deactivate");
+        assert!(
+            !ledger.pre_transcript.program.is_empty(),
+            "real generated DID mutation must carry the root public transcript"
+        );
+        assert!(
+            !ledger.private_transcript_outputs.is_empty(),
+            "real generated DID mutation must carry folded nested witness outputs for the root call"
+        );
     }
 
     #[derive(Default)]

@@ -1710,12 +1710,18 @@ where
             gas_limit: ctx.gas_limit.clone(),
             call_proof_data_trace: CallProofDataTrace::new(),
         };
+        let _proof_trace_checkpoint_8 = _cctx_8.call_proof_data_trace.len();
         let _cr_8 = self.assert_controller_public_key_distinct_from_recovery_authority(_cctx_8, _carg_8_0)?;
-        let qctx = _cr_8.context.current_query_context;
-        let current_private_state = _cr_8.context.current_private_state;
-        let _zswap = _cr_8.context.current_zswap_local_state;
-        let _witness_ctx_55 = WitnessContext::new(ledger(&qctx.state), current_private_state, &qctx);
-        let (current_private_state, timestamp) = self.witnesses.current_timestamp(&_witness_ctx_55);
+        let _nested_ctx_8 = _cr_8.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_8,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        let qctx = _nested_ctx_8.current_query_context;
+        let current_private_state = _nested_ctx_8.current_private_state;
+        let _zswap = _nested_ctx_8.current_zswap_local_state;
+        let _witness_ctx_61 = WitnessContext::new(ledger(&qctx.state), current_private_state, &qctx);
+        let (current_private_state, timestamp) = self.witnesses.current_timestamp(&_witness_ctx_61);
         __compact_proof_data.push_private_output(proof_aligned_value(&timestamp));
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
@@ -1767,8 +1773,13 @@ where
             proof_aligned_value(&pk),
         ]));
         let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
+        let _proof_trace_checkpoint_1 = ctx.call_proof_data_trace.len();
         let _cr_1 = midnight_compact_runtime::schnorr_verify_jubjub(ctx, digest, signature.clone(), pk.clone())?;
-        let ctx = _cr_1.context;
+        let ctx = _cr_1.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_1,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_1.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new().build();
 
@@ -1922,8 +1933,13 @@ where
             };
             midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
         };
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new().build();
 
@@ -1966,8 +1982,13 @@ where
             proof_aligned_array(&digest),
         ]));
         let mut __gas_acc = midnight_compact_runtime::RunningCost::default();
+        let _proof_trace_checkpoint_1 = ctx.call_proof_data_trace.len();
         let _cr_1 = self.assert_controller(ctx, signature.clone(), expected_version, digest)?;
-        let ctx = _cr_1.context;
+        let ctx = _cr_1.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_1,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_1.gas_cost.clone();
         compact_assert!(
             {
@@ -2079,8 +2100,13 @@ where
             };
             midnight_compact_runtime::std_lib::decode_jubjub_point(_av)?
         };
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 = self.schnorr_verify_digest(ctx, digest, signature.clone(), _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
@@ -3329,22 +3355,42 @@ where
             expected_version,
             disclosed_new_controller_public_key.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
-        let _cr_6 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
-        let ctx = _cr_6.context;
-        __gas_acc += _cr_6.gas_cost.clone();
-        let _cr_9 = self.assert_controller_public_key_distinct_from_recovery_authority(
+        let _proof_trace_checkpoint_11 = ctx.call_proof_data_trace.len();
+        let _cr_11 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
+        let ctx = _cr_11.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_11,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_11.gas_cost.clone();
+        let _proof_trace_checkpoint_19 = ctx.call_proof_data_trace.len();
+        let _cr_19 = self.assert_controller_public_key_distinct_from_recovery_authority(
             ctx,
             disclosed_new_controller_public_key.clone(),
         )?;
-        let ctx = _cr_9.context;
-        __gas_acc += _cr_9.gas_cost.clone();
-        let _cr_12 = self.record_update(ctx)?;
-        let ctx = _cr_12.context;
-        __gas_acc += _cr_12.gas_cost.clone();
+        let ctx = _cr_19.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_19,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_19.gas_cost.clone();
+        let _proof_trace_checkpoint_27 = ctx.call_proof_data_trace.len();
+        let _cr_27 = self.record_update(ctx)?;
+        let ctx = _cr_27.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_27,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_27.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(0u8, true)
             .push(false, new_cell(1u8))
@@ -3418,21 +3464,41 @@ where
             expected_version,
             disclosed_new_controller_public_key.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 = self.assert_recovery_can_update(ctx, recovery_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
-        let _cr_6 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
-        let ctx = _cr_6.context;
-        __gas_acc += _cr_6.gas_cost.clone();
-        let _cr_9 = self.assert_controller_public_key_distinct_from_recovery_authority(
+        let _proof_trace_checkpoint_11 = ctx.call_proof_data_trace.len();
+        let _cr_11 = self.assert_controller_public_key_changes(ctx, disclosed_new_controller_public_key.clone())?;
+        let ctx = _cr_11.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_11,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_11.gas_cost.clone();
+        let _proof_trace_checkpoint_19 = ctx.call_proof_data_trace.len();
+        let _cr_19 = self.assert_controller_public_key_distinct_from_recovery_authority(
             ctx,
             disclosed_new_controller_public_key.clone(),
         )?;
-        let ctx = _cr_9.context;
-        __gas_acc += _cr_9.gas_cost.clone();
-        let _cr_12 = self.record_update(ctx)?;
-        let ctx = _cr_12.context;
-        __gas_acc += _cr_12.gas_cost.clone();
+        let ctx = _cr_19.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_19,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_19.gas_cost.clone();
+        let _proof_trace_checkpoint_27 = ctx.call_proof_data_trace.len();
+        let _cr_27 = self.record_update(ctx)?;
+        let ctx = _cr_27.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_27,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_27.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(0u8, true)
             .push(false, new_cell(1u8))
@@ -3510,9 +3576,14 @@ where
             alias.clone(),
             disclosed_mutation.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_set_mutation_defined(disclosed_mutation.clone())?;
 
@@ -3614,8 +3685,13 @@ where
             current_query_context: _if_results_5.context,
             ..ctx
         };
+        let _proof_trace_checkpoint_6 = ctx.call_proof_data_trace.len();
         let _cr_6 = self.record_update(ctx)?;
-        let ctx = _cr_6.context;
+        let ctx = _cr_6.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_6,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_6.gas_cost.clone();
 
         Ok(CircuitResults {
@@ -3679,9 +3755,14 @@ where
             disclosed_verification_method.clone(),
             disclosed_mutation.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_map_mutation_defined(disclosed_mutation.clone())?;
         let _ = pure_circuits::assert_supported_verification_method(disclosed_verification_method.clone())?;
@@ -3714,10 +3795,16 @@ where
                 },
                 "Verification method does not exist"
             );
+            let _proof_trace_checkpoint_mid6_0 = (ctx.clone()).call_proof_data_trace.len();
             let _cr_mid6_0 = self.assert_existing_verification_method_relations_compatible(
                 ctx.clone(),
                 disclosed_verification_method.id.clone(),
                 disclosed_verification_method.publicKeyJwk.crv.clone(),
+            )?;
+            let _nested_ctx_mid6_0 = _cr_mid6_0.context.with_folded_nested_call_proof_data(
+                _proof_trace_checkpoint_mid6_0,
+                __compact_initial_query_context.address,
+                &mut __compact_proof_data,
             )?;
             __gas_acc += _cr_mid6_0.gas_cost.clone();
             let ops = OpProgramVerify::<DefaultDB>::new()
@@ -3729,14 +3816,19 @@ where
                 .build();
             recorded_query_for_verify(
                 &mut __compact_proof_data,
-                &_cr_mid6_0.context.current_query_context,
+                &_nested_ctx_mid6_0.current_query_context,
                 &ops,
                 ctx.gas_limit.clone(),
                 &ctx.cost_model,
             )?
         } else if (disclosed_mutation == MapMutation::Insert) {
+            let _proof_trace_checkpoint_h0 = ctx.call_proof_data_trace.len();
             let _cr_h0 = self.verification_method_exists(ctx.clone(), disclosed_verification_method.id.clone())?;
-            let ctx = _cr_h0.context;
+            let ctx = _cr_h0.context.with_folded_nested_call_proof_data(
+                _proof_trace_checkpoint_h0,
+                __compact_initial_query_context.address,
+                &mut __compact_proof_data,
+            )?;
             compact_assert!((!(_cr_h0.result.clone())), "Verification method already exists");
             let ops = OpProgramVerify::<DefaultDB>::new().build();
             recorded_query_for_verify(
@@ -3783,8 +3875,13 @@ where
             current_query_context: _results_8.context.clone(),
             ..ctx
         };
+        let _proof_trace_checkpoint_9 = ctx.call_proof_data_trace.len();
         let _cr_9 = self.record_update(ctx)?;
-        let ctx = _cr_9.context;
+        let ctx = _cr_9.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_9,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_9.gas_cost.clone();
 
         Ok(CircuitResults {
@@ -3844,9 +3941,14 @@ where
             expected_version,
             disclosed_id.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
@@ -3874,12 +3976,22 @@ where
             },
             "Verification method does not exist"
         );
-        let _cr_7 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
-        let ctx = _cr_7.context;
-        __gas_acc += _cr_7.gas_cost.clone();
-        let _cr_10 = self.record_update(ctx)?;
-        let ctx = _cr_10.context;
-        __gas_acc += _cr_10.gas_cost.clone();
+        let _proof_trace_checkpoint_12 = ctx.call_proof_data_trace.len();
+        let _cr_12 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
+        let ctx = _cr_12.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_12,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_12.gas_cost.clone();
+        let _proof_trace_checkpoint_20 = ctx.call_proof_data_trace.len();
+        let _cr_20 = self.record_update(ctx)?;
+        let ctx = _cr_20.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_20,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_20.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .idx_at_index(7u8, true)
@@ -3957,9 +4069,14 @@ where
             disclosed_verification_method.clone(),
             disclosed_mutation.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_map_mutation_defined(disclosed_mutation.clone())?;
 
@@ -4006,8 +4123,13 @@ where
                 &ctx.cost_model,
             )?
         } else if (disclosed_mutation == MapMutation::Insert) {
+            let _proof_trace_checkpoint_h0 = ctx.call_proof_data_trace.len();
             let _cr_h0 = self.verification_method_exists(ctx.clone(), disclosed_verification_method.id.clone())?;
-            let ctx = _cr_h0.context;
+            let ctx = _cr_h0.context.with_folded_nested_call_proof_data(
+                _proof_trace_checkpoint_h0,
+                __compact_initial_query_context.address,
+                &mut __compact_proof_data,
+            )?;
             compact_assert!((!(_cr_h0.result.clone())), "Verification method already exists");
             let ops = OpProgramVerify::<DefaultDB>::new().build();
             recorded_query_for_verify(
@@ -4054,8 +4176,13 @@ where
             current_query_context: _results_7.context.clone(),
             ..ctx
         };
+        let _proof_trace_checkpoint_8 = ctx.call_proof_data_trace.len();
         let _cr_8 = self.record_update(ctx)?;
-        let ctx = _cr_8.context;
+        let ctx = _cr_8.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_8,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_8.gas_cost.clone();
 
         Ok(CircuitResults {
@@ -4115,9 +4242,14 @@ where
             expected_version,
             disclosed_id.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
@@ -4145,12 +4277,22 @@ where
             },
             "Verification method does not exist"
         );
-        let _cr_7 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
-        let ctx = _cr_7.context;
-        __gas_acc += _cr_7.gas_cost.clone();
-        let _cr_10 = self.record_update(ctx)?;
-        let ctx = _cr_10.context;
-        __gas_acc += _cr_10.gas_cost.clone();
+        let _proof_trace_checkpoint_12 = ctx.call_proof_data_trace.len();
+        let _cr_12 = self.assert_verification_method_is_not_referenced(ctx, disclosed_id.clone())?;
+        let ctx = _cr_12.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_12,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_12.gas_cost.clone();
+        let _proof_trace_checkpoint_20 = ctx.call_proof_data_trace.len();
+        let _cr_20 = self.record_update(ctx)?;
+        let ctx = _cr_20.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_20,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_20.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .idx_at_index(8u8, true)
@@ -4277,9 +4419,14 @@ where
             };
             midnight_compact_runtime::std_lib::decode_via_field_repr::<SchnorrJubjubVerificationMethod>(_av)?
         };
+        let _proof_trace_checkpoint_5 = ctx.call_proof_data_trace.len();
         let _cr_5 =
             self.schnorr_verify_digest(ctx, digest, signature.clone(), verification_method.publicKey.clone())?;
-        let ctx = _cr_5.context;
+        let ctx = _cr_5.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_5,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_5.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new().build();
 
@@ -4356,9 +4503,14 @@ where
             disclosed_method_id.clone(),
             disclosed_mutation.clone(),
         )?;
+        let _proof_trace_checkpoint_3 = ctx.call_proof_data_trace.len();
         let _cr_3 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_3_2)?;
-        let ctx = _cr_3.context;
+        let ctx = _cr_3.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_3,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_3.gas_cost.clone();
         let _ = pure_circuits::assert_set_mutation_defined(disclosed_mutation.clone())?;
         compact_assert!(
@@ -4413,46 +4565,69 @@ where
             (disclosed_relation != VerificationMethodRelation::Undefined),
             "Verification relation must be defined"
         );
+        let _proof_trace_checkpoint_6 = ctx.call_proof_data_trace.len();
         let _cr_6 =
             self.verification_method_relation_member(ctx, disclosed_relation.clone(), disclosed_method_id.clone())?;
-        let ctx = _cr_6.context;
+        let ctx = _cr_6.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_6,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_6.gas_cost.clone();
         let current_present = _cr_6.result;
 
         let _if_results_9 = if (disclosed_mutation == SetMutation::Insert) {
             compact_assert!((!(current_present)), "Verification method relation already exists");
+            let _proof_trace_checkpoint_mid9_0 = (ctx.clone()).call_proof_data_trace.len();
             let _cr_mid9_0 = self.assert_verification_method_relation_compatible(
                 ctx.clone(),
                 disclosed_relation.clone(),
                 disclosed_method_id.clone(),
             )?;
+            let _nested_ctx_mid9_0 = _cr_mid9_0.context.with_folded_nested_call_proof_data(
+                _proof_trace_checkpoint_mid9_0,
+                __compact_initial_query_context.address,
+                &mut __compact_proof_data,
+            )?;
             __gas_acc += _cr_mid9_0.gas_cost.clone();
+            let _proof_trace_checkpoint_arm9 = (_nested_ctx_mid9_0).call_proof_data_trace.len();
             let _cr_arm9 = self.insert_verification_method_relation(
-                _cr_mid9_0.context,
+                _nested_ctx_mid9_0,
                 disclosed_relation.clone(),
                 disclosed_method_id.clone(),
+            )?;
+            let _nested_ctx_arm9 = _cr_arm9.context.with_folded_nested_call_proof_data(
+                _proof_trace_checkpoint_arm9,
+                __compact_initial_query_context.address,
+                &mut __compact_proof_data,
             )?;
             __gas_acc += _cr_arm9.gas_cost.clone();
             let _empty_ops = OpProgramVerify::<DefaultDB>::new().build();
             recorded_query_for_verify(
                 &mut __compact_proof_data,
-                &_cr_arm9.context.current_query_context,
+                &_nested_ctx_arm9.current_query_context,
                 &_empty_ops,
                 ctx.gas_limit.clone(),
                 &ctx.cost_model,
             )?
         } else if (disclosed_mutation == SetMutation::Remove) {
             compact_assert!(current_present, "Verification method relation does not exist");
+            let _proof_trace_checkpoint_arm9 = (ctx.clone()).call_proof_data_trace.len();
             let _cr_arm9 = self.remove_verification_method_relation_from_ledger(
                 ctx.clone(),
                 disclosed_relation.clone(),
                 disclosed_method_id.clone(),
             )?;
+            let _nested_ctx_arm9 = _cr_arm9.context.with_folded_nested_call_proof_data(
+                _proof_trace_checkpoint_arm9,
+                __compact_initial_query_context.address,
+                &mut __compact_proof_data,
+            )?;
             __gas_acc += _cr_arm9.gas_cost.clone();
             let _empty_ops = OpProgramVerify::<DefaultDB>::new().build();
             recorded_query_for_verify(
                 &mut __compact_proof_data,
-                &_cr_arm9.context.current_query_context,
+                &_nested_ctx_arm9.current_query_context,
                 &_empty_ops,
                 ctx.gas_limit.clone(),
                 &ctx.cost_model,
@@ -4472,8 +4647,13 @@ where
             current_query_context: _if_results_9.context,
             ..ctx
         };
+        let _proof_trace_checkpoint_10 = ctx.call_proof_data_trace.len();
         let _cr_10 = self.record_update(ctx)?;
-        let ctx = _cr_10.context;
+        let ctx = _cr_10.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_10,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_10.gas_cost.clone();
 
         Ok(CircuitResults {
@@ -4537,9 +4717,14 @@ where
             disclosed_service.clone(),
             disclosed_mutation.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         let _ = pure_circuits::assert_map_mutation_defined(disclosed_mutation.clone())?;
 
@@ -4658,8 +4843,13 @@ where
             current_query_context: _results_7.context.clone(),
             ..ctx
         };
+        let _proof_trace_checkpoint_8 = ctx.call_proof_data_trace.len();
         let _cr_8 = self.record_update(ctx)?;
-        let ctx = _cr_8.context;
+        let ctx = _cr_8.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_8,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_8.gas_cost.clone();
 
         Ok(CircuitResults {
@@ -4719,9 +4909,14 @@ where
             expected_version,
             disclosed_id.clone(),
         )?;
+        let _proof_trace_checkpoint_2 = ctx.call_proof_data_trace.len();
         let _cr_2 =
             self.assert_controller_can_update(ctx, controller_signature.clone(), expected_version, _carg_2_2)?;
-        let ctx = _cr_2.context;
+        let ctx = _cr_2.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_2,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_2.gas_cost.clone();
         compact_assert!(
             {
@@ -4749,9 +4944,14 @@ where
             },
             "Service with a given id does not exist"
         );
-        let _cr_7 = self.record_update(ctx)?;
-        let ctx = _cr_7.context;
-        __gas_acc += _cr_7.gas_cost.clone();
+        let _proof_trace_checkpoint_12 = ctx.call_proof_data_trace.len();
+        let _cr_12 = self.record_update(ctx)?;
+        let ctx = _cr_12.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_12,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_12.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .idx_at_index(14u8, true)
@@ -4821,8 +5021,13 @@ where
             },
             expected_version,
         )?;
+        let _proof_trace_checkpoint_1 = ctx.call_proof_data_trace.len();
         let _cr_1 = self.assert_controller(ctx, controller_signature.clone(), expected_version, _carg_1_2)?;
-        let ctx = _cr_1.context;
+        let ctx = _cr_1.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_1,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
         __gas_acc += _cr_1.gas_cost.clone();
         compact_assert!(
             {
@@ -4848,9 +5053,14 @@ where
             },
             "DID is already inactive"
         );
-        let _cr_6 = self.record_update(ctx)?;
-        let ctx = _cr_6.context;
-        __gas_acc += _cr_6.gas_cost.clone();
+        let _proof_trace_checkpoint_11 = ctx.call_proof_data_trace.len();
+        let _cr_11 = self.record_update(ctx)?;
+        let ctx = _cr_11.context.with_folded_nested_call_proof_data(
+            _proof_trace_checkpoint_11,
+            __compact_initial_query_context.address,
+            &mut __compact_proof_data,
+        )?;
+        __gas_acc += _cr_11.gas_cost.clone();
         let ops = OpProgramVerify::<DefaultDB>::new()
             .idx_at_index(1u8, true)
             .push(false, new_cell(5u8))
