@@ -14,6 +14,12 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **Native DID runtime Git consumption (issue #103)** —
+  `midnight-did-runtime` now resolves its complete Ledger 8 and Compact runtime
+  cone from immutable Git revisions, while keeping Nix-materialised path
+  overrides as an explicit local acceleration. CI verifies a clean external
+  consumer with `cargo metadata` and a focused native `cargo check`.
+
 - **Digital Passport family moves to `midnight-vc-passport@0.1.0-rc5`** —
   `midnight-vc-families`' `digital-passport` bindings are generated from the
   `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc5` npm tarball

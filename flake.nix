@@ -48,10 +48,9 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
-      # MediaNoxLabs/compact#372 exact signed head with TS-compatible Schnorr
-      # challenge semantics and a single exported root call for nested generated
-      # circuit proof data.
-      rev   = "55ba765f5484a47d9184824a619f93893448c740";
+      # Merged, tree-identical successor to the reviewed Rust-runtime head.
+      # Cargo.toml pins this same revision for non-Nix consumers.
+      rev   = "66ec5f032d2bccbaf2b9c03e5e47d7bd43defe82";
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
     };
   };

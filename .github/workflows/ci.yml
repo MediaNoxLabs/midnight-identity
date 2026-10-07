@@ -169,6 +169,15 @@ jobs:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
         run: nix develop .#rust --command bash scripts/ci/rust-target.sh check
 
+      - name: Check clean immutable-Git consumer
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GIT_CONSUMER_TARGET_DIR: ${{ github.workspace }}/target
+        run: |
+          nix develop .#rust --command bash scripts/ci/git-consumer-smoke.sh \
+            --repo-url https://github.com/MediaNoxLabs/midnight-identity.git \
+            --rev "$CANDIDATE_SHA"
+
       - name: Save trusted Cargo source cache
         if: ${{ github.event_name == 'push' && steps.cargo-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5

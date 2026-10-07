@@ -1,0 +1,30 @@
+[package]
+name                   = "midnight-ledger-source-lock"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+description            = "Private resolver constraint that keeps the Ledger 8 Git patch cone source-coherent."
+publish                = false
+
+[lib]
+name = "midnight_ledger_source_lock"
+path = "src/lib.rs"
+
+# Compact uses broad crates.io constraints. These exact constraints make Cargo
+# select the root workspace's Git patches even when newer registry releases
+# exist, preventing two source-distinct copies of Ledger runtime types.
+[dependencies]
+midnight-base-crypto      = "=1.0.1"
+midnight-coin-structure   = "=2.0.2"
+midnight-onchain-runtime  = "=3.1.1"
+midnight-onchain-state    = "=3.0.1"
+midnight-onchain-vm       = "=3.1.1"
+midnight-serialize        = "=1.1.1"
+midnight-storage          = "=2.0.3"
+midnight-transient-crypto = "=2.1.1"
+midnight-zkir             = "=2.1.1"
+midnight-zswap            = "=8.2.0-rc.1"
+midnight-ledger           = "=8.2.0-rc.1"

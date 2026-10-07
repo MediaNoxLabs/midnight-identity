@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-account-source", "crates/midnight-passport-account", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-proof", "crates/midnight-vc-runtime" ]
+members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-ledger-source-lock", "crates/midnight-passport-account-source", "crates/midnight-passport-account", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-proof", "crates/midnight-vc-runtime" ]
 exclude  = [ "third_party/midnight-ledger" ]
 
 [workspace.package]
@@ -16,26 +16,25 @@ repository   = "https://github.com/MediaNoxLabs/midnight-identity"
 # version exact and its feature cone minimal; Midnight-specific semantics remain
 # in this workspace (ADR 0011).
 identus-crypto = { version = "=0.1.0-rc.1", default-features = false, features = [ "hash" ] }
-# midnight-ledger crates (path-mounted by devshell into third_party/midnight-ledger)
-midnight-base-crypto      = { path = "third_party/midnight-ledger/base-crypto" }
-midnight-coin-structure   = { path = "third_party/midnight-ledger/coin-structure" }
-midnight-onchain-runtime  = { path = "third_party/midnight-ledger/onchain-runtime" }
-midnight-onchain-state    = { path = "third_party/midnight-ledger/onchain-state" }
-midnight-onchain-vm       = { path = "third_party/midnight-ledger/onchain-vm" }
-midnight-serialize        = { path = "third_party/midnight-ledger/serialize" }
-midnight-storage          = { path = "third_party/midnight-ledger/storage" }
-midnight-transient-crypto = { path = "third_party/midnight-ledger/transient-crypto" }
-midnight-zkir             = { path = "third_party/midnight-ledger/zkir" }
-midnight-zswap            = { path = "third_party/midnight-ledger/zswap" }
-midnight-ledger           = { path = "third_party/midnight-ledger/ledger" }
-# Compact's runtime helper crate (path-mounted by devshell into third_party/compact/runtime-rs).
-# The sibling `third_party/compact/runtime-rs-macros` is materialised by the same
-# devshell hook because midnight-compact-runtime's manifest references it via the relative
-# path `../runtime-rs-macros`. Mirroring compact's in-repo layout (runtime-rs +
-# runtime-rs-macros as siblings) keeps cargo's relative-path resolution working
-# without alias symlinks.
-compact-runtime          = { package = "midnight-compact-runtime", path = "third_party/compact/runtime-rs" }
-midnight-compact-runtime = { package = "midnight-compact-runtime", path = "third_party/compact/runtime-rs" }
+# Keep the complete Ledger 8 cone on one immutable source. Compact declares
+# these crates through crates.io constraints, so the matching patch table below
+# redirects that transitive cone to this same revision.
+midnight-base-crypto      = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-coin-structure   = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-onchain-runtime  = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-onchain-state    = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-onchain-vm       = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-serialize        = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-storage          = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-transient-crypto = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-zkir             = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-zswap            = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-ledger           = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+# Compact's runtime and sibling macro crate are resolved together from this
+# immutable repository revision. Nix path substitution remains an opt-in local
+# acceleration through scripts/cargo-with-nix-overrides.sh.
+compact-runtime          = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "66ec5f032d2bccbaf2b9c03e5e47d7bd43defe82" }
+midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "66ec5f032d2bccbaf2b9c03e5e47d7bd43defe82" }
 # common
 serde      = { version = "1", features = [ "derive" ] }
 serde_json = "1"
@@ -55,6 +54,9 @@ midnight-did-api = { path = "crates/midnight-did-api", version = "=0.5.0" }
 midnight-did-runtime        = { path = "crates/midnight-did-runtime", version = "=0.5.0" }
 midnight-did-indexer        = { path = "crates/midnight-did-indexer" }
 midnight-did-jubjub-schnorr = { path = "crates/midnight-did-jubjub-schnorr", version = "=0.5.0" }
+# Private resolver constraint: exact crates.io requirements force Compact's
+# broad Ledger requirements onto the immutable patches above.
+midnight-ledger-source-lock = { path = "crates/midnight-ledger-source-lock" }
 # umbrella crate — re-exports the full 4-crate stack for monolithic consumers.
 midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 # VC layer (issue #13). `vc-domain` is pure data and publishable on its own
@@ -68,7 +70,12 @@ midnight-passport-account-source = { path = "crates/midnight-passport-account-so
 midnight-passport-account        = { path = "crates/midnight-passport-account", version = "=0.5.0" }
 midnight-passport-vault-source   = { path = "crates/midnight-passport-vault-source", version = "=0.5.0" }
 
-# ---- Patch crates.io's `midnight-proofs` with the local fork ----
+# ---- Keep Compact's Ledger cone and proofs fork source-coherent ----
+#
+# Compact expresses its Ledger dependencies as crates.io version constraints.
+# Redirect every member of that cone to the same immutable Ledger revision used
+# above; otherwise Cargo can resolve duplicate Ledger runtime types from the
+# registry and Git sources.
 #
 # `midnight-ledger/transient-crypto` calls three methods on `ParamsKZG`
 # that only exist on a patched fork of `midnight-proofs`:
@@ -92,7 +99,18 @@ midnight-passport-vault-source   = { path = "crates/midnight-passport-vault-sour
 # Pinning by rev keeps reproducibility independent of branch movement.
 # See `doc/adr/0006-runtime-crate-halo2-block.md` for the full story.
 [patch.crates-io]
-midnight-proofs = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
+midnight-base-crypto      = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-coin-structure   = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-onchain-runtime  = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-onchain-state    = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-onchain-vm       = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-serialize        = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-storage          = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-transient-crypto = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-zkir             = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-zswap            = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-ledger           = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65" }
+midnight-proofs           = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
 
 [profile.dev]
 debug = "limited"

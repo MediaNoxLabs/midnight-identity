@@ -24,14 +24,16 @@ SPDX-License-Identifier: Apache-2.0
 | `midnight-passport-account` | blocked | uses `midnight-ledger` encoding primitives for Compact `persistentHash` parity |
 | `midnight-passport-vault-source` | **publishable now** | no runtime dependencies; authenticated source and descriptor only |
 
-**Why the remaining crates are blocked:** crates.io rejects path-only
-dependencies. Runtime/API crates path-mount `third_party/midnight-ledger/*`
-and `third_party/compact/runtime-rs` via the devshell; none of those crates
-exist on crates.io (verified 2026-08-07). Until the Midnight Foundation
-publishes `midnight-ledger`, and `midnight-compact-runtime` is published from
+**Why the remaining crates are blocked:** the runtime/API crates depend on
+immutable Git revisions of the unpublished Ledger and Compact runtime crates.
+Git dependencies make a clean external Cargo workspace possible, but crates.io
+publication still rejects them. Until the Midnight Foundation publishes the
+Ledger cone and `midnight-compact-runtime` is published from
 [MediaNoxLabs/compact](https://github.com/MediaNoxLabs/compact), consumers of
-those heavier crates use **git dependencies** on this repo. The domain and
-method crates do not inherit that restriction.
+those heavier crates use **exact-revision Git dependencies** on this repo and
+repeat the documented root patch table. The domain and method crates do not
+inherit that restriction. Nix-materialised path overrides are optional local
+acceleration only; they are not part of a published manifest.
 
 **Decision (2026-08-07):** `midnight-compact-runtime` stays in the compact repo
 (codegen ↔ runtime co-evolve; compact's byte-parity CI compiles
