@@ -484,16 +484,16 @@ pub enum DidContractCall {
     ReadLedger,
     /// `rotateControllerKey(new_pk)`.
     RotateControllerKey {
-        /// New controller public key (32 bytes).
-        new_public_key: [u8; 32],
+        /// New controller public key as a full Jubjub point.
+        new_public_key: JubjubPointHex,
     },
     /// `recoverControllerKey(new_pk)` — recovery-authority-authorized
     /// controller-key reset. Distinct from [`Self::RotateControllerKey`]
     /// (controller-authorized): the on-chain circuit checks the signature
     /// against the recovery authority rather than the current controller.
     RecoverControllerKey {
-        /// New controller public key (32 bytes).
-        new_public_key: [u8; 32],
+        /// New controller public key as a full Jubjub point.
+        new_public_key: JubjubPointHex,
     },
     /// `setVerificationMethod(method, mutation)`.
     SetVerificationMethod {
@@ -586,6 +586,11 @@ impl DidContractCall {
 mod tests {
     use super::*;
 
+    fn point_hex(byte: u8) -> JubjubPointHex {
+        let h = hex::encode([byte; 32]);
+        JubjubPointHex::new(NewJubjubPointHex { x: h.clone(), y: h }).unwrap()
+    }
+
     fn sample_vm() -> LedgerVerificationMethod {
         LedgerVerificationMethod {
             id: "#key-1".into(),
@@ -602,7 +607,7 @@ mod tests {
     #[test]
     fn rotate_controller_key_roundtrip() {
         let call = DidContractCall::RotateControllerKey {
-            new_public_key: [7u8; 32],
+            new_public_key: point_hex(7),
         };
         let bytes = call.encode();
         let decoded = DidContractCall::decode(&bytes).unwrap();
@@ -612,7 +617,7 @@ mod tests {
     #[test]
     fn recover_controller_key_roundtrip() {
         let call = DidContractCall::RecoverControllerKey {
-            new_public_key: [8u8; 32],
+            new_public_key: point_hex(8),
         };
         let bytes = call.encode();
         let decoded = DidContractCall::decode(&bytes).unwrap();
@@ -620,7 +625,7 @@ mod tests {
         // RecoverControllerKey and RotateControllerKey are distinct tags even
         // with identical payloads.
         let rotate = DidContractCall::RotateControllerKey {
-            new_public_key: [8u8; 32],
+            new_public_key: point_hex(8),
         };
         assert_ne!(call.encode(), rotate.encode());
     }

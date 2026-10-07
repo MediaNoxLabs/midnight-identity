@@ -385,7 +385,7 @@ were repointed at the canonical URLs:
 |---|---|---|
 | `Cargo.toml` `[patch.crates-io]` | `yshyn-iohk/midnight-zk.git` @ `cf60e3cc` | `MediaNoxLabs/midnight-zk.git` @ `cf60e3cc` |
 | `flake.nix` `midnight-zk` | `github:yshyn-iohk/midnight-zk/feat/v0.7-h-poly-streaming` | `MediaNoxLabs/midnight-zk`, **rev** `cf60e3cc` |
-| `flake.nix` `midnight-ledger` | `github:yshyn-iohk/midnight-ledger/dioxus-vc-demo` | `MediaNoxLabs/midnight-ledger`, **rev** `591a3170` |
+| `flake.nix` `midnight-ledger` | `github:yshyn-iohk/midnight-ledger/dioxus-vc-demo` | `MediaNoxLabs/midnight-ledger`, **rev** `obsolete prototype revision` |
 
 Two things changed beyond the owner, both deliberate:
 
@@ -412,7 +412,7 @@ consumer can pin it instead of a prototype and everything works.
 
 | Pin | Was | Now |
 |---|---|---|
-| `flake.nix` `midnight-ledger` | `dioxus-vc-demo` @ `591a3170` | **`ledger-8-patched`** @ `16b451e7` |
+| `flake.nix` `midnight-ledger` | `dioxus-vc-demo` @ `obsolete prototype revision` | **`ledger-8-patched`** @ `16b451e7` |
 | `flake.nix` `midnight-zk` | `feat/v0.7-h-poly-streaming` @ `cf60e3cc` | **`proofs-0.7-patched`** @ `083c8282` |
 | `Cargo.toml` `[patch.crates-io]` `midnight-proofs` | `cf60e3cc` | `083c8282` (the rev `ledger-8-patched` pins) |
 

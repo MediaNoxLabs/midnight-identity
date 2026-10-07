@@ -145,10 +145,10 @@ the generated module the crate ships:
   `DidContractCall` variant, encodes via `bincode`, and submits via
   `B::submit_tx`. See [ADR 0008](./adr/0008-contract-abstraction-reform.md).
 - `Backend` trait — 3 methods (`submit_tx`, `read_state`,
-  `read_snapshot`). Implementations: `LiveBackend` (production, both
-  call paths still `todo!()` until the wallet+proof+indexer bridge
-  lands), `RecordingBackend` (Mutex-guarded in-memory recorder used by
-  tests), `ResolverBackend` (read-only).
+  `read_snapshot`). Implementations: `LiveBackend` (production Ledger8
+  provider pipeline for wallet/proof/node/indexer submission plus read-only
+  restart reconciliation), `RecordingBackend` (Mutex-guarded in-memory recorder
+  used by tests), `ResolverBackend` (read-only).
 - `DidContractCall` — 14-variant tagged enum carrying typed circuit
   invocations through `BuiltTx::bytes`. Payload shapes mirror the
   arguments of each exported `did.compact` circuit 1:1.
@@ -198,10 +198,11 @@ directly. `Contract<B>` is a concrete wrapper struct living in
 `DidLedgerSnapshot` for the api surface). Three implementations
 ship:
 
-- **`LiveBackend`** — production target. Both `submit_tx` and
-  `read_snapshot` are `todo!()` until the wallet+proof-server+indexer
-  bridge lands. The public Rust API shape is final; only the body is
-  pending.
+- **`LiveBackend`** — production target. `submit_tx` executes generated
+  Compact proof material through injected Ledger8 wallet/proof/node/indexer
+  providers, and `read_snapshot` resolves through the indexer mapping. Restart
+  code can recreate providers and call `reconcile_finality` with the persisted
+  node receipt to avoid duplicate submission while waiting for the indexer.
 - **`RecordingBackend`** — Mutex-guarded in-memory recorder used by
   every integration test. `submit_tx` decodes the bytes back into a
   `DidContractCall` and appends to an internal `Vec<DidContractCall>`

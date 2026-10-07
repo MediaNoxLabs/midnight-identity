@@ -12,6 +12,11 @@ description            = "Codegen target for the Midnight DID Method — generat
 name = "midnight_did_runtime"
 path = "src/lib.rs"
 
+[features]
+default    = [  ]
+http       = [ "dep:reqwest" ]
+node-subxt = [ "dep:futures", "dep:subxt", "dep:tokio" ]
+
 [dependencies]
 # The midnight-compact-runtime symbol the generated contract code calls into. The
 # `path = "third_party/compact/runtime-rs"` (declared in the workspace) is
@@ -30,9 +35,13 @@ midnight-compact-runtime = { workspace = true }
 # redundant. The two kept below are the load-bearing pair the generated.rs
 # path-mounted output names directly; they stay as an early-failure
 # tripwire when a third_party/midnight-ledger symlink is missing.
-midnight-base-crypto     = { workspace = true }
-midnight-onchain-runtime = { workspace = true }
-midnight-serialize       = { workspace = true }
+midnight-base-crypto      = { workspace = true }
+midnight-coin-structure   = { workspace = true }
+midnight-onchain-runtime  = { workspace = true }
+midnight-serialize        = { workspace = true }
+midnight-ledger           = { workspace = true }
+midnight-storage          = { workspace = true }
+midnight-transient-crypto = { workspace = true }
 
 # Sibling first-party crates — R2-2 (v0.4.0) lifts ledger-shape types
 # (`DidLedgerSnapshot`, `LedgerVerificationMethod`, `MapMutation`, …) into
@@ -58,8 +67,16 @@ blake2     = "0.10"
 # `JubjubPointHex`, `SchnorrJubjubSignature`, and `SchnorrJubjubDigest`
 # return a typed `ValidationError`.
 thiserror = "2"
+rand      = "0.8"
+zeroize   = "1.9"
+futures   = { version = "0.3", optional = true }
+subxt     = { version = "0.44", optional = true }
+tokio     = { version = "1", features = [ "time" ], optional = true }
+reqwest   = { version = "0.13", default-features = false, features = [ "json", "rustls" ], optional = true }
 
 [dev-dependencies]
+midnight-did-jubjub-schnorr = { workspace = true }
+sha2                        = "0.10"
 # R2-1: tokio runtime for the `Backend` impls' unit tests (current-thread,
 # no IO).
 tokio = { version = "1", features = [ "macros", "rt" ] }

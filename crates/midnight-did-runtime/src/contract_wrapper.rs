@@ -93,7 +93,7 @@ impl<B: Backend> Contract<B> {
     /// `rotateControllerKey(new_pk)` — new controller public key, 32 bytes.
     pub async fn rotate_controller_key(
         &self,
-        new_controller_public_key: [u8; 32],
+        new_controller_public_key: crate::contract_call::JubjubPointHex,
     ) -> Result<FinalizedTxData, BackendError> {
         self.submit(DidContractCall::RotateControllerKey {
             new_public_key: new_controller_public_key,
@@ -107,7 +107,7 @@ impl<B: Backend> Contract<B> {
     /// it against the recovery authority rather than the current controller.
     pub async fn recover_controller_key(
         &self,
-        new_controller_public_key: [u8; 32],
+        new_controller_public_key: crate::contract_call::JubjubPointHex,
     ) -> Result<FinalizedTxData, BackendError> {
         self.submit(DidContractCall::RecoverControllerKey {
             new_public_key: new_controller_public_key,
@@ -238,6 +238,12 @@ mod tests {
             .unwrap()
     }
 
+    fn point_hex(byte: u8) -> crate::contract_call::JubjubPointHex {
+        let h = hex::encode([byte; 32]);
+        crate::contract_call::JubjubPointHex::new(crate::contract_call::NewJubjubPointHex { x: h.clone(), y: h })
+            .unwrap()
+    }
+
     fn addr() -> ContractAddress {
         midnight_did_method::midnight_did::parse_contract_address(
             "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -250,14 +256,14 @@ mod tests {
         let rt = rt();
         let contract = Contract::new(RecordingBackend::new(), addr(), MidnightNetwork::Undeployed);
         rt.block_on(contract.deactivate()).unwrap();
-        rt.block_on(contract.rotate_controller_key([9u8; 32])).unwrap();
+        rt.block_on(contract.rotate_controller_key(point_hex(9))).unwrap();
         let recorded = contract.backend.recorded_calls();
         assert_eq!(recorded.len(), 2);
         assert_eq!(recorded[0], DidContractCall::Deactivate);
         assert_eq!(
             recorded[1],
             DidContractCall::RotateControllerKey {
-                new_public_key: [9u8; 32]
+                new_public_key: point_hex(9)
             }
         );
     }
@@ -266,12 +272,12 @@ mod tests {
     fn contract_records_recover_controller_key() {
         let rt = rt();
         let contract = Contract::new(RecordingBackend::new(), addr(), MidnightNetwork::Undeployed);
-        rt.block_on(contract.recover_controller_key([5u8; 32])).unwrap();
+        rt.block_on(contract.recover_controller_key(point_hex(5))).unwrap();
         let recorded = contract.backend.recorded_calls();
         assert_eq!(
             recorded,
             vec![DidContractCall::RecoverControllerKey {
-                new_public_key: [5u8; 32]
+                new_public_key: point_hex(5)
             }]
         );
     }

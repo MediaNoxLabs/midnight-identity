@@ -12,7 +12,7 @@
     flake-parts.url  = "github:hercules-ci/flake-parts";
     # The MAINTAINED ledger-8 line, `ledger-8-patched` (upstream `ledger-8` plus
     # the curated prover patches), pinned by rev. Until 2026-09-15 this pointed
-    # at the `dioxus-vc-demo` prototype branch (591a3170); the maintained line
+    # at the `dioxus-vc-demo` prototype branch (obsolete prototype revision); the maintained line
     # is what the branch scheme says a consumer should pin, and the swap was
     # proven first: check, test (48 suites) and the wasm build all green.
     # rev b85f5d8e is the head of `ledger-8-patched` as of 2026-09-16 (CompanionCache,
@@ -48,13 +48,10 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
-      # `codegen-rust` at the MediaNoxLabs/compact#92 merge (0.31.122, call
-      # arguments rendered at the callee's declared formal type), which Rust
-      # codegen for `@midnight-ntwrk/credential-compact@0.2.0` requires.
-      rev   = "4f743ecca8542ebfdf5a7598baff7cc7aaa5c6dc";
-      # The compiler revision's newer Nixpkgs pin fails while building
-      # compiler-rt on aarch64-darwin. Keep the last repository-validated pin
-      # until that upstream Darwin regression is fixed.
+      # MediaNoxLabs/compact#372 exact signed head with TS-compatible Schnorr
+      # challenge semantics and a single exported root call for nested generated
+      # circuit proof data.
+      rev   = "55ba765f5484a47d9184824a619f93893448c740";
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
     };
   };

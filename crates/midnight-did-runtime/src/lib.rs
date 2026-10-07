@@ -6,6 +6,8 @@
 /// Crate version reported by the build.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+extern crate midnight_compact_runtime as compact_runtime;
+
 pub mod backend;
 pub mod contract;
 pub mod contract_call;
@@ -13,7 +15,14 @@ pub mod contract_wrapper;
 pub mod identifier_bridge;
 pub mod state_decode;
 
-pub use backend::{Backend, BackendError, BuiltTx, FinalizedTxData, LiveBackend, RecordingBackend, ResolverBackend};
+pub use backend::{
+    Backend, BackendError, BalancedDidTransaction, BuiltTx, DidAuthorizationSigner, DidConstructorProofMaterial,
+    DidContractExecutor, DidDeploymentRequest, DidPrePartitionContractCall, DidPrivateStateStore,
+    FinalizedDidTransaction, FinalizedTxData, GeneratedDidExecutor, LedgerContractCallConfig, LedgerFinalityReceipt,
+    LedgerIndexerProvider, LedgerNodeProvider, LedgerProofInputTransaction, LedgerProofKeyMap,
+    LedgerProofOutputTransaction, LedgerProofProvider, LedgerProveTxRequest, LedgerWalletProvider, LiveBackend,
+    LiveProviders, ProvedDidTransaction, RecordingBackend, ResolverBackend, UnbalancedDidTransaction,
+};
 pub use contract_call::{
     DidContractCall, DidLedgerSnapshot, JubjubPointHex, LedgerPublicKeyJwk, LedgerSchnorrJubjubVerificationMethod,
     LedgerService, LedgerVerificationMethod, LedgerVerificationMethodRelation, MapMutation, NewJubjubPointHex,

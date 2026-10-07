@@ -24,8 +24,9 @@
 //! bridge is in place — only the recording backend cares about the JSON
 //! envelope shape.
 
+use std::collections::HashMap;
 use std::fmt;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 // Re-export the upstream raw-state types under the backend module so
@@ -34,7 +35,10 @@ use async_trait::async_trait;
 pub use midnight_compact_runtime::{ChargedState as RawChargedState, DefaultDB as RawDb};
 use midnight_compact_runtime::{ChargedState, DefaultDB, empty_charged_state};
 
-use crate::contract_call::{DidContractCall, DidLedgerSnapshot};
+use crate::contract_call::{
+    DidContractCall, DidLedgerSnapshot, JubjubPointHex, LedgerSchnorrJubjubVerificationMethod, LedgerService,
+    LedgerVerificationMethod, LedgerVerificationMethodRelation, MapMutation, SetMutation,
+};
 
 /// A transaction built and proven by the upstream wallet + proof stack,
 /// ready for submission via [`Backend::submit_tx`].
@@ -78,6 +82,16 @@ pub enum BackendError {
     /// The backend is read-only — used by [`ResolverBackend`] to reject
     /// any [`Backend::submit_tx`] call.
     ReadOnly,
+    /// A required live provider is not configured.
+    Unconfigured(&'static str),
+    /// A live operation is structurally unsupported by the current native DTO surface.
+    Unsupported(String),
+    /// A provider timed out.
+    Timeout(String),
+    /// A provider or caller cancelled the operation.
+    Cancelled(String),
+    /// A finalized node receipt could not be reconciled with indexer state.
+    Reconciliation(String),
     /// Catch-all for backend-specific failure modes not yet modelled.
     Other(String),
 }
@@ -88,6 +102,11 @@ impl fmt::Display for BackendError {
             Self::Network(m) => write!(f, "backend network failure: {m}"),
             Self::Decode(m) => write!(f, "backend decode failure: {m}"),
             Self::ReadOnly => write!(f, "backend is read-only"),
+            Self::Unconfigured(p) => write!(f, "live backend provider is not configured: {p}"),
+            Self::Unsupported(m) => write!(f, "unsupported live backend operation: {m}"),
+            Self::Timeout(m) => write!(f, "backend timeout: {m}"),
+            Self::Cancelled(m) => write!(f, "backend operation cancelled: {m}"),
+            Self::Reconciliation(m) => write!(f, "backend reconciliation failure: {m}"),
             Self::Other(m) => write!(f, "backend error: {m}"),
         }
     }
@@ -125,47 +144,1933 @@ pub trait Backend: Send + Sync {
 // LiveBackend
 // ─────────────────────────────────────────────────────────────────────
 
-/// Production backend: wallet SDK + proof server + indexer.
+/// Typed Ledger8 transaction accepted by proof-server `/prove-tx` before proving.
+pub type LedgerProofInputTransaction = midnight_ledger::structure::Transaction<
+    midnight_base_crypto::schnorr::Signature,
+    midnight_ledger::structure::ProofPreimageMarker,
+    midnight_transient_crypto::commitment::PedersenRandomness,
+    compact_runtime::InMemoryDB,
+>;
+
+/// Typed Ledger8 transaction returned by proof-server `/prove-tx` after proving.
+pub type LedgerProofOutputTransaction = midnight_ledger::structure::Transaction<
+    midnight_base_crypto::schnorr::Signature,
+    midnight_ledger::structure::ProofMarker,
+    midnight_transient_crypto::commitment::PedersenRandomness,
+    compact_runtime::InMemoryDB,
+>;
+
+/// Proving key payload map for the exact Ledger8 `/prove-tx` protocol.
+pub type LedgerProofKeyMap = HashMap<String, midnight_transient_crypto::proofs::ProvingKeyMaterial>;
+
+/// Exact typed payload consumed by Ledger8 proof-server `/prove-tx`.
+pub type LedgerProveTxRequest = (LedgerProofInputTransaction, LedgerProofKeyMap);
+
+/// Local Rust wallet provider configuration for Ledger8 DID transactions.
 ///
-/// # TODO
+/// The provider is deliberately custody-scoped: DUST secrets are supplied as a
+/// one-shot [`LocalLedger8DustSeed`] to [`LocalLedger8WalletProvider::new`] and
+/// are not retained in this public, debuggable configuration. Authoritative
+/// DUST state is loaded through [`LocalLedger8DustStateProvider`], so production
+/// callers resume from a private checkpoint/indexer replay rather than a
+/// caller-fabricated public genesis list.
+pub struct LocalLedger8WalletConfig {
+    /// Ledger network identifier embedded in constructed Midnight transactions.
+    pub network_id: String,
+    /// Ledger parameters used for fee calculation and DUST decay.
+    pub ledger_parameters: midnight_ledger::structure::LedgerParameters,
+    /// Transaction TTL in seconds since the Ledger timestamp epoch.
+    pub ttl_seconds: u64,
+    /// Current Ledger timestamp in seconds used for DUST balancing.
+    pub current_time_seconds: u64,
+    /// Deployment metadata supplied by custody/wallet code.
+    pub deployment: LedgerDeploymentConfig,
+    /// Per-circuit call construction metadata, keyed by generated circuit id.
+    pub contract_calls: HashMap<String, LedgerContractCallConfig>,
+    /// Contract proving-key material carried by the exact Ledger8 `/prove-tx` request.
+    pub proving_keys: LedgerProofKeyMap,
+}
+
+impl LocalLedger8WalletConfig {
+    /// Construct a config with Ledger8 initial parameters and no proving keys.
+    pub fn new(
+        network_id: impl Into<String>,
+        ttl_seconds: u64,
+        current_time_seconds: u64,
+        deployment: LedgerDeploymentConfig,
+    ) -> Self {
+        Self {
+            network_id: network_id.into(),
+            ledger_parameters: midnight_ledger::structure::INITIAL_PARAMETERS,
+            ttl_seconds,
+            current_time_seconds,
+            deployment,
+            contract_calls: HashMap::new(),
+            proving_keys: HashMap::new(),
+        }
+    }
+}
+
+/// One-shot custody seed used to derive the local Ledger8 DUST key.
 ///
-/// v0.4.0 ships this as a placeholder whose methods panic via [`todo!`].
-/// The next cycle wires the real upstream stack:
+/// This type is intentionally not `Clone`, `Debug`, or serializable. Its bytes
+/// are zeroized immediately after provider construction derives the Ledger DUST
+/// secret key.
+pub struct LocalLedger8DustSeed([u8; 32]);
+
+impl LocalLedger8DustSeed {
+    /// Wrap an operator/custody supplied 32-byte DUST funding seed.
+    pub fn new(seed: [u8; 32]) -> Self {
+        Self(seed)
+    }
+
+    fn expose(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl Drop for LocalLedger8DustSeed {
+    fn drop(&mut self) {
+        use zeroize::Zeroize;
+        self.0.zeroize();
+    }
+}
+
+/// Authoritative local DUST state source/sink.
 ///
-/// - `wallet_sdk` — drives transaction construction + signing.
-/// - `proof_server` — produces the halo2 proofs `submit_tx` carries.
-/// - `indexer` — services `read_state` / `read_snapshot` via the public-data provider.
+/// Production implementations should replay indexer DUST events from a durable
+/// private checkpoint, persist every successful replay/balance checkpoint, and
+/// return a `DustLocalState` whose parameters match the live chain tip. This
+/// trait is synchronous because it is invoked inside the wallet provider's
+/// existing async port; implementors may internally block on their bounded
+/// indexer client as needed.
+pub trait LocalLedger8DustStateProvider: Send + Sync {
+    /// Load/replay DUST state for `owner` at the requested ledger parameters.
+    fn load_dust_state(
+        &self,
+        owner: &midnight_ledger::dust::DustPublicKey,
+        parameters: midnight_ledger::dust::DustParameters,
+    ) -> Result<midnight_ledger::dust::DustLocalState<DefaultDB>, BackendError>;
+
+    /// Persist the post-balance DUST checkpoint for restart/reconciliation.
+    fn save_dust_state(
+        &self,
+        owner: &midnight_ledger::dust::DustPublicKey,
+        state: &midnight_ledger::dust::DustLocalState<DefaultDB>,
+    ) -> Result<(), BackendError>;
+}
+
+/// Reusable local Rust Ledger8 wallet provider for DID deploy/call transaction construction.
 ///
-/// Tracked in ADR 0008 (R2 contract abstraction reform).
-#[derive(Debug, Default)]
+/// It constructs actual Ledger8 `Transaction<Signature, ProofPreimageMarker, ...>` values
+/// containing `ContractDeploy<DefaultDB>` or generated `PrePartitionContractCall<DefaultDB>`,
+/// balances fees with synchronized locally-custodied DUST, emits the exact `/prove-tx` tagged
+/// payload, and finalizes the tagged proven Ledger8 transaction for the submission boundary.
+/// It does not expose the DUST seed or Compact witness/private transcript outputs.
+pub struct LocalLedger8WalletProvider {
+    config: LocalLedger8WalletConfig,
+    dust_key: midnight_ledger::dust::DustSecretKey,
+    dust_public_key: midnight_ledger::dust::DustPublicKey,
+    dust_state: Mutex<Option<midnight_ledger::dust::DustLocalState<DefaultDB>>>,
+    dust_state_provider: Arc<dyn LocalLedger8DustStateProvider>,
+}
+
+impl fmt::Debug for LocalLedger8WalletProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LocalLedger8WalletProvider")
+            .field("network_id", &self.config.network_id)
+            .field("ttl_seconds", &self.config.ttl_seconds)
+            .field("current_time_seconds", &self.config.current_time_seconds)
+            .field("contract_call_count", &self.config.contract_calls.len())
+            .field("proving_key_count", &self.config.proving_keys.len())
+            .field("dust_key", &"<custody>")
+            .finish()
+    }
+}
+
+impl LocalLedger8WalletProvider {
+    /// Create a local provider. The DUST seed is consumed and zeroized after derivation.
+    pub fn new(
+        config: LocalLedger8WalletConfig,
+        seed: LocalLedger8DustSeed,
+        dust_state_provider: Arc<dyn LocalLedger8DustStateProvider>,
+    ) -> Result<Self, BackendError> {
+        use midnight_ledger::dust::{DustPublicKey, DustSecretKey};
+
+        if config.network_id.is_empty() || config.ttl_seconds <= config.current_time_seconds {
+            return Err(BackendError::Other(
+                "local Ledger8 wallet requires non-empty network id and future ttl".into(),
+            ));
+        }
+        let dust_key = DustSecretKey::derive_secret_key(seed.expose());
+        drop(seed);
+        let dust_public_key = DustPublicKey::from(dust_key.clone());
+        Ok(Self {
+            config,
+            dust_key,
+            dust_public_key,
+            dust_state: Mutex::new(None),
+            dust_state_provider,
+        })
+    }
+
+    /// Current non-secret local DUST balance projection at the configured timestamp.
+    pub fn dust_balance(&self) -> Result<u128, BackendError> {
+        let state = self.synchronized_dust_state()?;
+        Ok(state.wallet_balance(midnight_base_crypto::time::Timestamp::from_secs(
+            self.config.current_time_seconds,
+        )))
+    }
+
+    fn synchronized_dust_state(&self) -> Result<midnight_ledger::dust::DustLocalState<DefaultDB>, BackendError> {
+        let mut guard = self
+            .dust_state
+            .lock()
+            .map_err(|_| BackendError::Other("local DUST state lock poisoned".into()))?;
+        if let Some(state) = guard.as_ref()
+            && state.params == self.config.ledger_parameters.dust
+        {
+            return Ok(state.clone());
+        }
+        let state = self
+            .dust_state_provider
+            .load_dust_state(&self.dust_public_key, self.config.ledger_parameters.dust)?;
+        if state.params != self.config.ledger_parameters.dust {
+            return Err(BackendError::Other(
+                "synchronized DUST parameters do not match chain tip".into(),
+            ));
+        }
+        *guard = Some(state.clone());
+        Ok(state)
+    }
+
+    fn persist_dust_state(&self, state: &midnight_ledger::dust::DustLocalState<DefaultDB>) -> Result<(), BackendError> {
+        self.dust_state_provider.save_dust_state(&self.dust_public_key, state)?;
+        let mut guard = self
+            .dust_state
+            .lock()
+            .map_err(|_| BackendError::Other("local DUST state lock poisoned".into()))?;
+        *guard = Some(state.clone());
+        Ok(())
+    }
+
+    fn serialize_unproven(tx: &LedgerProofInputTransaction) -> Result<UnbalancedDidTransaction, BackendError> {
+        let mut bytes = Vec::new();
+        midnight_serialize::tagged_serialize(tx, &mut bytes)
+            .map_err(|e| BackendError::Decode(format!("serialize unproven Ledger8 transaction: {e}")))?;
+        Ok(UnbalancedDidTransaction { bytes })
+    }
+
+    fn deserialize_unproven(tx: &UnbalancedDidTransaction) -> Result<LedgerProofInputTransaction, BackendError> {
+        midnight_serialize::tagged_deserialize(&tx.bytes[..])
+            .map_err(|e| BackendError::Decode(format!("decode unproven Ledger8 transaction: {e}")))
+    }
+
+    fn empty_transaction(
+        &self,
+    ) -> midnight_ledger::structure::StandardTransaction<
+        midnight_base_crypto::schnorr::Signature,
+        midnight_ledger::structure::ProofPreimageMarker,
+        midnight_transient_crypto::commitment::PedersenRandomness,
+        DefaultDB,
+    > {
+        midnight_ledger::structure::StandardTransaction::new(
+            self.config.network_id.clone(),
+            midnight_storage::storage::HashMap::new(),
+            None,
+            midnight_storage::storage::HashMap::new(),
+        )
+    }
+
+    fn balance_dust_transaction(
+        &self,
+        transaction: LedgerProofInputTransaction,
+    ) -> Result<LedgerProofInputTransaction, BackendError> {
+        use midnight_base_crypto::time::Timestamp;
+        use midnight_coin_structure::coin::TokenType;
+        use midnight_ledger::dust::{DustActions, DustOutput};
+        use midnight_ledger::structure::{Intent, StandardTransaction, Transaction};
+        use midnight_storage::arena::Sp;
+        use midnight_storage::storage::{Array, HashMap as LedgerHashMap};
+        use rand::rngs::OsRng;
+
+        const DUST_BALANCE_SEGMENT: u16 = u16::MAX;
+        const MAX_BALANCE_ITERATIONS: usize = 16;
+
+        let original_transaction = transaction.clone();
+        let mut dust_state = self.synchronized_dust_state()?;
+        let original_dust = dust_state.clone();
+        let mut current = transaction;
+        let mut accumulated_dust = 0_u128;
+        let current_time = Timestamp::from_secs(self.config.current_time_seconds);
+        let ttl = Timestamp::from_secs(self.config.ttl_seconds);
+
+        for _ in 0..MAX_BALANCE_ITERATIONS {
+            let fees = current
+                .fees(&self.config.ledger_parameters, false)
+                .map_err(|e| BackendError::Other(format!("compute Ledger8 fees: {e}")))?;
+            let balance = current
+                .balance(Some(fees))
+                .map_err(|e| BackendError::Other(format!("compute Ledger8 balance: {e}")))?;
+            let shortfall = match balance.get(&(TokenType::Dust, 0)).copied() {
+                Some(value) if value < 0 => value
+                    .checked_neg()
+                    .and_then(|value| u128::try_from(value).ok())
+                    .ok_or_else(|| BackendError::Other("DUST shortfall overflow".into()))?,
+                _ => 0,
+            };
+            if shortfall == 0 {
+                self.persist_dust_state(&dust_state)?;
+                return Ok(current);
+            }
+            accumulated_dust = accumulated_dust
+                .checked_add(shortfall)
+                .ok_or_else(|| BackendError::Other("DUST accumulation overflow".into()))?;
+            dust_state = original_dust.clone();
+            let mut remaining = accumulated_dust;
+            let mut spends = Array::new();
+            let outputs = dust_state.utxos().collect::<Vec<_>>();
+            for output in outputs {
+                if remaining == 0 {
+                    break;
+                }
+                let generation = dust_state
+                    .generation_info(&output)
+                    .ok_or_else(|| BackendError::Other("missing DUST generation info".into()))?;
+                let value = DustOutput::from(output).updated_value(
+                    &generation,
+                    current_time,
+                    &self.config.ledger_parameters.dust,
+                );
+                if value == 0 {
+                    continue;
+                }
+                let spend_value = value.min(remaining);
+                let (next_state, spend) = dust_state
+                    .clone()
+                    .spend(&self.dust_key, &output, spend_value, current_time)
+                    .map_err(|e| BackendError::Other(format!("spend local DUST: {e}")))?;
+                dust_state = next_state;
+                spends = spends.push(spend);
+                remaining = remaining.saturating_sub(spend_value);
+            }
+            if remaining > 0 {
+                return Err(BackendError::Other(
+                    "insufficient synchronized DUST for Ledger8 fees".into(),
+                ));
+            }
+            let mut intent = Intent::empty(&mut OsRng, ttl);
+            intent.dust_actions = Some(Sp::new(DustActions {
+                spends,
+                registrations: Array::new(),
+                ctime: current_time,
+            }));
+            let mut intents = LedgerHashMap::new();
+            intents = intents.insert(DUST_BALANCE_SEGMENT, intent);
+            let dust_transaction = Transaction::Standard(StandardTransaction::new(
+                self.config.network_id.clone(),
+                intents,
+                None,
+                LedgerHashMap::new(),
+            ));
+            current = original_transaction
+                .merge(&dust_transaction)
+                .map_err(|e| BackendError::Other(format!("merge DUST balance transaction: {e}")))?;
+        }
+        Err(BackendError::Other(
+            "Ledger8 DUST balancing did not converge within bounded iterations".into(),
+        ))
+    }
+}
+
+#[async_trait]
+impl LedgerWalletProvider for LocalLedger8WalletProvider {
+    async fn build_deployment_tx(
+        &self,
+        deployment: DidDeploymentRequest,
+    ) -> Result<UnbalancedDidTransaction, BackendError> {
+        use midnight_base_crypto::time::Timestamp;
+        use midnight_ledger::structure::{Intent, Transaction};
+        use midnight_storage::storage::HashMap as LedgerHashMap;
+        use rand::rngs::OsRng;
+
+        let deploy = deployment.to_contract_deploy(self.config.deployment.clone());
+        let mut intent = Intent::empty(&mut OsRng, Timestamp::from_secs(self.config.ttl_seconds));
+        intent = intent.add_deploy(deploy);
+        let mut intents = LedgerHashMap::new();
+        intents = intents.insert(1, intent);
+        let tx = Transaction::Standard(midnight_ledger::structure::StandardTransaction::new(
+            self.config.network_id.clone(),
+            intents,
+            None,
+            LedgerHashMap::new(),
+        ));
+        Self::serialize_unproven(&tx)
+    }
+
+    async fn build_unbalanced_tx(
+        &self,
+        call: DidPrePartitionContractCall,
+    ) -> Result<UnbalancedDidTransaction, BackendError> {
+        use midnight_base_crypto::time::Timestamp;
+        use midnight_ledger::construct::SegmentSpecifier;
+        use midnight_ledger::structure::Transaction;
+        use midnight_transient_crypto::proofs::ProofPreimage;
+        use rand::rngs::OsRng;
+
+        let circuit_id = call.circuit_id().to_owned();
+        let config = self
+            .config
+            .contract_calls
+            .get(&circuit_id)
+            .cloned()
+            .ok_or(BackendError::Unconfigured("LedgerContractCallConfig"))?;
+        let prepartition = call.into_ledger_prepartition_contract_call(config);
+        let tx = self
+            .empty_transaction()
+            .add_calls::<ProofPreimage>(
+                &mut OsRng,
+                SegmentSpecifier::First,
+                &[prepartition],
+                &self.config.ledger_parameters,
+                Timestamp::from_secs(self.config.ttl_seconds),
+                &[],
+                &[],
+                &[],
+            )
+            .map_err(|e| BackendError::Other(format!("partition Ledger8 DID call: {e}")))?;
+        Self::serialize_unproven(&Transaction::Standard(tx))
+    }
+
+    async fn balance_tx(&self, tx: UnbalancedDidTransaction) -> Result<BalancedDidTransaction, BackendError> {
+        let tx = Self::deserialize_unproven(&tx)?;
+        let balanced = self.balance_dust_transaction(tx)?;
+        BalancedDidTransaction::from_ledger_prove_tx_request(&(balanced, self.config.proving_keys.clone()))
+    }
+
+    async fn finalize_proven_tx(&self, tx: ProvedDidTransaction) -> Result<FinalizedDidTransaction, BackendError> {
+        // Ledger8 contract/DUST authorization is already carried inside the proven
+        // transaction.  This provider intentionally returns a typed finalized
+        // Ledger transaction, not an outer Substrate extrinsic; node adapters that
+        // submit to a real chain must wrap it with the accepted runtime call.
+        Ok(FinalizedDidTransaction::from_tagged_ledger_tx(tx.tagged_proven_tx))
+    }
+}
+
+/// Typed configuration needed to turn Compact proof material into Ledger8's
+/// pre-partition contract call.
+#[derive(Clone, Debug)]
+pub struct LedgerContractCallConfig {
+    /// Contract operation/verifier-key material for this entry point.
+    pub operation: compact_runtime::ContractOperation,
+    /// Communication randomness used by Ledger8 contract-call construction.
+    pub communication_commitment_rand: compact_runtime::Fr,
+    /// Proving-key lookup location for this circuit.
+    pub key_location: midnight_transient_crypto::proofs::KeyLocation,
+}
+
+/// Typed Ledger8 deployment configuration supplied by wallet/custody code.
+#[derive(Clone)]
+pub struct LedgerDeploymentConfig {
+    /// Entry-point operation/verifier-key map for the deployed contract.
+    pub operations: midnight_storage::storage::HashMap<
+        compact_runtime::EntryPointBuf,
+        compact_runtime::ContractOperation,
+        DefaultDB,
+    >,
+    /// Maintenance authority for the deployed contract.
+    pub maintenance_authority: compact_runtime::ContractMaintenanceAuthority,
+    /// Deployment nonce used to derive/commit the contract deployment.
+    pub nonce: midnight_base_crypto::hash::HashOutput,
+}
+
+/// Secret-bearing Compact private transcript outputs.
+///
+/// This wrapper intentionally omits `Debug`/serde so witness output material is
+/// only handed across explicit custody/prover boundaries.
+#[derive(Default)]
+struct DidPrivateTranscriptOutputs(Vec<compact_runtime::AlignedValue>);
+
+impl DidPrivateTranscriptOutputs {
+    /// Consume into owned ordered Compact witness outputs at the Ledger construction boundary.
+    fn into_vec(mut self) -> Vec<compact_runtime::AlignedValue> {
+        std::mem::take(&mut self.0)
+    }
+}
+
+impl Drop for DidPrivateTranscriptOutputs {
+    fn drop(&mut self) {
+        // `AlignedValue` does not expose a zeroize implementation.  Drop the
+        // witness cells as soon as their custody-scoped wrapper leaves scope so
+        // they cannot be cloned, formatted, serialized, or borrowed through a
+        // public DTO surface.
+        self.0.clear();
+    }
+}
+
+/// Compact constructor proof data and transcripts extracted from generated `initial_state`.
+pub struct DidConstructorProofMaterial {
+    /// Stable generated constructor identifier (currently `constructor`).
+    constructor_id: String,
+    /// Contract address assigned to the constructor proof context.
+    contract_address: compact_runtime::ContractAddress,
+    /// Initial query context (pre-state/effects) for Ledger transcript replay.
+    #[allow(dead_code)]
+    initial_query_context: compact_runtime::QueryContext<DefaultDB>,
+    /// Final query context after constructor execution.
+    #[allow(dead_code)]
+    final_query_context: compact_runtime::QueryContext<DefaultDB>,
+    /// Compact-aligned public constructor input.
+    #[allow(dead_code)]
+    input: compact_runtime::AlignedValue,
+    /// Ledger8 public transcript operations, in Compact order.
+    public_transcript: Vec<compact_runtime::Op<compact_runtime::ResultModeVerify, DefaultDB>>,
+    /// Secret witness transcript outputs.
+    #[allow(dead_code)]
+    private_transcript_outputs: DidPrivateTranscriptOutputs,
+    /// Compact-aligned public constructor output.
+    #[allow(dead_code)]
+    output: compact_runtime::AlignedValue,
+}
+
+impl DidConstructorProofMaterial {
+    /// Stable generated constructor identifier.
+    pub fn constructor_id(&self) -> &str {
+        &self.constructor_id
+    }
+
+    /// Constructor proof contract address.
+    pub fn contract_address(&self) -> &compact_runtime::ContractAddress {
+        &self.contract_address
+    }
+
+    /// Number of public transcript operations.
+    pub fn public_transcript_len(&self) -> usize {
+        self.public_transcript.len()
+    }
+}
+
+impl fmt::Debug for DidConstructorProofMaterial {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DidConstructorProofMaterial")
+            .field("constructor_id", &self.constructor_id)
+            .field("contract_address", &self.contract_address)
+            .field("input", &"<AlignedValue>")
+            .field("public_transcript_len", &self.public_transcript.len())
+            .field("output", &"<AlignedValue>")
+            .finish()
+    }
+}
+
+/// Generated DID deployment material before wallet funding/proving.
+///
+/// This public DTO deliberately carries no private-state type or value.
+/// `GeneratedDidExecutor` persists the post-constructor private state inside
+/// its injected custody store before returning this material.
+pub struct DidDeploymentRequest {
+    /// Compact-generated initial on-chain contract state.
+    pub initial_contract_state: ChargedState<DefaultDB>,
+    /// Constructor-local zswap state from Compact runtime.
+    pub initial_zswap_local_state: compact_runtime::ZswapLocalState<DefaultDB>,
+    /// Generated constructor proof data and transcripts.
+    constructor: DidConstructorProofMaterial,
+}
+
+impl DidDeploymentRequest {
+    /// Borrow generated constructor proof metadata without exposing witness outputs.
+    pub fn constructor(&self) -> &DidConstructorProofMaterial {
+        &self.constructor
+    }
+
+    /// Construct Ledger8's typed deploy action from generated initial state and
+    /// wallet/custody supplied operation/maintenance configuration.
+    pub fn to_contract_deploy(
+        &self,
+        config: LedgerDeploymentConfig,
+    ) -> midnight_ledger::structure::ContractDeploy<DefaultDB> {
+        midnight_ledger::structure::ContractDeploy {
+            initial_state: compact_runtime::ContractState {
+                data: self.initial_contract_state.clone(),
+                operations: config.operations,
+                maintenance_authority: config.maintenance_authority,
+                balance: midnight_storage::storage::HashMap::default(),
+            },
+            nonce: config.nonce,
+        }
+    }
+}
+
+/// Compact proof data and transcripts extracted from a generated DID circuit.
+pub struct DidPrePartitionContractCall {
+    /// Generated circuit/entry-point identifier.
+    pub circuit_id: String,
+    /// Contract address the circuit executed against.
+    contract_address: compact_runtime::ContractAddress,
+    /// Initial query context (pre-state/effects) for Ledger transcript replay.
+    initial_query_context: compact_runtime::QueryContext<DefaultDB>,
+    /// Final query context after circuit execution.
+    #[allow(dead_code)]
+    final_query_context: compact_runtime::QueryContext<DefaultDB>,
+    /// Compact-aligned public input.
+    input: compact_runtime::AlignedValue,
+    /// Ledger8 public transcript operations, in Compact order.
+    public_transcript: Vec<compact_runtime::Op<compact_runtime::ResultModeVerify, DefaultDB>>,
+    /// Secret witness transcript outputs.
+    private_transcript_outputs: DidPrivateTranscriptOutputs,
+    /// Compact-aligned public output.
+    output: compact_runtime::AlignedValue,
+}
+
+impl DidPrePartitionContractCall {
+    /// Generated circuit/entry-point identifier.
+    pub fn circuit_id(&self) -> &str {
+        &self.circuit_id
+    }
+
+    /// Number of public transcript operations.
+    pub fn public_transcript_len(&self) -> usize {
+        self.public_transcript.len()
+    }
+}
+
+impl fmt::Debug for DidPrePartitionContractCall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DidPrePartitionContractCall")
+            .field("circuit_id", &self.circuit_id)
+            .field("contract_address", &self.contract_address)
+            .field("input", &"<AlignedValue>")
+            .field("public_transcript_len", &self.public_transcript.len())
+            .field("output", &"<AlignedValue>")
+            .finish()
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn ledger_prepartition_from_parts(
+    id: &str,
+    address: compact_runtime::ContractAddress,
+    initial_query_context: compact_runtime::QueryContext<DefaultDB>,
+    public_transcript: Vec<compact_runtime::Op<compact_runtime::ResultModeVerify, DefaultDB>>,
+    private_outputs: DidPrivateTranscriptOutputs,
+    input: compact_runtime::AlignedValue,
+    output: compact_runtime::AlignedValue,
+    config: LedgerContractCallConfig,
+) -> midnight_ledger::construct::PrePartitionContractCall<DefaultDB> {
+    midnight_ledger::construct::PrePartitionContractCall {
+        address,
+        entry_point: compact_runtime::EntryPointBuf::from(id.as_bytes()),
+        op: config.operation,
+        pre_transcript: midnight_ledger::construct::PreTranscript {
+            context: initial_query_context,
+            program: public_transcript,
+            comm_comm: None,
+        },
+        private_transcript_outputs: private_outputs.into_vec(),
+        input,
+        output,
+        communication_commitment_rand: config.communication_commitment_rand,
+        key_location: config.key_location,
+    }
+}
+
+impl DidPrePartitionContractCall {
+    /// Convert generated Compact call proof material into Ledger8's typed
+    /// pre-partition contract call using injected wallet/custody configuration.
+    pub fn into_ledger_prepartition_contract_call(
+        self,
+        config: LedgerContractCallConfig,
+    ) -> midnight_ledger::construct::PrePartitionContractCall<DefaultDB> {
+        ledger_prepartition_from_parts(
+            &self.circuit_id,
+            self.contract_address,
+            self.initial_query_context,
+            self.public_transcript,
+            self.private_transcript_outputs,
+            self.input,
+            self.output,
+            config,
+        )
+    }
+}
+
+/// Provider-native unbalanced DID transaction body.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnbalancedDidTransaction {
+    /// Opaque provider-native bytes. Wallet provider owns the encoding.
+    pub bytes: Vec<u8>,
+}
+
+/// Provider-native balanced DID transaction body.
+///
+/// For the built-in HTTP proof adapter this is exactly the Ledger8 `/prove-tx`
+/// request body: tagged serialization of
+/// `(Transaction<Signature, ProofPreimageMarker, PedersenRandomness, InMemoryDB>,
+/// HashMap<String, ProvingKeyMaterial>)`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BalancedDidTransaction {
+    tagged_prove_tx_request: Vec<u8>,
+}
+
+impl BalancedDidTransaction {
+    /// Build from the exact typed Ledger8 proof-server request tuple.
+    pub fn from_ledger_prove_tx_request(request: &LedgerProveTxRequest) -> Result<Self, BackendError> {
+        let mut tagged_prove_tx_request = Vec::new();
+        midnight_serialize::tagged_serialize(request, &mut tagged_prove_tx_request)
+            .map_err(|e| BackendError::Decode(format!("serialize /prove-tx request: {e}")))?;
+        Ok(Self {
+            tagged_prove_tx_request,
+        })
+    }
+
+    /// Test/fake-provider constructor for already-tagged Ledger8 `/prove-tx` request bytes.
+    pub fn from_tagged_prove_tx_request_bytes_for_test(tagged_prove_tx_request: Vec<u8>) -> Self {
+        Self {
+            tagged_prove_tx_request,
+        }
+    }
+
+    /// Borrow exact tagged Ledger8 `/prove-tx` request bytes.
+    pub fn tagged_prove_tx_request_bytes(&self) -> &[u8] {
+        &self.tagged_prove_tx_request
+    }
+}
+
+/// Provider-native proven DID transaction body.
+///
+/// The built-in HTTP proof adapter validates this as a tagged Ledger8 proven
+/// transaction response before handing it back to custody for signing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProvedDidTransaction {
+    tagged_proven_tx: Vec<u8>,
+}
+
+impl ProvedDidTransaction {
+    /// Build from typed Ledger8 proven transaction.
+    pub fn from_ledger_proven_tx(tx: &LedgerProofOutputTransaction) -> Result<Self, BackendError> {
+        let mut tagged_proven_tx = Vec::new();
+        midnight_serialize::tagged_serialize(tx, &mut tagged_proven_tx)
+            .map_err(|e| BackendError::Decode(format!("serialize proven tx: {e}")))?;
+        Ok(Self { tagged_proven_tx })
+    }
+
+    /// Validate and wrap an exact tagged Ledger8 proven transaction response.
+    pub fn from_tagged_proven_tx_response(tagged_proven_tx: Vec<u8>) -> Result<Self, BackendError> {
+        let _: LedgerProofOutputTransaction = midnight_serialize::tagged_deserialize(&tagged_proven_tx[..])
+            .map_err(|e| BackendError::Decode(format!("decode /prove-tx response: {e}")))?;
+        Ok(Self { tagged_proven_tx })
+    }
+
+    /// Test/fake-provider constructor for tagged bytes that are not parsed.
+    pub fn from_tagged_proven_tx_bytes_for_test(tagged_proven_tx: Vec<u8>) -> Self {
+        Self { tagged_proven_tx }
+    }
+
+    /// Borrow exact tagged Ledger8 proven transaction bytes.
+    pub fn tagged_proven_tx_bytes(&self) -> &[u8] {
+        &self.tagged_proven_tx
+    }
+}
+
+/// Provider-native finalized Ledger8 DID transaction body.
+///
+/// `tagged_ledger_tx` is the proven Ledger8 transaction. `outer_extrinsic` is
+/// present only after a chain-specific adapter wraps it in the accepted node
+/// runtime call envelope. Keeping the two states distinct prevents callers from
+/// submitting raw tagged Ledger bytes as a generic Substrate extrinsic.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FinalizedDidTransaction {
+    tagged_ledger_tx: Vec<u8>,
+    outer_extrinsic: Option<Vec<u8>>,
+}
+
+impl FinalizedDidTransaction {
+    /// Build the finalized Ledger transaction state before chain-specific wrapping.
+    pub fn from_tagged_ledger_tx(tagged_ledger_tx: Vec<u8>) -> Self {
+        Self {
+            tagged_ledger_tx,
+            outer_extrinsic: None,
+        }
+    }
+
+    /// Build a transaction with an already encoded outer Substrate extrinsic.
+    pub fn from_outer_extrinsic(tagged_ledger_tx: Vec<u8>, outer_extrinsic: Vec<u8>) -> Self {
+        Self {
+            tagged_ledger_tx,
+            outer_extrinsic: Some(outer_extrinsic),
+        }
+    }
+
+    /// Borrow the tagged proven Ledger8 transaction bytes.
+    pub fn tagged_ledger_tx_bytes(&self) -> &[u8] {
+        &self.tagged_ledger_tx
+    }
+
+    /// Borrow the encoded outer node extrinsic when one has been attached.
+    pub fn outer_extrinsic_bytes(&self) -> Option<&[u8]> {
+        self.outer_extrinsic.as_deref()
+    }
+}
+
+/// Durable node finality receipt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LedgerFinalityReceipt {
+    /// Transaction hash or canonical provider transaction id.
+    pub tx_hash: String,
+    /// Finalized block height.
+    pub block_height: u64,
+    /// Optional finality checkpoint/token.
+    pub finality_token: Option<String>,
+}
+
+/// Executes generated Rust `did.compact` circuits and extracts proof data.
+pub trait DidContractExecutor: Send + Sync {
+    /// Execute `call` against `state`, returning Compact proof data for Ledger8 construction.
+    fn execute(
+        &self,
+        state: ChargedState<DefaultDB>,
+        call: DidContractCall,
+    ) -> Result<DidPrePartitionContractCall, BackendError>;
+}
+
+/// Custody signer for controller/recovery authorization digests.
+pub trait DidAuthorizationSigner: Send + Sync {
+    /// Sign a controller-authorized digest inside custody.
+    fn sign_controller(
+        &self,
+        digest: [compact_runtime::Fr; 4],
+    ) -> Result<compact_runtime::SchnorrSignature, BackendError>;
+
+    /// Sign a recovery-authorized digest inside custody.
+    fn sign_recovery(
+        &self,
+        digest: [compact_runtime::Fr; 4],
+    ) -> Result<compact_runtime::SchnorrSignature, BackendError>;
+}
+
+/// Private-state source/sink. Implementations keep secrets inside custody.
+pub trait DidPrivateStateStore<PS>: Send + Sync {
+    /// Load current private state.
+    fn load(&self) -> Result<PS, BackendError>;
+    /// Persist the post-circuit private state.
+    fn store(&self, state: PS) -> Result<(), BackendError>;
+}
+
+/// Generated contract executor over concrete Compact witnesses and custody.
+pub struct GeneratedDidExecutor<PS, W> {
+    witnesses: W,
+    private_state: Arc<dyn DidPrivateStateStore<PS>>,
+    signer: Arc<dyn DidAuthorizationSigner>,
+    contract_address: compact_runtime::ContractAddress,
+}
+
+impl<PS, W> fmt::Debug for GeneratedDidExecutor<PS, W> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GeneratedDidExecutor")
+            .field("witnesses", &"<Witnesses>")
+            .field("private_state", &"<DidPrivateStateStore>")
+            .field("signer", &"<DidAuthorizationSigner>")
+            .field("contract_address", &self.contract_address)
+            .finish()
+    }
+}
+
+impl<PS, W> GeneratedDidExecutor<PS, W> {
+    /// Build a generated executor from witness, private-state, and custody providers.
+    pub fn new(
+        witnesses: W,
+        private_state: Arc<dyn DidPrivateStateStore<PS>>,
+        signer: Arc<dyn DidAuthorizationSigner>,
+        contract_address: compact_runtime::ContractAddress,
+    ) -> Self {
+        Self {
+            witnesses,
+            private_state,
+            signer,
+            contract_address,
+        }
+    }
+
+    /// Execute the Compact constructor and return typed deployment material.
+    pub fn deployment_request(&self) -> Result<DidDeploymentRequest, BackendError>
+    where
+        PS: Clone,
+        W: crate::contract::Witnesses<PS> + Clone,
+    {
+        let private_state = self.private_state.load()?;
+        let ctx = compact_runtime::ConstructorContext {
+            initial_private_state: private_state,
+            empty_zswap_local_state: compact_runtime::ZswapLocalState::new(),
+            cost_model: compact_runtime::INITIAL_COST_MODEL.clone(),
+            gas_limit: None,
+        };
+        let result = crate::contract::Contract::new(self.witnesses.clone())
+            .initial_state(ctx)
+            .map_err(|e| BackendError::Other(format!("generated initial_state: {e}")))?;
+        self.private_state.store(result.current_private_state.clone())?;
+        let constructor = constructor_material_from_generated(result.constructor_proof_data);
+        Ok(DidDeploymentRequest {
+            initial_contract_state: result.current_contract_state,
+            initial_zswap_local_state: result.current_zswap_local_state,
+            constructor,
+        })
+    }
+}
+
+impl<PS, W> DidContractExecutor for GeneratedDidExecutor<PS, W>
+where
+    PS: Clone + Send + Sync + 'static,
+    W: crate::contract::Witnesses<PS> + Clone + Send + Sync + 'static,
+{
+    fn execute(
+        &self,
+        state: ChargedState<DefaultDB>,
+        call: DidContractCall,
+    ) -> Result<DidPrePartitionContractCall, BackendError> {
+        use crate::contract as generated;
+
+        let expected_version = generated::ledger(&state)
+            .version()
+            .map_err(|e| BackendError::Decode(format!("ledger version: {e}")))?;
+        let contract_id = generated::ledger(&state)
+            .id()
+            .map_err(|e| BackendError::Decode(format!("ledger id: {e}")))?;
+        let private_state = self.private_state.load()?;
+        let mut ctx = compact_runtime::CircuitContext::new(state, private_state);
+        ctx.current_query_context.address = self.contract_address;
+        let contract = generated::Contract::new(self.witnesses.clone());
+        let circuit = circuit_name(&call)?;
+
+        let out = match call {
+            DidContractCall::RotateControllerKey { new_public_key } => {
+                let pk = point_from_hex(&new_public_key)?;
+                let digest = generated::pure_circuits::rotate_controller_key_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    pk,
+                )
+                .map_err(|e| BackendError::Other(format!("rotate digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .rotate_controller_key(ctx, pk, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated rotate_controller_key: {e}")))?
+            }
+            DidContractCall::RecoverControllerKey { new_public_key } => {
+                let pk = point_from_hex(&new_public_key)?;
+                let digest = generated::pure_circuits::recover_controller_key_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    pk,
+                )
+                .map_err(|e| BackendError::Other(format!("recover digest: {e}")))?;
+                let sig = self.signer.sign_recovery(digest)?;
+                contract
+                    .recover_controller_key(ctx, pk, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated recover_controller_key: {e}")))?
+            }
+            DidContractCall::SetVerificationMethod { method, mutation } => {
+                let method = verification_method_to_generated(method);
+                let mutation = map_mutation_to_generated(mutation);
+                let digest = generated::pure_circuits::set_verification_method_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    method.clone(),
+                    mutation,
+                )
+                .map_err(|e| BackendError::Other(format!("set VM digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .set_verification_method(ctx, method, mutation, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated set_verification_method: {e}")))?
+            }
+            DidContractCall::RemoveVerificationMethod { method_id } => {
+                let id = opaque(method_id);
+                let digest = generated::pure_circuits::remove_verification_method_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    id.clone(),
+                )
+                .map_err(|e| BackendError::Other(format!("remove VM digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .remove_verification_method(ctx, id, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated remove_verification_method: {e}")))?
+            }
+            DidContractCall::SetSchnorrJubjubVerificationMethod { method, mutation } => {
+                let method = schnorr_vm_to_generated(method)?;
+                let mutation = map_mutation_to_generated(mutation);
+                let digest = generated::pure_circuits::set_schnorr_jubjub_verification_method_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    method.clone(),
+                    mutation,
+                )
+                .map_err(|e| BackendError::Other(format!("set Schnorr VM digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .set_schnorr_jubjub_verification_method(ctx, method, mutation, sig, expected_version)
+                    .map_err(|e| {
+                        BackendError::Other(format!("generated set_schnorr_jubjub_verification_method: {e}"))
+                    })?
+            }
+            DidContractCall::RemoveSchnorrJubjubVerificationMethod { method_id } => {
+                let id = opaque(method_id);
+                let digest = generated::pure_circuits::remove_schnorr_jubjub_verification_method_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    id.clone(),
+                )
+                .map_err(|e| BackendError::Other(format!("remove Schnorr VM digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .remove_schnorr_jubjub_verification_method(ctx, id, sig, expected_version)
+                    .map_err(|e| {
+                        BackendError::Other(format!("generated remove_schnorr_jubjub_verification_method: {e}"))
+                    })?
+            }
+            DidContractCall::VerifySchnorrJubjubDigestSignature {
+                method_id,
+                digest,
+                signature,
+            } => contract
+                .verify_schnorr_jubjub_digest_signature(
+                    ctx,
+                    opaque(method_id),
+                    digest_to_generated(&digest)?,
+                    signature_to_generated(&signature)?,
+                )
+                .map_err(|e| BackendError::Other(format!("generated verify_schnorr_jubjub_digest_signature: {e}")))?,
+            DidContractCall::SetVerificationMethodRelation {
+                relation,
+                method_id,
+                mutation,
+            } => {
+                let relation = relation_to_generated(relation);
+                let id = opaque(method_id);
+                let mutation = set_mutation_to_generated(mutation);
+                let digest = generated::pure_circuits::set_verification_method_relation_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    relation,
+                    id.clone(),
+                    mutation,
+                )
+                .map_err(|e| BackendError::Other(format!("set relation digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .set_verification_method_relation(ctx, relation, id, mutation, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated set_verification_method_relation: {e}")))?
+            }
+            DidContractCall::SetService { service, mutation } => {
+                let service = service_to_generated(service);
+                let mutation = map_mutation_to_generated(mutation);
+                let digest = generated::pure_circuits::set_service_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    service.clone(),
+                    mutation,
+                )
+                .map_err(|e| BackendError::Other(format!("set service digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .set_service(ctx, service, mutation, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated set_service: {e}")))?
+            }
+            DidContractCall::RemoveService { service_id } => {
+                let id = opaque(service_id);
+                let digest = generated::pure_circuits::remove_service_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    id.clone(),
+                )
+                .map_err(|e| BackendError::Other(format!("remove service digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .remove_service(ctx, id, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated remove_service: {e}")))?
+            }
+            DidContractCall::SetAlsoKnownAs { alias_uri, mutation } => {
+                let alias = opaque(alias_uri);
+                let mutation = set_mutation_to_generated(mutation);
+                let digest = generated::pure_circuits::set_also_known_as_authorization_digest(
+                    contract_id,
+                    expected_version,
+                    alias.clone(),
+                    mutation,
+                )
+                .map_err(|e| BackendError::Other(format!("set aka digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .set_also_known_as(ctx, alias, mutation, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated set_also_known_as: {e}")))?
+            }
+            DidContractCall::Deactivate => {
+                let digest = generated::pure_circuits::deactivate_authorization_digest(contract_id, expected_version)
+                    .map_err(|e| BackendError::Other(format!("deactivate digest: {e}")))?;
+                let sig = self.signer.sign_controller(digest)?;
+                contract
+                    .deactivate(ctx, sig, expected_version)
+                    .map_err(|e| BackendError::Other(format!("generated deactivate: {e}")))?
+            }
+            DidContractCall::ReadLedger => {
+                return Err(BackendError::Decode("ReadLedger is not a mutating circuit".into()));
+            }
+        };
+        self.private_state.store(out.context.current_private_state.clone())?;
+        proof_call_from_trace(out.context.call_proof_data_trace, circuit)
+    }
+}
+
+fn circuit_name(call: &DidContractCall) -> Result<&'static str, BackendError> {
+    Ok(match call {
+        DidContractCall::ReadLedger => return Err(BackendError::Decode("ReadLedger is not a mutating circuit".into())),
+        DidContractCall::RotateControllerKey { .. } => "rotate_controller_key",
+        DidContractCall::RecoverControllerKey { .. } => "recover_controller_key",
+        DidContractCall::SetVerificationMethod { .. } => "set_verification_method",
+        DidContractCall::RemoveVerificationMethod { .. } => "remove_verification_method",
+        DidContractCall::SetSchnorrJubjubVerificationMethod { .. } => "set_schnorr_jubjub_verification_method",
+        DidContractCall::RemoveSchnorrJubjubVerificationMethod { .. } => "remove_schnorr_jubjub_verification_method",
+        DidContractCall::VerifySchnorrJubjubDigestSignature { .. } => "verify_schnorr_jubjub_digest_signature",
+        DidContractCall::SetVerificationMethodRelation { .. } => "set_verification_method_relation",
+        DidContractCall::SetService { .. } => "set_service",
+        DidContractCall::RemoveService { .. } => "remove_service",
+        DidContractCall::SetAlsoKnownAs { .. } => "set_also_known_as",
+        DidContractCall::Deactivate => "deactivate",
+    })
+}
+
+fn opaque(s: String) -> compact_runtime::std_lib::OpaqueString {
+    compact_runtime::std_lib::OpaqueString::from(s)
+}
+
+fn fr_from_hex(s: &str, field: &str) -> Result<compact_runtime::Fr, BackendError> {
+    let bytes = hex::decode(s).map_err(|e| BackendError::Decode(format!("{field}: {e}")))?;
+    compact_runtime::Fr::from_le_bytes(&bytes).ok_or_else(|| BackendError::Decode(format!("{field}: invalid Fr")))
+}
+
+fn point_from_hex(p: &JubjubPointHex) -> Result<compact_runtime::JubjubPoint, BackendError> {
+    let x = fr_from_hex(p.x(), "JubjubPoint.x")?;
+    let y = fr_from_hex(p.y(), "JubjubPoint.y")?;
+    compact_runtime::jubjub_point_from_field_repr(&[x, y])
+        .ok_or_else(|| BackendError::Decode("invalid Jubjub point".into()))
+}
+
+fn digest_to_generated(
+    d: &crate::contract_call::SchnorrJubjubDigest,
+) -> Result<[compact_runtime::Fr; 4], BackendError> {
+    Ok([
+        fr_from_hex(&d.limbs()[0], "digest[0]")?,
+        fr_from_hex(&d.limbs()[1], "digest[1]")?,
+        fr_from_hex(&d.limbs()[2], "digest[2]")?,
+        fr_from_hex(&d.limbs()[3], "digest[3]")?,
+    ])
+}
+
+fn signature_to_generated(
+    sig: &crate::contract_call::SchnorrJubjubSignature,
+) -> Result<compact_runtime::SchnorrSignature, BackendError> {
+    let bytes = hex::decode(sig.bytes_hex()).map_err(|e| BackendError::Decode(format!("signature: {e}")))?;
+    if bytes.len() != 96 {
+        return Err(BackendError::Decode("signature must be 96 bytes".into()));
+    }
+    let x = compact_runtime::Fr::from_le_bytes(&bytes[0..32])
+        .ok_or_else(|| BackendError::Decode("signature R.x".into()))?;
+    let y = compact_runtime::Fr::from_le_bytes(&bytes[32..64])
+        .ok_or_else(|| BackendError::Decode("signature R.y".into()))?;
+    let response = compact_runtime::Fr::from_le_bytes(&bytes[64..96])
+        .ok_or_else(|| BackendError::Decode("signature response".into()))?;
+    let announcement = compact_runtime::jubjub_point_from_field_repr(&[x, y])
+        .ok_or_else(|| BackendError::Decode("signature announcement".into()))?;
+    Ok(compact_runtime::SchnorrSignature { announcement, response })
+}
+
+fn map_mutation_to_generated(m: MapMutation) -> crate::contract::MapMutation {
+    match m {
+        MapMutation::Insert => crate::contract::MapMutation::Insert,
+        MapMutation::Update => crate::contract::MapMutation::Update,
+    }
+}
+fn set_mutation_to_generated(m: SetMutation) -> crate::contract::SetMutation {
+    match m {
+        SetMutation::Insert => crate::contract::SetMutation::Insert,
+        SetMutation::Remove => crate::contract::SetMutation::Remove,
+    }
+}
+fn relation_to_generated(r: LedgerVerificationMethodRelation) -> crate::contract::VerificationMethodRelation {
+    match r {
+        LedgerVerificationMethodRelation::Undefined => crate::contract::VerificationMethodRelation::Undefined,
+        LedgerVerificationMethodRelation::Authentication => crate::contract::VerificationMethodRelation::Authentication,
+        LedgerVerificationMethodRelation::AssertionMethod => {
+            crate::contract::VerificationMethodRelation::AssertionMethod
+        }
+        LedgerVerificationMethodRelation::KeyAgreement => crate::contract::VerificationMethodRelation::KeyAgreement,
+        LedgerVerificationMethodRelation::CapabilityInvocation => {
+            crate::contract::VerificationMethodRelation::CapabilityInvocation
+        }
+        LedgerVerificationMethodRelation::CapabilityDelegation => {
+            crate::contract::VerificationMethodRelation::CapabilityDelegation
+        }
+    }
+}
+
+fn vm_type_to_generated(
+    v: midnight_did_domain::did_document::VerificationMethodType,
+) -> crate::contract::VerificationMethodType {
+    match v {
+        midnight_did_domain::did_document::VerificationMethodType::Undefined => {
+            crate::contract::VerificationMethodType::Undefined
+        }
+        midnight_did_domain::did_document::VerificationMethodType::JsonWebKey => {
+            crate::contract::VerificationMethodType::JsonWebKey
+        }
+    }
+}
+fn key_type_to_generated(v: midnight_did_domain::did_document::KeyType) -> crate::contract::KeyType {
+    match v {
+        midnight_did_domain::did_document::KeyType::EC => crate::contract::KeyType::EC,
+        midnight_did_domain::did_document::KeyType::RSA => crate::contract::KeyType::RSA,
+        midnight_did_domain::did_document::KeyType::oct => crate::contract::KeyType::oct,
+        midnight_did_domain::did_document::KeyType::OKP => crate::contract::KeyType::OKP,
+    }
+}
+fn curve_type_to_generated(v: midnight_did_domain::did_document::CurveType) -> crate::contract::CurveType {
+    match v {
+        midnight_did_domain::did_document::CurveType::Ed25519 => crate::contract::CurveType::Ed25519,
+        midnight_did_domain::did_document::CurveType::X25519 => crate::contract::CurveType::X25519,
+        midnight_did_domain::did_document::CurveType::Jubjub => crate::contract::CurveType::Jubjub,
+        midnight_did_domain::did_document::CurveType::P256 => crate::contract::CurveType::P256,
+        midnight_did_domain::did_document::CurveType::Secp256k1 => crate::contract::CurveType::Secp256k1,
+        midnight_did_domain::did_document::CurveType::BLS12381G1 => crate::contract::CurveType::BLS12381G1,
+        midnight_did_domain::did_document::CurveType::BLS12381G2 => crate::contract::CurveType::BLS12381G2,
+    }
+}
+fn verification_method_to_generated(m: LedgerVerificationMethod) -> crate::contract::VerificationMethod {
+    crate::contract::VerificationMethod {
+        id: opaque(m.id),
+        typ: vm_type_to_generated(m.typ),
+        publicKeyJwk: crate::contract::PublicKeyJwk {
+            kty: key_type_to_generated(m.public_key_jwk.kty),
+            crv: curve_type_to_generated(m.public_key_jwk.crv),
+            x: opaque(m.public_key_jwk.x),
+            y: opaque(m.public_key_jwk.y),
+        },
+    }
+}
+fn schnorr_vm_to_generated(
+    m: LedgerSchnorrJubjubVerificationMethod,
+) -> Result<crate::contract::SchnorrJubjubVerificationMethod, BackendError> {
+    Ok(crate::contract::SchnorrJubjubVerificationMethod {
+        id: opaque(m.id),
+        publicKey: point_from_hex(&m.public_key)?,
+    })
+}
+fn service_to_generated(s: LedgerService) -> crate::contract::Service {
+    crate::contract::Service {
+        id: opaque(s.id),
+        typ: opaque(s.typ),
+        serviceEndpoint: opaque(s.service_endpoint),
+    }
+}
+
+fn constructor_material_from_generated(
+    proof: compact_runtime::ConstructorProofData<DefaultDB>,
+) -> DidConstructorProofMaterial {
+    let (input, public_transcript, private_outputs, output) = proof.proof_data.into_parts();
+    DidConstructorProofMaterial {
+        constructor_id: proof.constructor_id,
+        contract_address: proof.contract_address,
+        initial_query_context: proof.initial_query_context,
+        final_query_context: proof.final_query_context,
+        input,
+        public_transcript,
+        private_transcript_outputs: DidPrivateTranscriptOutputs(private_outputs.into_vec()),
+        output,
+    }
+}
+
+fn proof_call_from_trace(
+    trace: compact_runtime::CallProofDataTrace<DefaultDB>,
+    circuit: &str,
+) -> Result<DidPrePartitionContractCall, BackendError> {
+    let mut calls = trace.into_vec();
+    if calls.len() != 1 {
+        let ids = calls
+            .iter()
+            .map(|call| call.circuit_id.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(BackendError::Decode(format!(
+            "generated proof trace for {circuit} must contain exactly one folded root call, got {} ({ids})",
+            calls.len()
+        )));
+    }
+    let call = calls.pop().expect("length checked");
+    if call.circuit_id != circuit {
+        return Err(BackendError::Decode(format!(
+            "generated proof trace root was {}, expected {circuit}",
+            call.circuit_id
+        )));
+    }
+    let (input, public_transcript, private_outputs, output) = call.proof_data.into_parts();
+    Ok(DidPrePartitionContractCall {
+        circuit_id: call.circuit_id,
+        contract_address: call.contract_address,
+        initial_query_context: call.initial_query_context,
+        final_query_context: call.final_query_context,
+        input,
+        public_transcript,
+        private_transcript_outputs: DidPrivateTranscriptOutputs(private_outputs.into_vec()),
+        output,
+    })
+}
+
+/// Wallet/custody provider for funding, balancing, and finalizing Ledger transactions.
+#[async_trait]
+pub trait LedgerWalletProvider: Send + Sync {
+    /// Materialize a provider-native unbalanced transaction from generated constructor proof data.
+    async fn build_deployment_tx(
+        &self,
+        deployment: DidDeploymentRequest,
+    ) -> Result<UnbalancedDidTransaction, BackendError>;
+
+    /// Materialize a provider-native unbalanced transaction from generated proof data.
+    async fn build_unbalanced_tx(
+        &self,
+        call: DidPrePartitionContractCall,
+    ) -> Result<UnbalancedDidTransaction, BackendError>;
+
+    /// Fund and fee-balance an unbalanced transaction.
+    async fn balance_tx(&self, tx: UnbalancedDidTransaction) -> Result<BalancedDidTransaction, BackendError>;
+
+    /// Finalize a proven Ledger8 transaction inside custody.
+    async fn finalize_proven_tx(&self, tx: ProvedDidTransaction) -> Result<FinalizedDidTransaction, BackendError>;
+}
+
+/// Proof-server provider.
+#[async_trait]
+pub trait LedgerProofProvider: Send + Sync {
+    /// Ask the proof service to prove the balanced transaction.
+    async fn prove_tx(&self, tx: BalancedDidTransaction) -> Result<ProvedDidTransaction, BackendError>;
+}
+
+/// Node submission/finality provider.
+#[async_trait]
+pub trait LedgerNodeProvider: Send + Sync {
+    /// Submit and wait for durable finality.
+    async fn submit_and_wait(&self, tx: FinalizedDidTransaction) -> Result<LedgerFinalityReceipt, BackendError>;
+}
+
+/// Indexer/public-data provider.
+#[async_trait]
+pub trait LedgerIndexerProvider: Send + Sync {
+    /// Read serialized contract state bytes from the indexer.
+    async fn read_state_bytes(&self) -> Result<Vec<u8>, BackendError>;
+
+    /// Read raw charged state decoded from indexer bytes.
+    async fn read_state(&self) -> Result<ChargedState<DefaultDB>, BackendError> {
+        crate::state_decode::charged_state_from_bytes(&self.read_state_bytes().await?)
+    }
+
+    /// Read DID snapshot decoded from live ledger state.
+    async fn read_snapshot(&self) -> Result<DidLedgerSnapshot, BackendError> {
+        let state = self.read_state().await?;
+        crate::state_decode::decode_ledger_snapshot(&state)
+    }
+
+    /// Confirm indexer has observed the finalized transaction/state.
+    async fn reconcile_finality(&self, receipt: &LedgerFinalityReceipt) -> Result<(), BackendError>;
+}
+
+/// Dependency-injected live providers.
+#[derive(Clone)]
+pub struct LiveProviders {
+    executor: Arc<dyn DidContractExecutor>,
+    wallet: Arc<dyn LedgerWalletProvider>,
+    proof: Arc<dyn LedgerProofProvider>,
+    node: Arc<dyn LedgerNodeProvider>,
+    indexer: Arc<dyn LedgerIndexerProvider>,
+}
+
+impl fmt::Debug for LiveProviders {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LiveProviders")
+            .field("executor", &"<DidContractExecutor>")
+            .field("wallet", &"<LedgerWalletProvider>")
+            .field("proof", &"<LedgerProofProvider>")
+            .field("node", &"<LedgerNodeProvider>")
+            .field("indexer", &"<LedgerIndexerProvider>")
+            .finish()
+    }
+}
+
+impl LiveProviders {
+    /// Create a provider bundle.
+    pub fn new(
+        executor: Arc<dyn DidContractExecutor>,
+        wallet: Arc<dyn LedgerWalletProvider>,
+        proof: Arc<dyn LedgerProofProvider>,
+        node: Arc<dyn LedgerNodeProvider>,
+        indexer: Arc<dyn LedgerIndexerProvider>,
+    ) -> Self {
+        Self {
+            executor,
+            wallet,
+            proof,
+            node,
+            indexer,
+        }
+    }
+}
+
+/// Production backend: generated DID Compact execution plus injected Ledger8 providers.
+#[derive(Debug, Default, Clone)]
 pub struct LiveBackend {
-    /// Wallet SDK handle. `()` until the wallet bridge lands.
-    pub wallet_sdk: (),
-    /// Proof-server client handle. `()` until the wallet bridge lands.
-    pub proof_server: (),
-    /// Indexer / public-data-provider client. `()` until the wallet bridge lands.
-    pub indexer: (),
+    providers: Option<LiveProviders>,
 }
 
 impl LiveBackend {
-    /// Construct a placeholder [`LiveBackend`].
+    /// Construct an unconfigured backend. Live methods return typed errors, not panics.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Construct a configured backend.
+    pub fn with_providers(providers: LiveProviders) -> Self {
+        Self {
+            providers: Some(providers),
+        }
+    }
+
+    fn providers(&self) -> Result<&LiveProviders, BackendError> {
+        self.providers
+            .as_ref()
+            .ok_or(BackendError::Unconfigured("LiveProviders"))
+    }
+
+    /// Submit a generated constructor/deployment request through the same
+    /// wallet/proof/node/finality pipeline used by mutating calls.
+    pub async fn submit_deployment(&self, deployment: DidDeploymentRequest) -> Result<FinalizedTxData, BackendError> {
+        let providers = self.providers()?;
+        let unbalanced = providers.wallet.build_deployment_tx(deployment).await?;
+        let balanced = providers.wallet.balance_tx(unbalanced).await?;
+        let proved = providers.proof.prove_tx(balanced).await?;
+        let finalized = providers.wallet.finalize_proven_tx(proved).await?;
+        let receipt = providers.node.submit_and_wait(finalized).await?;
+        providers.indexer.reconcile_finality(&receipt).await?;
+        Ok(FinalizedTxData {
+            tx_hash: receipt.tx_hash,
+            block_height: receipt.block_height,
+        })
+    }
+
+    /// Reconcile a previously finalized Ledger8 receipt without submitting a
+    /// duplicate transaction. Restart code should persist the receipt returned
+    /// by the node boundary, recreate providers, and call this read-only method
+    /// until the indexer observes the finalized state.
+    pub async fn reconcile_finality(&self, receipt: &LedgerFinalityReceipt) -> Result<(), BackendError> {
+        self.providers()?.indexer.reconcile_finality(receipt).await
     }
 }
 
 #[async_trait]
 impl Backend for LiveBackend {
-    async fn submit_tx(&self, _tx: BuiltTx) -> Result<FinalizedTxData, BackendError> {
-        todo!("LiveBackend: wire wallet+proof+indexer")
+    async fn submit_tx(&self, tx: BuiltTx) -> Result<FinalizedTxData, BackendError> {
+        let providers = self.providers()?;
+        let call = DidContractCall::decode(&tx.bytes)?;
+        let state = providers.indexer.read_state().await?;
+        let proof_call = providers.executor.execute(state, call)?;
+        let unbalanced = providers.wallet.build_unbalanced_tx(proof_call).await?;
+        let balanced = providers.wallet.balance_tx(unbalanced).await?;
+        let proved = providers.proof.prove_tx(balanced).await?;
+        let finalized = providers.wallet.finalize_proven_tx(proved).await?;
+        let receipt = providers.node.submit_and_wait(finalized).await?;
+        providers.indexer.reconcile_finality(&receipt).await?;
+        Ok(FinalizedTxData {
+            tx_hash: receipt.tx_hash,
+            block_height: receipt.block_height,
+        })
     }
 
     async fn read_state(&self) -> Result<ChargedState<DefaultDB>, BackendError> {
-        todo!("LiveBackend: wire wallet+proof+indexer")
+        self.providers()?.indexer.read_state().await
     }
 
     async fn read_snapshot(&self) -> Result<DidLedgerSnapshot, BackendError> {
-        todo!("LiveBackend: wire the Ledger -> DidLedgerSnapshot mapper")
+        self.providers()?.indexer.read_snapshot().await
+    }
+}
+
+#[cfg(feature = "http")]
+/// HTTP proof-server adapter for Ledger8 `/prove-tx` tagged transaction payloads.
+#[derive(Debug, Clone)]
+pub struct HttpProofProvider {
+    client: reqwest::Client,
+    prove_tx_url: String,
+}
+
+#[cfg(feature = "http")]
+impl HttpProofProvider {
+    /// Create a proof adapter. `base_url` may be the server root or `/prove-tx` endpoint.
+    ///
+    /// The body is the exact Ledger8 tagged-serialize payload
+    /// `(Transaction<Signature, ProofPreimageMarker, PedersenRandomness, InMemoryDB>,
+    /// HashMap<String, ProvingKeyMaterial>)` expected by
+    /// `proof-server/src/endpoints.rs::prove_transaction`; responses are validated as
+    /// tagged proven transactions before custody finalization.
+    pub fn new(base_url: impl Into<String>) -> Result<Self, BackendError> {
+        let mut prove_tx_url = base_url.into();
+        if !prove_tx_url.ends_with("/prove-tx") {
+            prove_tx_url = format!("{}/prove-tx", prove_tx_url.trim_end_matches('/'));
+        }
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(600))
+            .build()
+            .map_err(|e| BackendError::Network(format!("proof client: {e}")))?;
+        Ok(Self { client, prove_tx_url })
+    }
+}
+
+#[cfg(feature = "http")]
+#[async_trait]
+impl LedgerProofProvider for HttpProofProvider {
+    async fn prove_tx(&self, tx: BalancedDidTransaction) -> Result<ProvedDidTransaction, BackendError> {
+        let response = self
+            .client
+            .post(&self.prove_tx_url)
+            .body(tx.tagged_prove_tx_request_bytes().to_vec())
+            .send()
+            .await
+            .map_err(|e| BackendError::Network(format!("proof transport: {e}")))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(BackendError::Network(format!("prove-tx HTTP {status}")));
+        }
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|e| BackendError::Network(format!("proof body: {e}")))?;
+        ProvedDidTransaction::from_tagged_proven_tx_response(bytes.to_vec())
+    }
+}
+
+#[cfg(feature = "http")]
+/// Generic JSON-RPC node adapter for transaction submission/finality.
+#[derive(Debug, Clone)]
+pub struct HttpNodeProvider {
+    client: reqwest::Client,
+    rpc_url: String,
+    submit_method: String,
+    max_finality_polls: usize,
+}
+
+#[cfg(feature = "http")]
+impl HttpNodeProvider {
+    /// Create a node adapter.
+    ///
+    /// For Midnight node 0.22.x/Substrate-compatible stacks, pass
+    /// `author_submitExtrinsic`: the adapter submits the signed extrinsic and
+    /// then scans finalized blocks until the exact submitted extrinsic bytes are
+    /// observed. A custom method may instead return a provider-guaranteed
+    /// finality receipt object `{ txHash, blockHeight, finalityToken? }`; in
+    /// that mode the provider owns the finality contract.
+    pub fn new(rpc_url: impl Into<String>, submit_method: impl Into<String>) -> Result<Self, BackendError> {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .map_err(|e| BackendError::Network(format!("node client: {e}")))?;
+        Ok(Self {
+            client,
+            rpc_url: rpc_url.into(),
+            submit_method: submit_method.into(),
+            max_finality_polls: 120,
+        })
+    }
+
+    async fn rpc_call(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value, BackendError> {
+        #[derive(serde::Deserialize)]
+        struct RpcResponse {
+            result: Option<serde_json::Value>,
+            error: Option<serde_json::Value>,
+        }
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params,
+        });
+        let response = self
+            .client
+            .post(&self.rpc_url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| BackendError::Network(format!("node transport: {e}")))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(BackendError::Network(format!("node HTTP {status}")));
+        }
+        let payload: RpcResponse = response
+            .json()
+            .await
+            .map_err(|e| BackendError::Decode(format!("node response: {e}")))?;
+        if let Some(err) = payload.error {
+            return Err(BackendError::Network(format!("node RPC error from {method}: {err}")));
+        }
+        payload
+            .result
+            .ok_or_else(|| BackendError::Decode(format!("node response from {method} missing result")))
+    }
+
+    fn parse_block_height(header: &serde_json::Value) -> Option<u64> {
+        let n = header.get("number")?.as_str()?;
+        u64::from_str_radix(n.trim_start_matches("0x"), 16).ok()
+    }
+
+    async fn finalized_receipt_for_extrinsic(
+        &self,
+        tx_hash: String,
+        submitted_hex: &str,
+    ) -> Result<LedgerFinalityReceipt, BackendError> {
+        for _ in 0..self.max_finality_polls {
+            let finalized_hash = self
+                .rpc_call("chain_getFinalizedHead", serde_json::json!([]))
+                .await?
+                .as_str()
+                .ok_or_else(|| BackendError::Decode("chain_getFinalizedHead did not return a block hash".into()))?
+                .to_owned();
+
+            let mut cursor = finalized_hash.clone();
+            for _ in 0..64 {
+                let block = self.rpc_call("chain_getBlock", serde_json::json!([cursor])).await?;
+                let Some(block_obj) = block.get("block") else { break };
+                let header = block_obj
+                    .get("header")
+                    .ok_or_else(|| BackendError::Decode("chain_getBlock result missing header".into()))?;
+                let height = Self::parse_block_height(header)
+                    .ok_or_else(|| BackendError::Decode("chain_getBlock header missing hex number".into()))?;
+                let found = block_obj
+                    .get("extrinsics")
+                    .and_then(|v| v.as_array())
+                    .map(|xs| xs.iter().any(|x| x.as_str() == Some(submitted_hex)))
+                    .unwrap_or(false);
+                if found {
+                    return Ok(LedgerFinalityReceipt {
+                        tx_hash,
+                        block_height: height,
+                        finality_token: Some(finalized_hash),
+                    });
+                }
+                let Some(parent) = header.get("parentHash").and_then(|v| v.as_str()) else {
+                    break;
+                };
+                if height == 0 || parent == cursor {
+                    break;
+                }
+                cursor = parent.to_owned();
+            }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+        Err(BackendError::Network(
+            "submitted transaction was not observed in finalized blocks before timeout".into(),
+        ))
+    }
+}
+
+#[cfg(feature = "http")]
+#[async_trait]
+impl LedgerNodeProvider for HttpNodeProvider {
+    async fn submit_and_wait(&self, tx: FinalizedDidTransaction) -> Result<LedgerFinalityReceipt, BackendError> {
+        let payload = if self.submit_method == "author_submitExtrinsic" {
+            tx.outer_extrinsic_bytes().ok_or_else(|| {
+                BackendError::Decode(
+                    "author_submitExtrinsic requires an encoded outer Substrate extrinsic, not raw tagged Ledger8 transaction bytes"
+                        .into(),
+                )
+            })?
+        } else {
+            tx.outer_extrinsic_bytes()
+                .unwrap_or_else(|| tx.tagged_ledger_tx_bytes())
+        };
+        let submitted_hex = format!("0x{}", hex::encode(payload));
+        let result = self
+            .rpc_call(&self.submit_method, serde_json::json!([submitted_hex.clone()]))
+            .await?;
+
+        if let Some(tx_hash) = result.as_str() {
+            return self
+                .finalized_receipt_for_extrinsic(tx_hash.to_owned(), &submitted_hex)
+                .await;
+        }
+
+        let tx_hash = result
+            .get("txHash")
+            .or_else(|| result.get("hash"))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let block_height = result
+            .get("blockHeight")
+            .or_else(|| result.get("height"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or_default();
+        if tx_hash.is_empty() || block_height == 0 {
+            return Err(BackendError::Decode(
+                "node result missing txHash/blockHeight; use author_submitExtrinsic or a provider-finality receipt"
+                    .into(),
+            ));
+        }
+        Ok(LedgerFinalityReceipt {
+            tx_hash,
+            block_height,
+            finality_token: result
+                .get("finalityToken")
+                .and_then(|v| v.as_str())
+                .map(ToOwned::to_owned),
+        })
+    }
+}
+
+#[cfg(feature = "node-subxt")]
+/// Substrate WebSocket node adapter for Midnight `send_mn_transaction` submission.
+///
+/// This is the native Ledger8 standalone path: it wraps the tagged, sealed Ledger
+/// transaction in the node runtime call `Midnight.send_mn_transaction`, submits
+/// it as an unsigned extrinsic, waits for finalized inclusion, requires
+/// `System.ExtrinsicSuccess`, rejects finalized `System.ExtrinsicFailed`, and
+/// returns exact finalized transaction/block evidence.
+#[derive(Debug, Clone)]
+pub struct SubxtNodeProvider {
+    websocket_url: String,
+    connect_timeout: std::time::Duration,
+    submission_timeout: std::time::Duration,
+}
+
+#[cfg(feature = "node-subxt")]
+impl SubxtNodeProvider {
+    /// Create a WebSocket node provider, for example `ws://127.0.0.1:9944`.
+    pub fn new(websocket_url: impl Into<String>) -> Self {
+        Self {
+            websocket_url: websocket_url.into(),
+            connect_timeout: std::time::Duration::from_secs(15),
+            submission_timeout: std::time::Duration::from_secs(120),
+        }
+    }
+
+    /// Override default bounded timeouts.
+    pub fn with_timeouts(
+        mut self,
+        connect_timeout: std::time::Duration,
+        submission_timeout: std::time::Duration,
+    ) -> Self {
+        self.connect_timeout = connect_timeout;
+        self.submission_timeout = submission_timeout;
+        self
+    }
+}
+
+#[cfg(feature = "node-subxt")]
+#[async_trait]
+impl LedgerNodeProvider for SubxtNodeProvider {
+    async fn submit_and_wait(&self, tx: FinalizedDidTransaction) -> Result<LedgerFinalityReceipt, BackendError> {
+        use subxt::{OnlineClient, SubstrateConfig, dynamic};
+
+        let tagged_ledger_tx = tx.tagged_ledger_tx_bytes().to_vec();
+        let client = tokio::time::timeout(
+            self.connect_timeout,
+            OnlineClient::<SubstrateConfig>::from_insecure_url(&self.websocket_url),
+        )
+        .await
+        .map_err(|_| BackendError::Network("node websocket connection timed out".into()))?
+        .map_err(|e| BackendError::Network(format!("node websocket: {e}")))?;
+
+        let call = dynamic::tx(
+            "Midnight",
+            "send_mn_transaction",
+            vec![dynamic::Value::from_bytes(tagged_ledger_tx)],
+        );
+        let unsigned = client
+            .tx()
+            .create_unsigned(&call)
+            .map_err(|e| BackendError::Network(format!("create unsigned Midnight transaction: {e}")))?;
+        let tx_hash = unsigned.hash().0;
+        let mut progress = tokio::time::timeout(self.submission_timeout, unsigned.submit_and_watch())
+            .await
+            .map_err(|_| BackendError::Timeout("submit unsigned Midnight transaction timed out".into()))?
+            .map_err(|e| BackendError::Network(format!("submit unsigned Midnight transaction: {e}")))?;
+
+        tokio::time::timeout(self.submission_timeout, async {
+            use subxt::tx::TxStatus;
+            loop {
+                let status = progress
+                    .next()
+                    .await
+                    .ok_or_else(|| BackendError::Network("submission status stream ended before finality".into()))?
+                    .map_err(|e| BackendError::Network(format!("submission status: {e}")))?;
+                match status {
+                    TxStatus::InFinalizedBlock(in_block) => {
+                        if in_block.extrinsic_hash().0 != tx_hash {
+                            return Err(BackendError::Network(
+                                "finalized extrinsic hash did not match submitted transaction".into(),
+                            ));
+                        }
+                        let events = in_block
+                            .fetch_events()
+                            .await
+                            .map_err(|e| BackendError::Network(format!("fetch finalized events: {e}")))?;
+                        let mut succeeded = false;
+                        let mut failed = false;
+                        for event in events.iter() {
+                            let event =
+                                event.map_err(|e| BackendError::Network(format!("decode finalized event: {e}")))?;
+                            if event.pallet_name() == "System" && event.variant_name() == "ExtrinsicSuccess" {
+                                succeeded = true;
+                            }
+                            if event.pallet_name() == "System" && event.variant_name() == "ExtrinsicFailed" {
+                                failed = true;
+                            }
+                        }
+                        return match (succeeded, failed) {
+                            (true, false) => {
+                                let finalized = client
+                                    .blocks()
+                                    .at(in_block.block_hash())
+                                    .await
+                                    .map_err(|e| BackendError::Network(format!("fetch finalized block: {e}")))?;
+                                Ok(LedgerFinalityReceipt {
+                                    tx_hash: format!("0x{}", hex::encode(tx_hash)),
+                                    block_height: u64::from(finalized.header().number),
+                                    finality_token: Some(format!("0x{}", hex::encode(in_block.block_hash().0))),
+                                })
+                            }
+                            (false, true) => Err(BackendError::Network("finalized extrinsic failed".into())),
+                            _ => Err(BackendError::Network(
+                                "finalized extrinsic did not emit a decisive System outcome".into(),
+                            )),
+                        };
+                    }
+                    TxStatus::InBestBlock(_) => {}
+                    TxStatus::Error { .. } | TxStatus::Invalid { .. } | TxStatus::Dropped { .. } => {
+                        return Err(BackendError::Network(
+                            "submission outcome unknown before finalized inclusion".into(),
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+        })
+        .await
+        .map_err(|_| BackendError::Timeout("finalized inclusion timed out".into()))?
+    }
+}
+
+#[cfg(feature = "http")]
+/// Minimal GraphQL-over-HTTP indexer adapter for `contractAction(address){state}`.
+#[derive(Debug, Clone)]
+pub struct HttpIndexerProvider {
+    client: reqwest::Client,
+    graphql_url: String,
+    address_hex: String,
+}
+
+#[cfg(feature = "http")]
+/// Normalize an indexer root or GraphQL endpoint to the single Ledger8 GraphQL path.
+pub fn normalize_indexer_graphql_url(url: &str) -> Result<String, BackendError> {
+    let mut parsed = reqwest::Url::parse(url).map_err(|e| BackendError::Network(format!("indexer URL parse: {e}")))?;
+    let path = parsed.path().trim_end_matches('/');
+    let normalized_path = if path.is_empty() || path == "/" {
+        "/api/v3/graphql".to_owned()
+    } else if path.ends_with("/api/v3/graphql") {
+        path.to_owned()
+    } else if let Some(prefix) = path.strip_suffix("/graphql") {
+        format!("{prefix}/api/v3/graphql")
+    } else {
+        format!("{path}/api/v3/graphql")
+    };
+    parsed.set_path(&normalized_path);
+    parsed.set_query(None);
+    parsed.set_fragment(None);
+    Ok(parsed.to_string())
+}
+
+#[cfg(feature = "http")]
+impl HttpIndexerProvider {
+    /// Create an HTTP indexer provider.
+    pub fn new(graphql_url: impl Into<String>, address_hex: impl Into<String>) -> Result<Self, BackendError> {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .build()
+            .map_err(|e| BackendError::Network(format!("indexer client: {e}")))?;
+        Ok(Self {
+            client,
+            graphql_url: normalize_indexer_graphql_url(&graphql_url.into())?,
+            address_hex: address_hex.into(),
+        })
+    }
+
+    /// Canonical GraphQL endpoint used by this provider.
+    pub fn graphql_url(&self) -> &str {
+        &self.graphql_url
+    }
+}
+
+#[cfg(feature = "http")]
+#[async_trait]
+impl LedgerIndexerProvider for HttpIndexerProvider {
+    async fn read_state_bytes(&self) -> Result<Vec<u8>, BackendError> {
+        #[derive(serde::Deserialize)]
+        struct GraphQlResponse {
+            data: Option<Data>,
+            errors: Option<Vec<GraphQlError>>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Data {
+            #[serde(rename = "contractAction")]
+            contract_action: Option<Action>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Action {
+            state: String,
+        }
+        #[derive(serde::Deserialize)]
+        struct GraphQlError {
+            message: String,
+        }
+        let body = serde_json::json!({
+            "query": "query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) { contractAction(address: $address, offset: $offset) { state } }",
+            "variables": { "address": self.address_hex, "offset": null },
+        });
+        let response = self
+            .client
+            .post(&self.graphql_url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| BackendError::Network(format!("indexer transport: {e}")))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(BackendError::Network(format!("indexer HTTP {status}")));
+        }
+        let payload: GraphQlResponse = response
+            .json()
+            .await
+            .map_err(|e| BackendError::Decode(format!("indexer response: {e}")))?;
+        if let Some(errors) = payload.errors
+            && !errors.is_empty()
+        {
+            return Err(BackendError::Network(
+                errors.into_iter().map(|e| e.message).collect::<Vec<_>>().join("; "),
+            ));
+        }
+        let state = payload
+            .data
+            .and_then(|d| d.contract_action)
+            .ok_or_else(|| BackendError::Other(format!("no contract state for {}", self.address_hex)))?
+            .state;
+        hex::decode(state.trim_start_matches("0x")).map_err(|e| BackendError::Decode(format!("indexer state hex: {e}")))
+    }
+
+    async fn reconcile_finality(&self, _receipt: &LedgerFinalityReceipt) -> Result<(), BackendError> {
+        let _ = self.read_state_bytes().await?;
+        Ok(())
     }
 }
 
@@ -360,11 +2265,201 @@ mod tests {
     use super::*;
     use crate::contract_call::DidContractCall;
 
+    fn point_hex(byte: u8) -> crate::contract_call::JubjubPointHex {
+        let h = hex::encode([byte; 32]);
+        crate::contract_call::JubjubPointHex::new(crate::contract_call::NewJubjubPointHex { x: h.clone(), y: h })
+            .unwrap()
+    }
+
+    fn ledger_config() -> LedgerContractCallConfig {
+        LedgerContractCallConfig {
+            operation: compact_runtime::ContractOperation::new(None),
+            communication_commitment_rand: compact_runtime::Fr::from(7u64),
+            key_location: compact_runtime::transient_crypto::proofs::KeyLocation(std::borrow::Cow::Borrowed(
+                "did-test-key",
+            )),
+        }
+    }
+
+    fn constructor_material() -> DidConstructorProofMaterial {
+        let state = empty_charged_state::<DefaultDB>();
+        let qctx = compact_runtime::QueryContext::new(state, compact_runtime::ContractAddress::default());
+        DidConstructorProofMaterial {
+            constructor_id: "constructor".into(),
+            contract_address: compact_runtime::ContractAddress::default(),
+            initial_query_context: qctx.clone(),
+            final_query_context: qctx,
+            input: compact_runtime::AlignedValue::from(0u8),
+            public_transcript: Vec::new(),
+            private_transcript_outputs: DidPrivateTranscriptOutputs::default(),
+            output: compact_runtime::AlignedValue::from(0u8),
+        }
+    }
+
     fn rt() -> tokio::runtime::Runtime {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap()
+    }
+
+    #[derive(Clone)]
+    struct TestDidPrivateState {
+        controller_seed: [u8; 32],
+        recovery_seed: [u8; 32],
+    }
+
+    #[derive(Clone)]
+    struct TestWitnesses;
+
+    impl crate::contract::Witnesses<TestDidPrivateState> for TestWitnesses {
+        fn get_schnorr_reduction<'a>(
+            &self,
+            _ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+            _challenge_hash: compact_runtime::Fr,
+        ) -> (TestDidPrivateState, (u8, u128)) {
+            unreachable!("pinned Compact output calls runtime schnorr_verify_jubjub directly")
+        }
+
+        fn local_controller_public_key<'a>(
+            &self,
+            ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+        ) -> (TestDidPrivateState, compact_runtime::JubjubPoint) {
+            (
+                ctx.private_state.clone(),
+                midnight_did_jubjub_schnorr::derive_public_key_from_seed(&ctx.private_state.controller_seed),
+            )
+        }
+
+        fn local_recovery_authority_public_key<'a>(
+            &self,
+            ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+        ) -> (TestDidPrivateState, compact_runtime::JubjubPoint) {
+            (
+                ctx.private_state.clone(),
+                midnight_did_jubjub_schnorr::derive_public_key_from_seed(&ctx.private_state.recovery_seed),
+            )
+        }
+
+        fn current_timestamp<'a>(
+            &self,
+            ctx: &compact_runtime::WitnessContext<crate::contract::Ledger<'a>, TestDidPrivateState>,
+        ) -> (TestDidPrivateState, u64) {
+            (ctx.private_state.clone(), 1)
+        }
+    }
+
+    struct TestPrivateStateStore(Mutex<TestDidPrivateState>);
+
+    impl DidPrivateStateStore<TestDidPrivateState> for TestPrivateStateStore {
+        fn load(&self) -> Result<TestDidPrivateState, BackendError> {
+            Ok(self
+                .0
+                .lock()
+                .map_err(|_| BackendError::Other("test private-state lock poisoned".into()))?
+                .clone())
+        }
+
+        fn store(&self, state: TestDidPrivateState) -> Result<(), BackendError> {
+            *self
+                .0
+                .lock()
+                .map_err(|_| BackendError::Other("test private-state lock poisoned".into()))? = state;
+            Ok(())
+        }
+    }
+
+    struct TestSeedSigner {
+        controller_seed: [u8; 32],
+        recovery_seed: [u8; 32],
+    }
+
+    impl TestSeedSigner {
+        fn sign(
+            seed: &[u8; 32],
+            digest: [compact_runtime::Fr; 4],
+        ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
+            use midnight_transient_crypto::curve::{EmbeddedFr, EmbeddedGroupAffine};
+            use midnight_transient_crypto::hash::transient_hash;
+            use sha2::{Digest, Sha256};
+
+            fn fr_be_bytes(field: &compact_runtime::Fr) -> [u8; 32] {
+                let mut out = [0u8; 32];
+                let le = field.as_le_bytes();
+                let n = le.len().min(32);
+                out[32 - n..].copy_from_slice(&le[..n]);
+                out.reverse();
+                out
+            }
+
+            fn nonce_from_seed(seed: &[u8; 32], digest: &[compact_runtime::Fr; 4]) -> EmbeddedFr {
+                let mut nonce_seed = Vec::with_capacity(
+                    midnight_did_jubjub_schnorr::NONCE_DOMAIN_V1.len() + seed.len() + digest.len() * 32,
+                );
+                nonce_seed.extend_from_slice(midnight_did_jubjub_schnorr::NONCE_DOMAIN_V1.as_bytes());
+                nonce_seed.extend_from_slice(seed);
+                for field in digest {
+                    nonce_seed.extend_from_slice(&fr_be_bytes(field));
+                }
+                let digest32 = Sha256::digest(nonce_seed);
+                let mut le = [0u8; 32];
+                for (slot, byte) in le.iter_mut().zip(digest32.iter().rev()) {
+                    *slot = *byte;
+                }
+                EmbeddedFr::from_le_bytes_wide(&le).expect("32-byte nonce hash reduces to scalar")
+            }
+
+            fn field_challenge(
+                announcement: &EmbeddedGroupAffine,
+                public_key: &EmbeddedGroupAffine,
+                digest: &[compact_runtime::Fr; 4],
+            ) -> Result<EmbeddedFr, BackendError> {
+                let ann_x = announcement
+                    .x()
+                    .ok_or_else(|| BackendError::Other("Schnorr announcement is the identity".into()))?;
+                let ann_y = announcement
+                    .y()
+                    .ok_or_else(|| BackendError::Other("Schnorr announcement is the identity".into()))?;
+                let pk_x = public_key
+                    .x()
+                    .ok_or_else(|| BackendError::Other("Schnorr public key is the identity".into()))?;
+                let pk_y = public_key
+                    .y()
+                    .ok_or_else(|| BackendError::Other("Schnorr public key is the identity".into()))?;
+                let challenge = transient_hash(&[ann_x, ann_y, pk_x, pk_y, digest[0], digest[1], digest[2], digest[3]]);
+                let mut le = challenge.as_le_bytes();
+                le.resize(32, 0);
+                le[31] = 0;
+                EmbeddedFr::from_le_bytes(&le)
+                    .ok_or_else(|| BackendError::Other("2^248 Schnorr challenge reduction escaped scalar field".into()))
+            }
+
+            let secret = midnight_did_jubjub_schnorr::seed_to_secret_scalar(seed);
+            let nonce = nonce_from_seed(seed, &digest);
+            let public_key = midnight_did_jubjub_schnorr::derive_public_key_from_seed(seed);
+            let announcement = EmbeddedGroupAffine::generator() * nonce;
+            let challenge = field_challenge(&announcement, &public_key, &digest)?;
+            Ok(compact_runtime::SchnorrSignature {
+                announcement,
+                response: midnight_did_jubjub_schnorr::field_from_scalar(&(nonce + challenge * secret)),
+            })
+        }
+    }
+
+    impl DidAuthorizationSigner for TestSeedSigner {
+        fn sign_controller(
+            &self,
+            digest: [compact_runtime::Fr; 4],
+        ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
+            Self::sign(&self.controller_seed, digest)
+        }
+
+        fn sign_recovery(
+            &self,
+            digest: [compact_runtime::Fr; 4],
+        ) -> Result<compact_runtime::SchnorrSignature, BackendError> {
+            Self::sign(&self.recovery_seed, digest)
+        }
     }
 
     #[test]
@@ -373,7 +2468,7 @@ mod tests {
         let backend = RecordingBackend::new();
         let call1 = DidContractCall::Deactivate;
         let call2 = DidContractCall::RotateControllerKey {
-            new_public_key: [3u8; 32],
+            new_public_key: point_hex(3),
         };
         let tx1 = BuiltTx { bytes: call1.encode() };
         let tx2 = BuiltTx { bytes: call2.encode() };
@@ -439,16 +2534,95 @@ mod tests {
         assert!(err.source().is_none());
     }
 
+    #[cfg(feature = "http")]
+    #[test]
+    fn indexer_graphql_url_normalizes_to_ledger8_path_once() {
+        for (input, expected) in [
+            ("http://indexer.example", "http://indexer.example/api/v3/graphql"),
+            ("http://indexer.example/", "http://indexer.example/api/v3/graphql"),
+            (
+                "http://indexer.example/api/v3/graphql",
+                "http://indexer.example/api/v3/graphql",
+            ),
+            (
+                "http://indexer.example/api/v3/graphql/",
+                "http://indexer.example/api/v3/graphql",
+            ),
+            (
+                "http://indexer.example/graphql",
+                "http://indexer.example/api/v3/graphql",
+            ),
+            (
+                "http://api-host.example/root/graphql?token=redacted#frag",
+                "http://api-host.example/root/api/v3/graphql",
+            ),
+        ] {
+            assert_eq!(normalize_indexer_graphql_url(input).unwrap(), expected);
+            assert_eq!(HttpIndexerProvider::new(input, "0x01").unwrap().graphql_url(), expected);
+        }
+    }
+
+    #[cfg(feature = "http")]
+    #[test]
+    fn http_node_provider_waits_for_finalized_block_containing_submitted_extrinsic() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let handle = thread::spawn(move || {
+            for _ in 0..3 {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut buf = [0u8; 8192];
+                let n = stream.read(&mut buf).unwrap();
+                let request = String::from_utf8_lossy(&buf[..n]);
+                let body = request.split("\r\n\r\n").nth(1).unwrap_or_default();
+                let value: serde_json::Value = serde_json::from_str(body).unwrap();
+                let method = value["method"].as_str().unwrap();
+                let result = match method {
+                    "author_submitExtrinsic" => serde_json::json!("0xtxhash"),
+                    "chain_getFinalizedHead" => serde_json::json!("0xfinal"),
+                    "chain_getBlock" => serde_json::json!({
+                        "block": {
+                            "header": {"number": "0x2a", "parentHash": "0xparent"},
+                            "extrinsics": ["0x7369676e6564"]
+                        }
+                    }),
+                    other => panic!("unexpected method {other}"),
+                };
+                let response = serde_json::json!({"jsonrpc":"2.0","id":1,"result":result}).to_string();
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    response.len(),
+                    response
+                )
+                .unwrap();
+            }
+        });
+
+        let provider = HttpNodeProvider::new(url, "author_submitExtrinsic").unwrap();
+        let receipt = rt()
+            .block_on(provider.submit_and_wait(FinalizedDidTransaction::from_outer_extrinsic(
+                b"ledger".to_vec(),
+                b"signed".to_vec(),
+            )))
+            .unwrap();
+        assert_eq!(receipt.tx_hash, "0xtxhash");
+        assert_eq!(receipt.block_height, 42);
+        assert_eq!(receipt.finality_token.as_deref(), Some("0xfinal"));
+        handle.join().unwrap();
+    }
+
     #[test]
     fn live_backend_constructs_without_wiring() {
-        // Only construction is testable: the trait methods are todo!()
-        // until the wallet/proof bridge lands.
         let via_new = LiveBackend::new();
         let via_default = LiveBackend::default();
         assert_eq!(format!("{via_new:?}"), format!("{via_default:?}"));
         let dbg = format!("{via_new:?}");
         assert!(dbg.contains("LiveBackend"), "got {dbg}");
-        assert!(dbg.contains("wallet_sdk"), "got {dbg}");
+        assert!(dbg.contains("providers: None"), "got {dbg}");
     }
 
     #[test]
@@ -552,5 +2726,565 @@ mod tests {
         let backend = ResolverBackend::with_snapshot(snap.clone());
         let got = rt.block_on(backend.read_snapshot()).unwrap();
         assert_eq!(got, snap);
+    }
+
+    #[test]
+    fn deployment_material_does_not_expose_private_state_surface() {
+        let source = include_str!("backend.rs");
+        let deployment_block = source
+            .split("pub struct DidDeploymentRequest")
+            .nth(1)
+            .and_then(|tail| tail.split("impl DidDeploymentRequest").next())
+            .expect("deployment request block present");
+        assert!(!deployment_block.contains("initial_private_state"));
+        assert!(!deployment_block.contains("PS"));
+        assert!(!deployment_block.contains("Debug"));
+        assert!(!deployment_block.contains("Serialize"));
+    }
+
+    #[test]
+    fn proof_material_keeps_witness_outputs_custody_scoped() {
+        let source = include_str!("backend.rs");
+        for type_name in [
+            "DidConstructorProofMaterial",
+            "DidPrePartitionContractCall",
+            "DidPrivateTranscriptOutputs",
+        ] {
+            let prefix = source
+                .split(&format!("struct {type_name}"))
+                .next()
+                .expect("type is present");
+            let derive_line = prefix.lines().rev().find(|line| line.contains("derive"));
+            assert!(
+                !derive_line.unwrap_or_default().contains("Clone"),
+                "{type_name} must not derive Clone"
+            );
+        }
+        let constructor_block = source
+            .split("pub struct DidConstructorProofMaterial")
+            .nth(1)
+            .and_then(|tail| tail.split("impl DidConstructorProofMaterial").next())
+            .expect("constructor proof block present");
+        let call_block = source
+            .split("pub struct DidPrePartitionContractCall")
+            .nth(1)
+            .and_then(|tail| tail.split("impl DidPrePartitionContractCall").next())
+            .expect("call proof block present");
+        for block in [constructor_block, call_block] {
+            assert!(!block.contains("pub private_transcript_outputs"));
+            assert!(!block.contains("pub(crate) private_transcript_outputs"));
+            assert!(!block.contains("Serialize"));
+            assert!(!block.contains("Deserialize"));
+        }
+        let dbg = format!("{:?}", constructor_material());
+        assert!(!dbg.contains("private_transcript_outputs"), "got {dbg}");
+        assert!(!dbg.contains("custody"), "got {dbg}");
+    }
+
+    #[test]
+    fn deployment_material_builds_actual_ledger_contract_deploy() {
+        let deployment = DidDeploymentRequest {
+            initial_contract_state: empty_charged_state::<DefaultDB>(),
+            initial_zswap_local_state: compact_runtime::ZswapLocalState::new(),
+            constructor: constructor_material(),
+        };
+        let nonce = midnight_base_crypto::hash::HashOutput([9u8; midnight_base_crypto::hash::PERSISTENT_HASH_BYTES]);
+        let deploy = deployment.to_contract_deploy(LedgerDeploymentConfig {
+            operations: midnight_storage::storage::HashMap::default(),
+            maintenance_authority: compact_runtime::ContractMaintenanceAuthority::default(),
+            nonce,
+        });
+        assert_eq!(deploy.initial_state.data, empty_charged_state::<DefaultDB>());
+        assert_eq!(deploy.nonce, nonce);
+        let _address = deploy.address();
+    }
+
+    #[derive(Clone)]
+    struct StaticDustStateProvider {
+        state: Arc<Mutex<midnight_ledger::dust::DustLocalState<DefaultDB>>>,
+    }
+
+    impl StaticDustStateProvider {
+        fn funded(seed: [u8; 32]) -> Self {
+            use midnight_base_crypto::hash::HashOutput;
+            use midnight_base_crypto::time::Timestamp;
+            use midnight_ledger::dust::{
+                DustGenerationInfo, DustLocalState, DustPublicKey, DustSecretKey, InitialNonce, QualifiedDustOutput,
+                dust_first_nonce,
+            };
+            let dust_key = DustSecretKey::derive_secret_key(&seed);
+            let owner = DustPublicKey::from(dust_key.clone());
+            let backing_night = InitialNonce(HashOutput([0x2a; midnight_base_crypto::hash::PERSISTENT_HASH_BYTES]));
+            let created = Timestamp::from_secs(1);
+            let generation = DustGenerationInfo {
+                value: u128::MAX / 8,
+                owner,
+                nonce: backing_night,
+                dtime: created,
+            };
+            let qdo = QualifiedDustOutput {
+                initial_value: u128::MAX / 8,
+                owner,
+                nonce: dust_first_nonce(&backing_night, &owner),
+                seq: 0,
+                ctime: created,
+                backing_night,
+                mt_index: 0,
+            };
+            let state = DustLocalState::<DefaultDB>::new(midnight_ledger::structure::INITIAL_PARAMETERS.dust)
+                .insert_generation_info(0, generation, Some(backing_night))
+                .unwrap()
+                .insert_commitment(0, qdo, true)
+                .unwrap()
+                .add_utxo(&qdo.nullifier(&dust_key), &qdo, None)
+                .unwrap();
+            Self {
+                state: Arc::new(Mutex::new(state)),
+            }
+        }
+    }
+
+    impl LocalLedger8DustStateProvider for StaticDustStateProvider {
+        fn load_dust_state(
+            &self,
+            _owner: &midnight_ledger::dust::DustPublicKey,
+            parameters: midnight_ledger::dust::DustParameters,
+        ) -> Result<midnight_ledger::dust::DustLocalState<DefaultDB>, BackendError> {
+            let state = self.state.lock().unwrap().clone();
+            assert_eq!(state.params, parameters);
+            Ok(state)
+        }
+
+        fn save_dust_state(
+            &self,
+            _owner: &midnight_ledger::dust::DustPublicKey,
+            state: &midnight_ledger::dust::DustLocalState<DefaultDB>,
+        ) -> Result<(), BackendError> {
+            *self.state.lock().unwrap() = state.clone();
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn local_ledger8_wallet_builds_balanced_deploy_prove_tx_without_exposing_custody() {
+        let deployment = DidDeploymentRequest {
+            initial_contract_state: empty_charged_state::<DefaultDB>(),
+            initial_zswap_local_state: compact_runtime::ZswapLocalState::new(),
+            constructor: constructor_material(),
+        };
+        let config = LocalLedger8WalletConfig::new(
+            "midnight-devnet",
+            3_600,
+            1,
+            LedgerDeploymentConfig {
+                operations: midnight_storage::storage::HashMap::default(),
+                maintenance_authority: compact_runtime::ContractMaintenanceAuthority::default(),
+                nonce: midnight_base_crypto::hash::HashOutput([3; midnight_base_crypto::hash::PERSISTENT_HASH_BYTES]),
+            },
+        );
+        let seed = [0x5a; 32];
+        let dust = Arc::new(StaticDustStateProvider::funded(seed));
+        let wallet = LocalLedger8WalletProvider::new(config, LocalLedger8DustSeed::new(seed), dust).unwrap();
+        let dbg = format!("{wallet:?}");
+        assert!(dbg.contains("<custody>"));
+        assert!(!dbg.contains("5a"));
+        assert!(wallet.dust_balance().unwrap() > 0);
+
+        let unbalanced = rt().block_on(wallet.build_deployment_tx(deployment)).unwrap();
+        let unbalanced_tx: LedgerProofInputTransaction =
+            midnight_serialize::tagged_deserialize(&unbalanced.bytes[..]).unwrap();
+        assert_eq!(unbalanced_tx.deploys().count(), 1);
+
+        let balanced = rt().block_on(wallet.balance_tx(unbalanced)).unwrap();
+        let (balanced_tx, proving_keys): LedgerProveTxRequest =
+            midnight_serialize::tagged_deserialize(balanced.tagged_prove_tx_request_bytes()).unwrap();
+        assert_eq!(proving_keys.len(), 0);
+        assert_eq!(balanced_tx.deploys().count(), 1);
+        assert!(
+            balanced_tx
+                .fees(&midnight_ledger::structure::INITIAL_PARAMETERS, false)
+                .unwrap()
+                > 0
+        );
+    }
+
+    #[test]
+    fn generated_material_converts_to_ledger8_prepartition_shape() {
+        let state = empty_charged_state::<DefaultDB>();
+        let qctx = compact_runtime::QueryContext::new(state, compact_runtime::ContractAddress::default());
+        let call = DidPrePartitionContractCall {
+            circuit_id: "deactivate".into(),
+            contract_address: compact_runtime::ContractAddress::default(),
+            initial_query_context: qctx.clone(),
+            final_query_context: qctx,
+            input: compact_runtime::AlignedValue::from(1u8),
+            public_transcript: Vec::new(),
+            private_transcript_outputs: DidPrivateTranscriptOutputs::default(),
+            output: compact_runtime::AlignedValue::from(2u8),
+        };
+        let ledger = call.into_ledger_prepartition_contract_call(ledger_config());
+        assert_eq!(&ledger.entry_point[..], b"deactivate");
+        assert_eq!(ledger.pre_transcript.program.len(), 0);
+        assert_eq!(ledger.private_transcript_outputs.len(), 0);
+        assert_eq!(ledger.communication_commitment_rand, compact_runtime::Fr::from(7u64));
+    }
+
+    #[test]
+    fn generated_did_mutation_extracts_one_folded_root_call_for_ledger8() {
+        let controller_seed = [0x11; 32];
+        let recovery_seed = [0x22; 32];
+        let private_state = Arc::new(TestPrivateStateStore(Mutex::new(TestDidPrivateState {
+            controller_seed,
+            recovery_seed,
+        })));
+        let signer = Arc::new(TestSeedSigner {
+            controller_seed,
+            recovery_seed,
+        });
+        let executor = GeneratedDidExecutor::new(
+            TestWitnesses,
+            private_state,
+            signer,
+            compact_runtime::ContractAddress::default(),
+        );
+        let deployment = executor.deployment_request().expect("generated constructor executes");
+
+        let call = executor
+            .execute(deployment.initial_contract_state, DidContractCall::Deactivate)
+            .expect("generated deactivation extracts a single folded root call");
+        assert_eq!(call.circuit_id(), "deactivate");
+        assert!(call.public_transcript_len() > 0);
+
+        let ledger = call.into_ledger_prepartition_contract_call(ledger_config());
+        assert_eq!(&ledger.entry_point[..], b"deactivate");
+        assert!(
+            !ledger.pre_transcript.program.is_empty(),
+            "real generated DID mutation must carry the root public transcript"
+        );
+        assert!(
+            !ledger.private_transcript_outputs.is_empty(),
+            "real generated DID mutation must carry folded nested witness outputs for the root call"
+        );
+    }
+
+    #[derive(Default)]
+    struct FakeLive {
+        events: Mutex<Vec<&'static str>>,
+        fail_balance: Mutex<Option<BackendError>>,
+        fail_prove: Mutex<Option<BackendError>>,
+        fail_submit: Mutex<Option<BackendError>>,
+        fail_reconcile: Mutex<Option<BackendError>>,
+        snapshot: Mutex<DidLedgerSnapshot>,
+    }
+
+    impl FakeLive {
+        fn events(&self) -> Vec<&'static str> {
+            self.events.lock().unwrap().clone()
+        }
+
+        fn providers(self: &Arc<Self>) -> LiveProviders {
+            LiveProviders::new(self.clone(), self.clone(), self.clone(), self.clone(), self.clone())
+        }
+    }
+
+    impl DidContractExecutor for FakeLive {
+        fn execute(
+            &self,
+            _state: ChargedState<DefaultDB>,
+            call: DidContractCall,
+        ) -> Result<DidPrePartitionContractCall, BackendError> {
+            self.events.lock().unwrap().push("execute");
+            assert_eq!(call, DidContractCall::Deactivate);
+            let state = empty_charged_state::<DefaultDB>();
+            let qctx = compact_runtime::QueryContext::new(state, compact_runtime::ContractAddress::default());
+            Ok(DidPrePartitionContractCall {
+                circuit_id: "deactivate".into(),
+                contract_address: compact_runtime::ContractAddress::default(),
+                initial_query_context: qctx.clone(),
+                final_query_context: qctx,
+                input: compact_runtime::AlignedValue::from(0u8),
+                public_transcript: Vec::new(),
+                private_transcript_outputs: DidPrivateTranscriptOutputs::default(),
+                output: compact_runtime::AlignedValue::from(0u8),
+            })
+        }
+    }
+
+    #[async_trait]
+    impl LedgerWalletProvider for FakeLive {
+        async fn build_deployment_tx(
+            &self,
+            deployment: DidDeploymentRequest,
+        ) -> Result<UnbalancedDidTransaction, BackendError> {
+            self.events.lock().unwrap().push("build_deployment");
+            assert_eq!(deployment.constructor.constructor_id, "constructor");
+            assert_eq!(deployment.initial_contract_state, empty_charged_state::<DefaultDB>());
+            Ok(UnbalancedDidTransaction {
+                bytes: b"unbalanced".to_vec(),
+            })
+        }
+
+        async fn build_unbalanced_tx(
+            &self,
+            call: DidPrePartitionContractCall,
+        ) -> Result<UnbalancedDidTransaction, BackendError> {
+            self.events.lock().unwrap().push("build_unbalanced");
+            assert_eq!(call.circuit_id, "deactivate");
+            Ok(UnbalancedDidTransaction {
+                bytes: b"unbalanced".to_vec(),
+            })
+        }
+
+        async fn balance_tx(&self, tx: UnbalancedDidTransaction) -> Result<BalancedDidTransaction, BackendError> {
+            self.events.lock().unwrap().push("balance");
+            assert_eq!(tx.bytes, b"unbalanced");
+            if let Some(err) = self.fail_balance.lock().unwrap().take() {
+                return Err(err);
+            }
+            Ok(BalancedDidTransaction::from_tagged_prove_tx_request_bytes_for_test(
+                b"balanced".to_vec(),
+            ))
+        }
+
+        async fn finalize_proven_tx(&self, tx: ProvedDidTransaction) -> Result<FinalizedDidTransaction, BackendError> {
+            self.events.lock().unwrap().push("finalize");
+            assert_eq!(tx.tagged_proven_tx_bytes(), b"proved");
+            Ok(FinalizedDidTransaction::from_outer_extrinsic(
+                b"proved".to_vec(),
+                b"signed".to_vec(),
+            ))
+        }
+    }
+
+    #[async_trait]
+    impl LedgerProofProvider for FakeLive {
+        async fn prove_tx(&self, tx: BalancedDidTransaction) -> Result<ProvedDidTransaction, BackendError> {
+            self.events.lock().unwrap().push("prove");
+            assert_eq!(tx.tagged_prove_tx_request_bytes(), b"balanced");
+            if let Some(err) = self.fail_prove.lock().unwrap().take() {
+                return Err(err);
+            }
+            Ok(ProvedDidTransaction::from_tagged_proven_tx_bytes_for_test(
+                b"proved".to_vec(),
+            ))
+        }
+    }
+
+    #[async_trait]
+    impl LedgerNodeProvider for FakeLive {
+        async fn submit_and_wait(&self, tx: FinalizedDidTransaction) -> Result<LedgerFinalityReceipt, BackendError> {
+            self.events.lock().unwrap().push("submit");
+            assert_eq!(tx.outer_extrinsic_bytes(), Some(&b"signed"[..]));
+            if let Some(err) = self.fail_submit.lock().unwrap().take() {
+                return Err(err);
+            }
+            Ok(LedgerFinalityReceipt {
+                tx_hash: "tx-1".into(),
+                block_height: 12,
+                finality_token: Some("final".into()),
+            })
+        }
+    }
+
+    #[async_trait]
+    impl LedgerIndexerProvider for FakeLive {
+        async fn read_state_bytes(&self) -> Result<Vec<u8>, BackendError> {
+            unreachable!("fake overrides read_state")
+        }
+
+        async fn read_state(&self) -> Result<ChargedState<DefaultDB>, BackendError> {
+            self.events.lock().unwrap().push("read_state");
+            Ok(empty_charged_state::<DefaultDB>())
+        }
+
+        async fn read_snapshot(&self) -> Result<DidLedgerSnapshot, BackendError> {
+            self.events.lock().unwrap().push("read_snapshot");
+            Ok(self.snapshot.lock().unwrap().clone())
+        }
+
+        async fn reconcile_finality(&self, receipt: &LedgerFinalityReceipt) -> Result<(), BackendError> {
+            self.events.lock().unwrap().push("reconcile");
+            assert_eq!(receipt.tx_hash, "tx-1");
+            if let Some(err) = self.fail_reconcile.lock().unwrap().take() {
+                return Err(err);
+            }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn live_backend_unconfigured_returns_typed_errors() {
+        let rt = rt();
+        let backend = LiveBackend::new();
+        assert_eq!(
+            rt.block_on(backend.read_state()),
+            Err(BackendError::Unconfigured("LiveProviders"))
+        );
+        assert_eq!(
+            rt.block_on(backend.submit_tx(BuiltTx::default())),
+            Err(BackendError::Unconfigured("LiveProviders"))
+        );
+    }
+
+    #[test]
+    fn live_backend_deploy_runs_provider_pipeline_and_returns_finality() {
+        let rt = rt();
+        let fake = Arc::new(FakeLive::default());
+        let backend = LiveBackend::with_providers(fake.providers());
+        let deployment = DidDeploymentRequest {
+            initial_contract_state: empty_charged_state::<DefaultDB>(),
+            initial_zswap_local_state: compact_runtime::ZswapLocalState::new(),
+            constructor: constructor_material(),
+        };
+        let got = rt.block_on(backend.submit_deployment(deployment)).unwrap();
+        assert_eq!(got.tx_hash, "tx-1");
+        assert_eq!(got.block_height, 12);
+        assert_eq!(
+            fake.events(),
+            vec![
+                "build_deployment",
+                "balance",
+                "prove",
+                "finalize",
+                "submit",
+                "reconcile"
+            ]
+        );
+    }
+
+    #[test]
+    fn live_backend_submit_runs_provider_pipeline_and_returns_finality() {
+        let rt = rt();
+        let fake = Arc::new(FakeLive::default());
+        let backend = LiveBackend::with_providers(fake.providers());
+        let receipt = rt
+            .block_on(backend.submit_tx(BuiltTx {
+                bytes: DidContractCall::Deactivate.encode(),
+            }))
+            .unwrap();
+        assert_eq!(
+            receipt,
+            FinalizedTxData {
+                tx_hash: "tx-1".into(),
+                block_height: 12
+            }
+        );
+        assert_eq!(
+            fake.events(),
+            vec![
+                "read_state",
+                "execute",
+                "build_unbalanced",
+                "balance",
+                "prove",
+                "finalize",
+                "submit",
+                "reconcile"
+            ]
+        );
+    }
+
+    #[test]
+    fn live_backend_read_snapshot_uses_indexer_mapping_port() {
+        let rt = rt();
+        let fake = Arc::new(FakeLive::default());
+        fake.snapshot.lock().unwrap().version = 99;
+        let backend = LiveBackend::with_providers(fake.providers());
+        let got = rt.block_on(backend.read_snapshot()).unwrap();
+        assert_eq!(got.version, 99);
+        assert_eq!(fake.events(), vec!["read_snapshot"]);
+    }
+
+    #[test]
+    fn live_backend_failure_timeout_cancellation_are_not_retried() {
+        let rt = rt();
+
+        let fake = Arc::new(FakeLive::default());
+        *fake.fail_balance.lock().unwrap() = Some(BackendError::Other("insufficient funds".into()));
+        let backend = LiveBackend::with_providers(fake.providers());
+        let err = rt
+            .block_on(backend.submit_tx(BuiltTx {
+                bytes: DidContractCall::Deactivate.encode(),
+            }))
+            .unwrap_err();
+        assert_eq!(err, BackendError::Other("insufficient funds".into()));
+        assert_eq!(
+            fake.events(),
+            vec!["read_state", "execute", "build_unbalanced", "balance"]
+        );
+
+        let fake = Arc::new(FakeLive::default());
+        *fake.fail_prove.lock().unwrap() = Some(BackendError::Timeout("proof-server".into()));
+        let backend = LiveBackend::with_providers(fake.providers());
+        let err = rt
+            .block_on(backend.submit_tx(BuiltTx {
+                bytes: DidContractCall::Deactivate.encode(),
+            }))
+            .unwrap_err();
+        assert_eq!(err, BackendError::Timeout("proof-server".into()));
+        assert_eq!(
+            fake.events(),
+            vec!["read_state", "execute", "build_unbalanced", "balance", "prove"]
+        );
+
+        let fake = Arc::new(FakeLive::default());
+        *fake.fail_submit.lock().unwrap() = Some(BackendError::Cancelled("node".into()));
+        let backend = LiveBackend::with_providers(fake.providers());
+        let err = rt
+            .block_on(backend.submit_tx(BuiltTx {
+                bytes: DidContractCall::Deactivate.encode(),
+            }))
+            .unwrap_err();
+        assert_eq!(err, BackendError::Cancelled("node".into()));
+        assert_eq!(
+            fake.events(),
+            vec![
+                "read_state",
+                "execute",
+                "build_unbalanced",
+                "balance",
+                "prove",
+                "finalize",
+                "submit"
+            ]
+        );
+    }
+
+    #[test]
+    fn live_backend_reconciliation_failure_and_restart_does_not_resubmit() {
+        let rt = rt();
+        let fake = Arc::new(FakeLive::default());
+        *fake.fail_reconcile.lock().unwrap() = Some(BackendError::Reconciliation("indexer lag".into()));
+        let backend = LiveBackend::with_providers(fake.providers());
+        let err = rt
+            .block_on(backend.submit_tx(BuiltTx {
+                bytes: DidContractCall::Deactivate.encode(),
+            }))
+            .unwrap_err();
+        assert_eq!(err, BackendError::Reconciliation("indexer lag".into()));
+        assert_eq!(fake.events().iter().filter(|event| **event == "submit").count(), 1);
+
+        let restarted = LiveBackend::with_providers(fake.providers());
+        rt.block_on(restarted.reconcile_finality(&LedgerFinalityReceipt {
+            tx_hash: "tx-1".into(),
+            block_height: 12,
+            finality_token: Some("final".into()),
+        }))
+        .unwrap();
+        assert_eq!(fake.events().iter().filter(|event| **event == "submit").count(), 1);
+        assert_eq!(
+            fake.events(),
+            vec![
+                "read_state",
+                "execute",
+                "build_unbalanced",
+                "balance",
+                "prove",
+                "finalize",
+                "submit",
+                "reconcile",
+                "reconcile",
+            ]
+        );
     }
 }

@@ -31,8 +31,10 @@ Rust port. This is the only crate in the workspace that touches
     back into a typed `DidContractCall` for assertion in tests.
   - `ResolverBackend` — serves a stored `DidLedgerSnapshot` for
     read-only resolution flows.
-  - `LiveBackend` — the wallet + proof-server + indexer bridge;
-    `todo!()` in v0.5.0, tracked as the LiveBackend backlog issue.
+  - `LiveBackend` — provider-composed Ledger8 wallet + proof-server +
+    node + indexer bridge used by the local standalone path; callers inject
+    custody/proof/node/indexer providers and may reconcile a persisted
+    finalized receipt after restart without resubmitting.
 - `witnesses`, controller-key helpers — private-state plumbing the
   generated code requires.
 

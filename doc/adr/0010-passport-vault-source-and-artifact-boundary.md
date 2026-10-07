@@ -61,4 +61,3 @@ features will not select mutually exclusive ledger graphs.
 - Contract policy changes remain explicit source-version reviews.
 - This first slice establishes ownership but does not yet authorize Oxid to
   delete its local source.
-

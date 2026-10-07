@@ -35,7 +35,16 @@ use serde::Serialize;
 use crate::error::{FlatError, decode_hex_32};
 use crate::handle::DidServiceHandle;
 
-/// `create_did(handle, seed_hex, controller_public_key_hex) -> JSON`.
+fn parse_jubjub_point_hex(
+    x: String,
+    y: String,
+    field: &str,
+) -> Result<midnight_did_runtime::JubjubPointHex, FlatError> {
+    midnight_did_runtime::JubjubPointHex::new(midnight_did_runtime::NewJubjubPointHex { x, y })
+        .map_err(|e| FlatError::invalid_input(format!("{field}: {e}")))
+}
+
+/// `create_did(handle, seed_hex, controller_public_key_x_hex, controller_public_key_y_hex) -> JSON`.
 ///
 /// Records the controller key into the mock contract's private-state store
 /// and returns a JSON envelope describing the seeded DID. In production this
@@ -46,28 +55,34 @@ use crate::handle::DidServiceHandle;
 pub async fn create_did(
     handle: Arc<DidServiceHandle>,
     seed_hex: String,
-    controller_public_key_hex: String,
+    controller_public_key_x_hex: String,
+    controller_public_key_y_hex: String,
 ) -> Result<String, FlatError> {
-    let _seed = decode_hex_32(&seed_hex, "seed_hex")?;
-    let _pk = decode_hex_32(&controller_public_key_hex, "controller_public_key_hex")?;
+    let seed = decode_hex_32(&seed_hex, "seed_hex")?;
+    let _pk = parse_jubjub_point_hex(
+        controller_public_key_x_hex.clone(),
+        controller_public_key_y_hex.clone(),
+        "controller_public_key",
+    )?;
 
     let contract = handle.contract.lock().await;
-    let _state = midnight_did_api::did_operations::create_did(&*contract, &handle.store, _seed)
+    let _state = midnight_did_api::did_operations::create_did(&*contract, &handle.store, seed)
         .await
         .map_err(FlatError::from)?;
 
     let did_subject = midnight_did_api::subject::get_did_subject(&*contract).map_err(FlatError::from)?;
     Ok(serde_json::to_string(&CreateDidResponse {
         did: did_subject,
-        controller_public_key_hex,
+        controller_public_key_x_hex,
+        controller_public_key_y_hex,
     })?)
 }
 
-/// `rotate_controller_key(handle, did, new_secret_hex, new_pk_hex) -> JSON`.
+/// `rotate_controller_key(handle, did, new_secret_hex, new_pk_x_hex, new_pk_y_hex) -> JSON`.
 ///
 /// Drives the `rotateControllerKey` circuit on the mock contract. The new
 /// controller **secret** key is passed explicitly (as hex) so the API layer
-/// persists the secret that actually matches `new_controller_public_key_hex`
+/// persists the secret that actually matches `new_controller_public_key_(x,y)_hex`
 /// as the active controller private state — a foreign caller must supply the
 /// keypair it derived off-device, since this layer keeps derivation out of
 /// the circuit path. The `did_subject` argument is informational (the handle
@@ -77,10 +92,15 @@ pub async fn rotate_controller_key(
     handle: Arc<DidServiceHandle>,
     did_subject: String,
     new_secret_key_hex: String,
-    new_controller_public_key_hex: String,
+    new_controller_public_key_x_hex: String,
+    new_controller_public_key_y_hex: String,
 ) -> Result<String, FlatError> {
     let new_sk = decode_hex_32(&new_secret_key_hex, "new_secret_key_hex")?;
-    let new_pk = decode_hex_32(&new_controller_public_key_hex, "new_controller_public_key_hex")?;
+    let new_pk = parse_jubjub_point_hex(
+        new_controller_public_key_x_hex,
+        new_controller_public_key_y_hex,
+        "new_controller_public_key",
+    )?;
 
     let contract = handle.contract.lock().await;
     let result =
@@ -95,7 +115,7 @@ pub async fn rotate_controller_key(
     })?)
 }
 
-/// `recover_controller_key(handle, did, new_secret_hex, new_pk_hex) -> JSON`.
+/// `recover_controller_key(handle, did, new_secret_hex, new_pk_x_hex, new_pk_y_hex) -> JSON`.
 ///
 /// Drives the recovery-authority-authorized `recoverControllerKey` circuit on
 /// the mock contract — the path to reset a lost controller key. Same FFI shape
@@ -107,10 +127,15 @@ pub async fn recover_controller_key(
     handle: Arc<DidServiceHandle>,
     did_subject: String,
     new_secret_key_hex: String,
-    new_controller_public_key_hex: String,
+    new_controller_public_key_x_hex: String,
+    new_controller_public_key_y_hex: String,
 ) -> Result<String, FlatError> {
     let new_sk = decode_hex_32(&new_secret_key_hex, "new_secret_key_hex")?;
-    let new_pk = decode_hex_32(&new_controller_public_key_hex, "new_controller_public_key_hex")?;
+    let new_pk = parse_jubjub_point_hex(
+        new_controller_public_key_x_hex,
+        new_controller_public_key_y_hex,
+        "new_controller_public_key",
+    )?;
 
     let contract = handle.contract.lock().await;
     let result =
@@ -163,7 +188,8 @@ pub async fn deactivate(handle: Arc<DidServiceHandle>, did_subject: String) -> R
 #[derive(Debug, Serialize)]
 struct CreateDidResponse {
     did: String,
-    controller_public_key_hex: String,
+    controller_public_key_x_hex: String,
+    controller_public_key_y_hex: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -189,32 +215,41 @@ mod tests {
     #[tokio::test]
     async fn create_did_returns_json_with_did_subject() {
         let handle = DidServiceHandle::new();
-        let json = create_did(handle, SEED.into(), PK.into()).await.unwrap();
+        let json = create_did(handle, SEED.into(), PK.into(), PK.into()).await.unwrap();
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(v["did"].as_str().unwrap().starts_with("did:midnight:testnet:"));
-        assert_eq!(v["controller_public_key_hex"], PK);
+        assert_eq!(v["controller_public_key_x_hex"], PK);
+        assert_eq!(v["controller_public_key_y_hex"], PK);
     }
 
     #[tokio::test]
     async fn create_did_rejects_bad_hex() {
         let handle = DidServiceHandle::new();
-        let err = create_did(handle, "not-hex".into(), PK.into()).await.unwrap_err();
+        let err = create_did(handle, "not-hex".into(), PK.into(), PK.into())
+            .await
+            .unwrap_err();
         assert!(matches!(err, FlatError::InvalidInput { .. }));
     }
 
     #[tokio::test]
     async fn create_did_rejects_short_hex() {
         let handle = DidServiceHandle::new();
-        let err = create_did(handle, "ab".into(), PK.into()).await.unwrap_err();
+        let err = create_did(handle, "ab".into(), PK.into(), PK.into()).await.unwrap_err();
         assert!(matches!(err, FlatError::InvalidInput { .. }));
     }
 
     #[tokio::test]
     async fn rotate_controller_key_round_trip() {
         let handle = DidServiceHandle::new();
-        let json = rotate_controller_key(handle, "did:midnight:testnet:x".into(), SEED.into(), PK.into())
-            .await
-            .unwrap();
+        let json = rotate_controller_key(
+            handle,
+            "did:midnight:testnet:x".into(),
+            SEED.into(),
+            PK.into(),
+            PK.into(),
+        )
+        .await
+        .unwrap();
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["did"], "did:midnight:testnet:x");
         assert!(v.get("tx_hash").is_some());
@@ -223,9 +258,15 @@ mod tests {
     #[tokio::test]
     async fn recover_controller_key_round_trip() {
         let handle = DidServiceHandle::new();
-        let json = recover_controller_key(handle, "did:midnight:testnet:x".into(), SEED.into(), PK.into())
-            .await
-            .unwrap();
+        let json = recover_controller_key(
+            handle,
+            "did:midnight:testnet:x".into(),
+            SEED.into(),
+            PK.into(),
+            PK.into(),
+        )
+        .await
+        .unwrap();
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["did"], "did:midnight:testnet:x");
         assert!(v.get("tx_hash").is_some());
@@ -240,11 +281,14 @@ mod tests {
         const NEW_PK: &str = "0404040404040404040404040404040404040404040404040404040404040404";
 
         let handle = DidServiceHandle::new();
-        create_did(handle.clone(), SEED.into(), PK.into()).await.unwrap();
+        create_did(handle.clone(), SEED.into(), PK.into(), PK.into())
+            .await
+            .unwrap();
         rotate_controller_key(
             handle.clone(),
             "did:midnight:testnet:x".into(),
             NEW_SK.into(),
+            NEW_PK.into(),
             NEW_PK.into(),
         )
         .await
