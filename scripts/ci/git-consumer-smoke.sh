@@ -5,8 +5,8 @@
 
 set -euo pipefail
 
-ledger_revision=2cce0f8f26e8ab1398af1c9ed61b087c28611a3f
-compact_revision=e17b2a42227efa84281c6ce41868b66eb909e236
+ledger_revision=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc
+compact_revision=32e314770da10cc62dab30dcfeb340ec4c6bcb64
 proofs_revision=532629b044a88473a7175f4a96c2511c91156136
 repository_url=https://github.com/MediaNoxLabs/midnight-identity.git
 revision=

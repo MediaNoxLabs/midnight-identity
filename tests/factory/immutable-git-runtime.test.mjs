@@ -9,8 +9,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const ledgerRevision = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f";
-const compactRevision = "e17b2a42227efa84281c6ce41868b66eb909e236";
+const ledgerRevision = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
+const compactRevision = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
 const proofsRevision = "532629b044a88473a7175f4a96c2511c91156136";
 const ledgerVersions = new Map([
   ["midnight-base-crypto", "1.0.1"],
