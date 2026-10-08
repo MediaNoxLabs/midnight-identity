@@ -34,6 +34,23 @@
         "zkir-wasm": "zkir-wasm"
       },
       "locked": {
+        "lastModified": 1791330828,
+        "narHash": "sha256-ve1phmE3ZfDmQ/cgP7ekSuF4xiNPLE/9gjl+gS4qZ+0=",
+        "owner": "MediaNoxLabs",
+        "repo": "compact",
+        "rev": "55ba765f5484a47d9184824a619f93893448c740",
+        "type": "github"
+      },
+      "original": {
+        "owner": "MediaNoxLabs",
+        "repo": "compact",
+        "rev": "55ba765f5484a47d9184824a619f93893448c740",
+        "type": "github"
+      }
+    },
+    "compact-runtime": {
+      "flake": false,
+      "locked": {
         "lastModified": 1791487699,
         "narHash": "sha256-yQcsQtfXETJfNH1oZspwC8FJmzOWpJnZDs2sKxFCIm8=",
         "owner": "MediaNoxLabs",
@@ -542,6 +559,7 @@
     "root": {
       "inputs": {
         "compact": "compact",
+        "compact-runtime": "compact-runtime",
         "flake-parts": "flake-parts",
         "midnight-ledger": "midnight-ledger",
         "midnight-zk": "midnight-zk",

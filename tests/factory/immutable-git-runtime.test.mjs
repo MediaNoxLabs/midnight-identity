@@ -71,7 +71,10 @@ test("Nix pins the same immutable sources and exposes only opt-in Cargo override
     readFile(path.join(root, "scripts", "cargo-with-nix-overrides.sh"), "utf8"),
   ]);
   assert.match(flake, new RegExp(`rev\\s*=\\s*"${ledgerRevision}"`, "u"));
-  assert.match(flake, new RegExp(`rev\\s*=\\s*"${compactRevision}"`, "u"));
+  assert.match(
+    flake,
+    new RegExp(`compact-runtime\\s*=\\s*\\{[\\s\\S]*?rev\\s*=\\s*"${compactRevision}"`, "u"),
+  );
   assert.match(flake, new RegExp(`rev\\s*=\\s*"${proofsRevision}"`, "u"));
   assert.match(rustTools, /"aarch64-apple-ios-sim"/u);
   assert.match(wrapper, /patch\.crates-io/u);

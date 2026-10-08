@@ -48,10 +48,19 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
+      # Authenticated compiler/toolchain revision used by generated VC and
+      # Passport artifacts. Runtime upgrades must not rewrite that provenance.
+      rev   = "55ba765f5484a47d9184824a619f93893448c740";
+      inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
+    };
+    compact-runtime = {
+      type  = "github";
+      owner = "MediaNoxLabs";
+      repo  = "compact";
       # Native Rust runtime with a single coherent, mobile-safe Ledger8 source
       # cone. Cargo.toml pins this same revision for non-Nix consumers.
       rev   = "3172c8588bfbf77b39fffd1ef71769962951b572";
-      inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
+      flake = false;
     };
   };
 

@@ -229,16 +229,15 @@ jobs:
 
       - name: Check native DID runtime for the iOS simulator
         if: ${{ matrix.os == 'macos-latest' }}
+        env:
+          DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
         run: |
-          nix develop .#rust --command bash -c '
-            export PATH="/usr/bin:/bin:$PATH"
-            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-            export SDKROOT="$(/usr/bin/xcrun --sdk iphonesimulator --show-sdk-path)"
-            cargo check --locked \
-              -p midnight-did-runtime \
-              --target aarch64-apple-ios-sim \
-              --no-default-features
-          '
+          export PATH="/usr/bin:/bin:$PATH"
+          export SDKROOT="$(/usr/bin/xcrun --sdk iphonesimulator --show-sdk-path)"
+          nix develop .#rust --command cargo check --locked \
+            -p midnight-did-runtime \
+            --target aarch64-apple-ios-sim \
+            --no-default-features
 
       - name: Save trusted macOS Cargo source cache
         if: ${{ github.event_name == 'push' && matrix.os == 'macos-latest' && steps.cargo-cache.outputs.cache-hit != 'true' }}

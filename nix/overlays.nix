@@ -8,8 +8,8 @@
       _module.args = {
         midnightLedgerSrc          = midnightDidRsLib.sources.midnight-ledger;
         midnightZkSrc              = midnightDidRsLib.sources.midnight-zk;
-        compactRuntimeRsSrc        = "${inputs.compact}/runtime-rs";
-        compactRuntimeRsMacrosSrc  = "${inputs.compact}/runtime-rs-macros";
+        compactRuntimeRsSrc        = "${inputs.compact-runtime}/runtime-rs";
+        compactRuntimeRsMacrosSrc  = "${inputs.compact-runtime}/runtime-rs-macros";
       };
     };
 }
