@@ -91,7 +91,7 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   assert.match(script, /cargo metadata/u);
   assert.match(script, /cargo check/u);
   assert.match(script, /midnight-did-runtime/u);
-  assert.match(script, /http,node-subxt/u);
+  assert.match(script, /features\s*=\s*\[\s*"http"\s*,\s*"node-subxt"\s*\]/u);
   assert.match(script, new RegExp(ledgerRevision, "u"));
   assert.match(script, new RegExp(proofsRevision, "u"));
   assert.match(workflow, /bash scripts\/ci\/git-consumer-smoke\.sh/u);
