@@ -5,8 +5,8 @@
 
 set -euo pipefail
 
-ledger_revision=b85f5d8e503fd1d7a1b128bbc1d7156baf823a65
-compact_revision=66ec5f032d2bccbaf2b9c03e5e47d7bd43defe82
+ledger_revision=30fd606e5652d9146e8c7d453c5c01ea03962a89
+compact_revision=3172c8588bfbf77b39fffd1ef71769962951b572
 proofs_revision=532629b044a88473a7175f4a96c2511c91156136
 repository_url=https://github.com/MediaNoxLabs/midnight-identity.git
 revision=
@@ -55,20 +55,9 @@ publish = false
 [dependencies]
 midnight-did-runtime = { git = "$repository_url", rev = "$revision", features = ["http", "node-subxt"] }
 
-# Cargo does not inherit patches from a Git dependency. Keep Compact's
-# crates.io-shaped Ledger cone on the same source as the runtime's direct edges.
+# Cargo does not inherit patches from a Git dependency. Ledger8 transient
+# crypto requires the maintained proofs fork's disk-spill feature.
 [patch.crates-io]
-midnight-base-crypto      = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-coin-structure   = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-onchain-runtime  = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-onchain-state    = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-onchain-vm       = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-serialize        = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-storage          = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-transient-crypto = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-zkir             = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-zswap            = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
-midnight-ledger           = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "$ledger_revision" }
 midnight-proofs           = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "$proofs_revision" }
 EOF
 printf 'fn main() {}\n' > "$scratch/src/main.rs"

@@ -26,8 +26,7 @@ midnight-compact-runtime = { workspace = true }
 # Ledger workspace dependencies needed by generated.rs and the native backend.
 # They are explicit so the public manifest records the complete supported
 # Ledger 8 source cone instead of relying only on Compact's transitive edges.
-# Every entry resolves from one exact Git revision; Compact's remaining Ledger
-# edges are unified by the root patch table.
+# Every entry resolves from one exact Git revision, shared with Compact.
 midnight-base-crypto      = { workspace = true }
 midnight-coin-structure   = { workspace = true }
 midnight-onchain-runtime  = { workspace = true }
@@ -35,10 +34,6 @@ midnight-serialize        = { workspace = true }
 midnight-ledger           = { workspace = true }
 midnight-storage          = { workspace = true }
 midnight-transient-crypto = { workspace = true }
-# Forces Compact's broad registry requirements to select the exact Git patches
-# above, even when newer source-distinct registry releases exist.
-midnight-ledger-source-lock = { workspace = true }
-
 # Sibling first-party crates — R2-2 (v0.4.0) lifts ledger-shape types
 # (`DidLedgerSnapshot`, `LedgerVerificationMethod`, `MapMutation`, …) into
 # this crate so `DidContractCall` can carry them as variant payloads. The

@@ -227,6 +227,19 @@ jobs:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
         run: nix develop .#rust --command bash scripts/ci/rust-target.sh test
 
+      - name: Check native DID runtime for the iOS simulator
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          nix develop .#rust --command bash -c '
+            export PATH="/usr/bin:/bin:$PATH"
+            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+            export SDKROOT="$(/usr/bin/xcrun --sdk iphonesimulator --show-sdk-path)"
+            cargo check --locked \
+              -p midnight-did-runtime \
+              --target aarch64-apple-ios-sim \
+              --no-default-features
+          '
+
       - name: Save trusted macOS Cargo source cache
         if: ${{ github.event_name == 'push' && matrix.os == 'macos-latest' && steps.cargo-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
