@@ -69,6 +69,10 @@ pub const SIGNATURE_LENGTH_BYTES: usize = 96;
 /// the `Vector<4, Field>` shape the circuits consume.
 pub type JubjubDigest = [u64; 4];
 
+/// Four full Compact field elements used by generated Midnight DID
+/// controller/recovery authorization circuits.
+pub type JubjubAuthorizationDigest = [Fr; 4];
+
 /// A Schnorr signature over Jubjub in suite form.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JubjubSchnorrSignature {
@@ -253,6 +257,31 @@ pub fn sign_digest_from_seed(seed: &[u8], digest: &JubjubDigest) -> Result<Jubju
     sign_digest_with_nonce_seed(seed_to_secret_scalar(seed), digest, &nonce_seed)
 }
 
+/// Sign the full-field authorization digest emitted by generated Midnight
+/// DID circuits. Unlike [`sign_digest_from_seed`], this preserves all 255
+/// bits of every field element and must be used for controller/recovery
+/// authorization produced by the Rust Compact runtime.
+pub fn sign_authorization_digest_from_seed(
+    seed: &[u8; 32],
+    digest: &JubjubAuthorizationDigest,
+) -> Result<JubjubSchnorrSignature, SuiteError> {
+    let secret = seed_to_secret_scalar(seed);
+    let public_key = derive_public_key(secret);
+    let mut nonce_seed = Vec::with_capacity(NONCE_DOMAIN_V1.len() + seed.len() + digest.len() * 32);
+    nonce_seed.extend_from_slice(NONCE_DOMAIN_V1.as_bytes());
+    nonce_seed.extend_from_slice(seed);
+    for field in digest {
+        nonce_seed.extend_from_slice(&field_to_bytes32_be(field));
+    }
+    let nonce = hash_to_scalar(&Sha256::digest(nonce_seed));
+    let announcement = EmbeddedGroupAffine::generator() * nonce;
+    let challenge = compute_authorization_challenge(&announcement, &public_key, digest)?;
+    Ok(JubjubSchnorrSignature {
+        announcement,
+        response: nonce + challenge * secret,
+    })
+}
+
 /// Hash the payload and sign it deterministically from the seed
 /// (TS `signJubjubPayloadFromSeed`).
 pub fn sign_payload_from_seed(seed: &[u8], payload: &[u8]) -> Result<JubjubSchnorrSignature, SuiteError> {
@@ -276,6 +305,18 @@ pub fn verify_digest(
     let lhs = EmbeddedGroupAffine::generator() * signature.response;
     let rhs = signature.announcement + *public_key * challenge;
     lhs == rhs
+}
+
+/// Verify a full-field generated-contract authorization signature.
+pub fn verify_authorization_digest(
+    public_key: &EmbeddedGroupAffine,
+    digest: &JubjubAuthorizationDigest,
+    signature: &JubjubSchnorrSignature,
+) -> bool {
+    let Ok(challenge) = compute_authorization_challenge(&signature.announcement, public_key, digest) else {
+        return false;
+    };
+    EmbeddedGroupAffine::generator() * signature.response == signature.announcement + *public_key * challenge
 }
 
 /// Hash the payload and verify (TS `verifyJubjubPayload`).
@@ -366,6 +407,13 @@ pub fn field_to_bytes32_le(field: &Fr) -> [u8; 32] {
     out
 }
 
+/// Encode a base field element as 32 big-endian bytes.
+pub fn field_to_bytes32_be(field: &Fr) -> [u8; 32] {
+    let mut out = field_to_bytes32_le(field);
+    out.reverse();
+    out
+}
+
 /// Encode a Jubjub point as 64 bytes `x ‖ y`, where both coordinates are
 /// canonical 32-byte little-endian base-field encodings. This consumer proof
 /// shape is deliberately distinct from the DID signature's 96-byte big-endian
@@ -441,6 +489,20 @@ fn coordinates(point: &EmbeddedGroupAffine) -> Result<(Fr, Fr), SuiteError> {
         (Some(x), Some(y)) => Ok((x, y)),
         _ => Err(SuiteError::IdentityPoint),
     }
+}
+
+fn compute_authorization_challenge(
+    announcement: &EmbeddedGroupAffine,
+    public_key: &EmbeddedGroupAffine,
+    digest: &JubjubAuthorizationDigest,
+) -> Result<EmbeddedFr, SuiteError> {
+    let (ann_x, ann_y) = coordinates(announcement)?;
+    let (pk_x, pk_y) = coordinates(public_key)?;
+    let challenge = transient_hash(&[ann_x, ann_y, pk_x, pk_y, digest[0], digest[1], digest[2], digest[3]]);
+    let mut reduced = field_to_bytes32_le(&challenge);
+    reduced[31] = 0;
+    Ok(EmbeddedFr::from_le_bytes(&reduced)
+        .expect("the 2^248 authorization challenge always fits the Jubjub scalar field"))
 }
 
 fn fr_be_bytes(fr: &Fr) -> [u8; 32] {
