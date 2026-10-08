@@ -60,14 +60,14 @@ midnight-did-runtime = {
 ```
 
 The runtime and Compact dependency pin every Ledger crate to
-`MediaNoxLabs/midnight-ledger@30fd606e5652d9146e8c7d453c5c01ea03962a89`.
+`MediaNoxLabs/midnight-ledger@2cce0f8f26e8ab1398af1c9ed61b087c28611a3f`.
 Cargo does not inherit `[patch]` tables from Git dependencies, so the consumer
 workspace must repeat the `midnight-proofs` patch from
 [`scripts/ci/git-consumer-smoke.sh`](../../scripts/ci/git-consumer-smoke.sh),
 pinning it to
 `MediaNoxLabs/midnight-zk@532629b044a88473a7175f4a96c2511c91156136`.
 The runtime itself pins Compact to the tree-equivalent merged revision
-`MediaNoxLabs/compact@3172c8588bfbf77b39fffd1ef71769962951b572`.
+`MediaNoxLabs/compact@e17b2a42227efa84281c6ce41868b66eb909e236`.
 Do not replace any member independently: source identity is part of the Rust
 type identity, so a mixed registry/Git graph can produce incompatible Compact
 and Ledger runtime types.

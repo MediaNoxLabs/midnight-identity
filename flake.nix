@@ -21,7 +21,7 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "midnight-ledger";
-      rev   = "30fd606e5652d9146e8c7d453c5c01ea03962a89";
+      rev   = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f";
       flake = false;
     };
     # midnight-zk fork providing the patched `midnight-proofs` crate that
@@ -59,7 +59,7 @@
       repo  = "compact";
       # Native Rust runtime with a single coherent, mobile-safe Ledger8 source
       # cone. Cargo.toml pins this same revision for non-Nix consumers.
-      rev   = "3172c8588bfbf77b39fffd1ef71769962951b572";
+      rev   = "e17b2a42227efa84281c6ce41868b66eb909e236";
       flake = false;
     };
   };

@@ -18,22 +18,22 @@ repository   = "https://github.com/MediaNoxLabs/midnight-identity"
 identus-crypto = { version = "=0.1.0-rc.1", default-features = false, features = [ "hash" ] }
 # Keep the complete Ledger 8 cone on one immutable source. Compact pins its
 # matching runtime cone to the same revision.
-midnight-base-crypto      = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-coin-structure   = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-onchain-runtime  = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-onchain-state    = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-onchain-vm       = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-serialize        = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-storage          = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-transient-crypto = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-zkir             = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-zswap            = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
-midnight-ledger           = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "30fd606e5652d9146e8c7d453c5c01ea03962a89" }
+midnight-base-crypto      = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-coin-structure   = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-onchain-runtime  = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-onchain-state    = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-onchain-vm       = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-serialize        = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-storage          = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-transient-crypto = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-zkir             = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-zswap            = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
+midnight-ledger           = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "2cce0f8f26e8ab1398af1c9ed61b087c28611a3f" }
 # Compact's runtime and sibling macro crate are resolved together from this
 # immutable repository revision. Nix path substitution remains an opt-in local
 # acceleration through scripts/cargo-with-nix-overrides.sh.
-compact-runtime          = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "3172c8588bfbf77b39fffd1ef71769962951b572" }
-midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "3172c8588bfbf77b39fffd1ef71769962951b572" }
+compact-runtime          = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "e17b2a42227efa84281c6ce41868b66eb909e236" }
+midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "e17b2a42227efa84281c6ce41868b66eb909e236" }
 # common
 serde      = { version = "1", features = [ "derive" ] }
 serde_json = "1"
