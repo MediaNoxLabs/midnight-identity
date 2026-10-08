@@ -233,9 +233,11 @@ jobs:
           DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
         run: |
           export PATH="/usr/bin:/bin:$PATH"
-          SDKROOT="$(/usr/bin/xcrun --sdk iphonesimulator --show-sdk-path)"
-          export SDKROOT
-          nix develop .#rust --command cargo check --locked \
+          IOS_SDKROOT="$(/usr/bin/xcrun --sdk iphonesimulator --show-sdk-path)"
+          nix develop .#rust --command env \
+            DEVELOPER_DIR="$DEVELOPER_DIR" \
+            SDKROOT="$IOS_SDKROOT" \
+            cargo check --locked \
             -p midnight-did-runtime \
             --target aarch64-apple-ios-sim \
             --no-default-features
