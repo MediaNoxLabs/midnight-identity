@@ -108,5 +108,4 @@ if jq -e '.packages[] | select(.name == "midnight-did-uniffi")' "$metadata" >/de
 fi
 
 CARGO_TARGET_DIR="$consumer_target" cargo check \
-  --manifest-path "$scratch/Cargo.toml" \
-  --features http,node-subxt
+  --manifest-path "$scratch/Cargo.toml"
