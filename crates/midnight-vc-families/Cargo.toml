@@ -9,11 +9,9 @@ repository.workspace   = true
 description            = "Codegen target for Midnight Verifiable Credentials credential families — Rust bindings emitted from the family prototype contracts (digital-passport today)."
 
 # `publish = false` per doc/publishing.md: like `midnight-vc-runtime`, this
-# crate depends on `midnight-compact-runtime` (path-mounted from third_party/compact/
-# runtime-rs by the devshell) and, transitively, the unpublished
-# midnight-ledger stack. crates.io rejects path-only dependencies, so
-# publishing is blocked until those upstreams publish; consumers use a git
-# dependency on this repository.
+# crate depends on immutable Git revisions of the unpublished Compact runtime
+# and Ledger stack. Publishing stays blocked until those upstream crates publish;
+# consumers use a Git dependency on this repository.
 publish = false
 
 [lib]
@@ -32,16 +30,12 @@ default = [  ]
 digital-passport = [  ]
 
 [dependencies]
-# The runtime the generated circuits call into. `path =
-# "third_party/compact/runtime-rs"` (declared at the workspace root) is
-# materialised by `nix develop`'s shellHook from the codegen-rust compact flake
-# input, alongside its sibling `runtime-rs-macros` crate.
+# The runtime the generated circuits call into. Its immutable Git revision is
+# declared at the workspace root; Nix path substitution is opt-in.
 midnight-compact-runtime = { workspace = true }
 
-# midnight-ledger crates the generated code needs at link time (transitively via
-# midnight-compact-runtime). Declared explicitly as an early-failure tripwire so a
-# missing third_party/midnight-ledger symlink fails with a clear error instead
-# of a link-time mystery — mirroring midnight-vc-runtime's rationale.
+# Ledger crates the generated code needs at link time (transitively via
+# midnight-compact-runtime). The root manifest keeps them on one Git source.
 midnight-base-crypto     = { workspace = true }
 midnight-onchain-runtime = { workspace = true }
 midnight-serialize       = { workspace = true }

@@ -48,6 +48,23 @@
         "type": "github"
       }
     },
+    "compact-runtime": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791500437,
+        "narHash": "sha256-e+2iLWOlwQGpbrsJvNN5ryAxm2jzBlE6g+eQC8x3l6I=",
+        "owner": "MediaNoxLabs",
+        "repo": "compact",
+        "rev": "32e314770da10cc62dab30dcfeb340ec4c6bcb64",
+        "type": "github"
+      },
+      "original": {
+        "owner": "MediaNoxLabs",
+        "repo": "compact",
+        "rev": "32e314770da10cc62dab30dcfeb340ec4c6bcb64",
+        "type": "github"
+      }
+    },
     "fenix": {
       "inputs": {
         "nixpkgs": "nixpkgs_4",
@@ -272,17 +289,17 @@
     "midnight-ledger": {
       "flake": false,
       "locked": {
-        "lastModified": 1789555372,
-        "narHash": "sha256-TBu1ysOc6kKNA9g+cnlaBqd/SO9ii/Je2uUsQWXYBiw=",
+        "lastModified": 1791500338,
+        "narHash": "sha256-KVp5T/m9NzzUwn4dnlp5IVy9DoticxIquio7ms6g+1Q=",
         "owner": "MediaNoxLabs",
         "repo": "midnight-ledger",
-        "rev": "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65",
+        "rev": "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc",
         "type": "github"
       },
       "original": {
         "owner": "MediaNoxLabs",
         "repo": "midnight-ledger",
-        "rev": "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65",
+        "rev": "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc",
         "type": "github"
       }
     },
@@ -542,6 +559,7 @@
     "root": {
       "inputs": {
         "compact": "compact",
+        "compact-runtime": "compact-runtime",
         "flake-parts": "flake-parts",
         "midnight-ledger": "midnight-ledger",
         "midnight-zk": "midnight-zk",

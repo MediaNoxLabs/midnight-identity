@@ -18,8 +18,8 @@ pub mod state_decode;
 pub use backend::{
     Backend, BackendError, BalancedDidTransaction, BuiltTx, DidAuthorizationSigner, DidConstructorProofMaterial,
     DidContractExecutor, DidDeploymentRequest, DidPrePartitionContractCall, DidPrivateStateStore,
-    FinalizedDidTransaction, FinalizedTxData, GeneratedDidExecutor, LedgerContractCallConfig, LedgerFinalityReceipt,
-    LedgerIndexerProvider, LedgerNodeProvider, LedgerProofInputTransaction, LedgerProofKeyMap,
+    FinalizedDidTransaction, FinalizedTxData, GeneratedDidExecutor, LedgerContractCallConfig, LedgerDeploymentConfig,
+    LedgerFinalityReceipt, LedgerIndexerProvider, LedgerNodeProvider, LedgerProofInputTransaction, LedgerProofKeyMap,
     LedgerProofOutputTransaction, LedgerProofProvider, LedgerProveTxRequest, LedgerWalletProvider, LiveBackend,
     LiveProviders, ProvedDidTransaction, RecordingBackend, ResolverBackend, UnbalancedDidTransaction,
 };

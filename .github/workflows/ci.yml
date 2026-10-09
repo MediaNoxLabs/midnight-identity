@@ -169,6 +169,15 @@ jobs:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
         run: nix develop .#rust --command bash scripts/ci/rust-target.sh check
 
+      - name: Check clean immutable-Git consumer
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GIT_CONSUMER_TARGET_DIR: ${{ github.workspace }}/target
+        run: |
+          nix develop .#rust --command bash scripts/ci/git-consumer-smoke.sh \
+            --repo-url https://github.com/MediaNoxLabs/midnight-identity.git \
+            --rev "$CANDIDATE_SHA"
+
       - name: Save trusted Cargo source cache
         if: ${{ github.event_name == 'push' && steps.cargo-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -217,6 +226,26 @@ jobs:
         env:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
         run: nix develop .#rust --command bash scripts/ci/rust-target.sh test
+
+      - name: Check native DID runtime for the iOS simulator
+        if: ${{ matrix.os == 'macos-latest' }}
+        env:
+          DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+        run: |
+          export PATH="/usr/bin:/bin:$PATH"
+          IOS_SDKROOT="$(/usr/bin/xcrun --sdk iphonesimulator --show-sdk-path)"
+          IOS_CLANG="$(/usr/bin/xcrun --sdk iphonesimulator --find clang)"
+          IOS_AR="$(/usr/bin/xcrun --sdk iphonesimulator --find ar)"
+          nix develop .#rust --command env -u MACOSX_DEPLOYMENT_TARGET \
+            DEVELOPER_DIR="$DEVELOPER_DIR" \
+            SDKROOT="$IOS_SDKROOT" \
+            CC_aarch64_apple_ios_sim="$IOS_CLANG" \
+            AR_aarch64_apple_ios_sim="$IOS_AR" \
+            CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER="$IOS_CLANG" \
+            cargo check --locked \
+            -p midnight-did-runtime \
+            --target aarch64-apple-ios-sim \
+            --no-default-features
 
       - name: Save trusted macOS Cargo source cache
         if: ${{ github.event_name == 'push' && matrix.os == 'macos-latest' && steps.cargo-cache.outputs.cache-hit != 'true' }}

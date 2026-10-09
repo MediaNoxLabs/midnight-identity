@@ -18,23 +18,15 @@ http       = [ "dep:reqwest" ]
 node-subxt = [ "dep:futures", "dep:subxt", "dep:tokio" ]
 
 [dependencies]
-# The midnight-compact-runtime symbol the generated contract code calls into. The
-# `path = "third_party/compact/runtime-rs"` (declared in the workspace) is
-# materialised by `nix develop`'s shellHook from the codegen-rust compact
-# flake input, alongside the sibling `runtime-rs-macros` crate.
+# The immutable Compact runtime revision is declared at the workspace root.
+# Its sibling macro crate resolves from the same Git checkout. Nix path
+# substitution is available only through the explicit local override wrapper.
 midnight-compact-runtime = { workspace = true }
 
-# midnight-ledger workspace deps the generated lib.rs (transitively, via
-# midnight-compact-runtime) needs at link time. Listed explicitly so `cargo build`
-# fails with a clearer error if a symlink under third_party/midnight-ledger/
-# goes missing.
-#
-# Pruned 2026-06-29: cargo-machete flagged six ledger-stack crates as
-# unused at the source level — they are pulled in transitively via
-# `midnight-compact-runtime`'s own manifest, so declaring them explicitly here was
-# redundant. The two kept below are the load-bearing pair the generated.rs
-# path-mounted output names directly; they stay as an early-failure
-# tripwire when a third_party/midnight-ledger symlink is missing.
+# Ledger workspace dependencies needed by generated.rs and the native backend.
+# They are explicit so the public manifest records the complete supported
+# Ledger 8 source cone instead of relying only on Compact's transitive edges.
+# Every entry resolves from one exact Git revision, shared with Compact.
 midnight-base-crypto      = { workspace = true }
 midnight-coin-structure   = { workspace = true }
 midnight-onchain-runtime  = { workspace = true }
@@ -42,7 +34,6 @@ midnight-serialize        = { workspace = true }
 midnight-ledger           = { workspace = true }
 midnight-storage          = { workspace = true }
 midnight-transient-crypto = { workspace = true }
-
 # Sibling first-party crates — R2-2 (v0.4.0) lifts ledger-shape types
 # (`DidLedgerSnapshot`, `LedgerVerificationMethod`, `MapMutation`, …) into
 # this crate so `DidContractCall` can carry them as variant payloads. The

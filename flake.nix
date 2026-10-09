@@ -15,13 +15,13 @@
     # at the `dioxus-vc-demo` prototype branch (obsolete prototype revision); the maintained line
     # is what the branch scheme says a consumer should pin, and the swap was
     # proven first: check, test (48 suites) and the wasm build all green.
-    # rev b85f5d8e is the head of `ledger-8-patched` as of 2026-09-16 (CompanionCache,
-    # upstream PR #758 merged in).
+    # This revision adds the mobile-safe storage boundary while preserving the
+    # maintained Ledger8 package and proof revisions.
     midnight-ledger = {
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "midnight-ledger";
-      rev   = "b85f5d8e503fd1d7a1b128bbc1d7156baf823a65";
+      rev   = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
       flake = false;
     };
     # midnight-zk fork providing the patched `midnight-proofs` crate that
@@ -48,11 +48,19 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
-      # MediaNoxLabs/compact#372 exact signed head with TS-compatible Schnorr
-      # challenge semantics and a single exported root call for nested generated
-      # circuit proof data.
+      # Authenticated compiler/toolchain revision used by generated VC and
+      # Passport artifacts. Runtime upgrades must not rewrite that provenance.
       rev   = "55ba765f5484a47d9184824a619f93893448c740";
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
+    };
+    compact-runtime = {
+      type  = "github";
+      owner = "MediaNoxLabs";
+      repo  = "compact";
+      # Native Rust runtime with a single coherent, mobile-safe Ledger8 source
+      # cone. Cargo.toml pins this same revision for non-Nix consumers.
+      rev   = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
+      flake = false;
     };
   };
 
